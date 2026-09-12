@@ -121,7 +121,7 @@ const KNOWN_TOP_LEVEL: ReadonlySet<string> = new Set([
 	"/api/auth/providers",
 	"/scope",
 	"/metrics",
-	"/pathplanner",
+	"/choreo",
 ]);
 
 const KNOWN_WORKSPACE_SUFFIXES: ReadonlySet<string> = new Set([
@@ -133,7 +133,6 @@ const KNOWN_WORKSPACE_SUFFIXES: ReadonlySet<string> = new Set([
 	"/ws/import",
 	"/ws/lesson-load",
 	"/api/session",
-	"/api/deploy-files/snapshot",
 	"/api/containers/status",
 	"/api/sim/status",
 	"/api/sim/auto-choosers",
@@ -154,7 +153,7 @@ export function templateRoute(path: string): string {
 	if (KNOWN_TOP_LEVEL.has(path)) return path;
 	if (path.startsWith("/api/auth/")) return "/api/auth/*";
 	if (path.startsWith("/scope/")) return "/scope/*";
-	if (path.startsWith("/pathplanner/")) return "/pathplanner/*";
+	if (path.startsWith("/choreo/")) return "/choreo/*";
 	if (path.startsWith("/assets/")) return "/assets/*";
 	if (path.startsWith("/admin/")) return "/admin/*";
 
@@ -164,10 +163,10 @@ export function templateRoute(path: string): string {
 		if (suffix === "" || suffix === "/") return "/u/:slug/";
 		if (suffix === "/vscode" || suffix.startsWith("/vscode/"))
 			return "/u/:slug/vscode/*";
+		if (suffix === "/api/choreo" || suffix.startsWith("/api/choreo/"))
+			return "/u/:slug/api/choreo/*";
 		if (suffix.startsWith("/assets/")) return "/u/:slug/assets/*";
 		if (KNOWN_WORKSPACE_SUFFIXES.has(suffix)) return `/u/:slug${suffix}`;
-		if (suffix.startsWith("/api/deploy-files/"))
-			return "/u/:slug/api/deploy-files/*";
 		return "/u/:slug/*";
 	}
 

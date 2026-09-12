@@ -23,12 +23,8 @@ import type { WorkspaceRuntimeProvider } from "../runtime";
 import type { AppStorage } from "../storage";
 import { webAssetResponse, webShellResponse } from "./assets";
 import {
-	deployFileDeleteResponse,
-	deployFilesSnapshotResponse,
-	deployFileWriteResponse,
-	parseDeployFilePath,
-} from "./deploy-files";
-import {
+	choreoHttpProxyResponse,
+	choreoWebSocketResponse,
 	halsimWebSocketResponse,
 	nt4AliveResponse,
 	nt4WebSocketResponse,
@@ -257,6 +253,40 @@ export async function handleWorkspaceRoute(
 			return (
 				capacityErrorResponse(error) ??
 				apiErrorResponse(error, "Editor not available.")
+			);
+		}
+	}
+
+	// --- Choreo proxy: choreo-server sidecar inside the workspace container ---
+	// Unlike the VSCode proxy, choreo-server has no base-path awareness of its
+	// own, so the /u/<slug>/api/choreo prefix is stripped before forwarding.
+	if (suffix === "/api/choreo" || suffix.startsWith("/api/choreo/")) {
+		const rest = suffix.slice("/api/choreo".length) || "/";
+		const fullPath = rest + (url.search || "");
+		try {
+			if (request.headers.get("upgrade")?.toLowerCase() === "websocket") {
+				return await choreoWebSocketResponse(
+					storage,
+					runtimeProvider,
+					auth,
+					request,
+					fullPath,
+					upstreamFetch,
+					server,
+				);
+			}
+			return await choreoHttpProxyResponse(
+				storage,
+				runtimeProvider,
+				auth,
+				request,
+				fullPath,
+				upstreamFetch,
+			);
+		} catch (error) {
+			return (
+				capacityErrorResponse(error) ??
+				apiErrorResponse(error, "Choreo is not available.")
 			);
 		}
 	}
@@ -490,29 +520,6 @@ export async function handleWorkspaceRoute(
 			workspace: auth.workspace,
 			userId: auth.user.id,
 		} satisfies LessonLoadSocketData);
-	}
-
-	// --- Deploy files (PathPlanner) endpoints ---
-	if (suffix === "/api/deploy-files/snapshot" && request.method === "GET") {
-		return deployFilesSnapshotResponse(auth.workspace);
-	}
-
-	if (suffix.startsWith("/api/deploy-files/")) {
-		const rawPath = suffix.slice("/api/deploy-files/".length);
-		const filePath = parseDeployFilePath(rawPath);
-		if (!filePath) {
-			return jsonResponse(
-				{ error: "Invalid deploy file path." },
-				{ status: 400 },
-			);
-		}
-		if (request.method === "PUT") {
-			return deployFileWriteResponse(auth.workspace, filePath, request);
-		}
-		if (request.method === "DELETE") {
-			return deployFileDeleteResponse(auth.workspace, filePath);
-		}
-		return jsonResponse({ error: "Method not allowed." }, { status: 405 });
 	}
 
 	// --- Import endpoints ---

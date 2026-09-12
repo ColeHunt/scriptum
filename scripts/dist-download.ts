@@ -1,8 +1,8 @@
 /**
  * Shared download+extract for prebuilt release tarballs. Used by
- * `fetch-dist.ts` (web shell + AdvantageScope Lite) and
- * `fetch-pathplanner-dist.ts`, which differ only in which releases they pull
- * from and whether a missing asset is fatal.
+ * `fetch-dist.ts` (web shell + AdvantageScope Lite) - Choreo's frontend is
+ * built from source instead (build-choreo.ts), since it needs only Bun +
+ * Vite rather than a foreign toolchain like PathPlanner's Flutter did.
  */
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";

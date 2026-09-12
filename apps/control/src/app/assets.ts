@@ -265,12 +265,11 @@ export async function scopeResponse(
 	return staticFileResponse(storage.config.advantageScopeDistDir, assetPath);
 }
 
-export async function pathplannerResponse(
+export async function choreoWebAssetResponse(
 	storage: AppStorage,
 	pathname: string,
 ): Promise<Response> {
-	let suffix =
-		pathname === "/pathplanner" ? "" : pathname.slice("/pathplanner/".length);
+	let suffix = pathname === "/choreo" ? "" : pathname.slice("/choreo/".length);
 	if (suffix === "" || suffix === "/") {
 		suffix = "index.html";
 	}
@@ -279,20 +278,20 @@ export async function pathplannerResponse(
 	try {
 		assetPath = decodeURIComponent(suffix);
 	} catch {
-		return new Response("Invalid PathPlanner asset path.", { status: 400 });
+		return new Response("Invalid Choreo asset path.", { status: 400 });
 	}
 	const safePath = safeRelativeAssetPath(assetPath);
 	if (!safePath) {
-		return new Response("Invalid PathPlanner asset path.", { status: 400 });
+		return new Response("Invalid Choreo asset path.", { status: 400 });
 	}
 
 	const response = await staticFileResponse(
-		storage.config.pathplannerDistDir,
+		storage.config.choreoDistDir,
 		safePath,
 	);
 	if (response.status === 404 && safePath === "index.html") {
 		return htmlResponse(
-			"PathPlanner has not been fetched yet. Run `bun run fetch:dist` (or rebuild the control image) to install the PathPlanner web dist.",
+			"Choreo has not been built yet. Rebuild the control image to install the Choreo web dist.",
 			{ status: 503 },
 		);
 	}

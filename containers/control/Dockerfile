@@ -2,17 +2,23 @@
 #
 # Multi-stage build that produces a self-contained image: Bun runtime, control
 # plane source, production node_modules, web shell dist, AdvantageScope Lite
-# dist, bundled lesson catalog, migrations, and ops scripts. The emscripten
-# (emsdk) toolchain needed to compile AdvantageScope's wasm lives only in a
-# build stage — neither CI runners nor operators install it.
+# dist, Choreo web dist, bundled lesson catalog, migrations, and ops scripts.
+# The emscripten (emsdk) toolchain needed to compile AdvantageScope's wasm
+# lives only in a build stage — neither CI runners nor operators install it.
 #
 # Build context is the repo root (like containers/code/Dockerfile) and needs
 # the vendor/AdvantageScope submodule initialized:
 #   bun run docker:build:control
 #
+# Choreo's frontend (served at /choreo/, talking to the choreo-server sidecar
+# containers/code/Dockerfile bakes into the workspace image) is built from a
+# pinned commit of its own fork - see docs/decisions/040-choreo-integration.md.
+#
 # See docs/decisions/031-containerized-control-plane.md.
 
 ARG BUN_VERSION=1.3.13
+ARG CHOREO_REPO=https://github.com/ColeHunt/Choreo.git
+ARG CHOREO_COMMIT=0f5f366574dfa4b76eeed636d0d2d246d618fe21
 
 # ── Stage 1: web shell build ───────────────────────────────────────────
 FROM oven/bun:${BUN_VERSION} AS web-build
@@ -72,47 +78,32 @@ RUN PATH="/usr/bin:${PATH}" bun scripts/build-ascope-lite.ts
 FROM scratch AS ascope-dist
 COPY --from=ascope-build /repo/dist/advantagescope /
 
-# ── Stage 3b: PathPlanner web dist ─────────────────────────────────────
-# Prebuilt in the pathplanner-web fork's CI (Flutter stays out of this
-# image, same reasoning as the prebuilt ascope-dist build context).
-#
-# PATHPLANNER_DIST_TAG doubles as the failure policy:
-#   - a real tag (what release.yml passes) is a pinned, required artifact —
-#     a failed download fails the build rather than publishing a control
-#     image that silently 503s on /pathplanner/.
-#   - the "latest" default (local `docker:build:control`) is best-effort:
-#     the dist stays empty and /pathplanner/ serves a 503 explaining how to
-#     install it, so an offline or rate-limited local build still works.
-#
-# Pinning also sidesteps a cache hazard: this RUN layer is keyed on its
-# inputs, which include the resolved URL below. With "latest" the URL text
-# never changes, so a cached layer built against an older release is reused
-# even after a newer one is published — and the amd64/arm64 jobs could
-# otherwise resolve different releases if "latest" moved between them.
-FROM debian:bookworm-slim AS pathplanner-dist
-# The default belongs on the in-stage ARG: an ARG between stages is scoped to
-# the preceding stage, so a default declared there never reaches this one and
-# the tag would expand empty (composing a 404 `/download//...` URL).
-ARG PATHPLANNER_DIST_TAG=latest
+# ── Stage 3b: Choreo web build ──────────────────────────────────────────
+# Choreo's frontend (src/ in the fork below) is plain Vite/React/TS - this
+# repo's own stack, unlike PathPlanner's Flutter, which had to stay out of
+# the toolchain entirely (decision 039). Built from the same pinned commit
+# as containers/code/Dockerfile's choreo-builder stage (which builds the
+# Rust sidecar that serves this frontend's API).
+FROM oven/bun:${BUN_VERSION} AS choreo-web-build
+ARG CHOREO_REPO
+ARG CHOREO_COMMIT
 RUN apt-get update -qq \
-    && apt-get install -y --no-install-recommends ca-certificates curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /pathplanner-dist \
-    && if [ "$PATHPLANNER_DIST_TAG" = "latest" ]; then \
-         url="https://github.com/mathewdunne/pathplanner-web/releases/latest/download/pathplanner-dist.tar.gz"; \
-         required=0; \
-       else \
-         url="https://github.com/mathewdunne/pathplanner-web/releases/download/${PATHPLANNER_DIST_TAG}/pathplanner-dist.tar.gz"; \
-         required=1; \
-       fi \
-    && if curl -fsSL "$url" -o /tmp/pathplanner-dist.tar.gz; then \
-         tar -xzf /tmp/pathplanner-dist.tar.gz -C /pathplanner-dist; \
-       elif [ "$required" = "1" ]; then \
-         echo "ERROR: pinned PathPlanner dist $PATHPLANNER_DIST_TAG could not be downloaded from $url"; \
-         exit 1; \
-       else \
-         echo "WARNING: PathPlanner dist unavailable; /pathplanner will 503"; \
-       fi
+    && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone "${CHOREO_REPO}" /choreo \
+    && git -C /choreo checkout "${CHOREO_COMMIT}"
+WORKDIR /choreo
+RUN bun install
+RUN bunx vite build
+
+# ── Stage 3c: Choreo web dist hand-off ──────────────────────────────────
+# Filesystem-only stage, same reasoning as ascope-dist above: lets CI
+# harvest the dist via `--target dist-export` without loading the runtime
+# image, and gives future multi-arch jobs a substitution point (the build
+# above is architecture-independent, so there's never a reason to redo it
+# per arch - but the pattern stays consistent with ascope-dist either way).
+FROM scratch AS choreo-web-dist
+COPY --from=choreo-web-build /choreo/dist /
 
 # ── Stage 4: dist export (CI only) ─────────────────────────────────────
 # A filesystem-only stage holding just the built web shell + AdvantageScope
@@ -125,6 +116,7 @@ RUN apt-get update -qq \
 FROM scratch AS dist-export
 COPY --from=web-build /repo/apps/web/dist /web-dist
 COPY --from=ascope-dist / /ascope-dist
+COPY --from=choreo-web-dist / /choreo-dist
 
 # ── Stage 5: runtime (default build target) ────────────────────────────
 FROM oven/bun:${BUN_VERSION}
@@ -153,7 +145,7 @@ COPY scripts/ scripts/
 COPY catalog/ catalog/
 COPY --from=web-build /repo/apps/web/dist apps/web/dist
 COPY --from=ascope-dist / dist/advantagescope
-COPY --from=pathplanner-dist /pathplanner-dist dist/pathplanner
+COPY --from=choreo-web-dist / dist/choreo
 
 # License texts travel with the image, not just the repo: this image ships a
 # patched AdvantageScope build, and BSD-3-Clause requires the notice to

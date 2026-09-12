@@ -122,6 +122,7 @@ describe("network mode container orchestration", () => {
 					nt4: null,
 					vscode: null,
 					halsim: null,
+					choreo: null,
 				});
 				expect(runtime.endpoints.vscode?.httpBaseUrl).toBe(
 					`http://${name}:3000`,
@@ -132,6 +133,10 @@ describe("network mode container orchestration", () => {
 				expect(runtime.endpoints.halsim?.wsUrl).toBe(
 					`ws://${name}:3300/wpilibws`,
 				);
+				expect(runtime.endpoints.choreo?.httpBaseUrl).toBe(
+					`http://${name}:5900`,
+				);
+				expect(runtime.endpoints.choreo?.wsBaseUrl).toBe(`ws://${name}:5900`);
 			},
 			{
 				dockerRunner: fakeDocker.runner,

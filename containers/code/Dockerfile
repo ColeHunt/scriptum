@@ -37,7 +37,7 @@ FROM ubuntu:24.04 AS choreo-builder
 # it in between stages, as this originally did, scopes the default to the
 # stage it was declared in and silently drops it for every later one.
 ARG CHOREO_REPO=https://github.com/ColeHunt/Choreo.git
-ARG CHOREO_COMMIT=ac0e90c1de9d91d828d44094062df60d8e56fcd1
+ARG CHOREO_COMMIT=0f5f366574dfa4b76eeed636d0d2d246d618fe21
 
 RUN apt-get update -qq \
     && apt-get install -y --no-install-recommends \

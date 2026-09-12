@@ -1,8 +1,8 @@
 import type { AuthProvidersResponse } from "@frc-coderunner/contracts";
 import { handleAdminRoute } from "./app/admin-routes";
 import {
+	choreoWebAssetResponse,
 	handleUploadAsset,
-	pathplannerResponse,
 	scopeResponse,
 	userAssetsPath,
 	webAssetResponse,
@@ -229,7 +229,7 @@ export async function createApp(
 		const isNoisy =
 			url.pathname === "/healthz" ||
 			url.pathname.startsWith("/scope/") ||
-			url.pathname.startsWith("/pathplanner/") ||
+			url.pathname.startsWith("/choreo/") ||
 			url.pathname.startsWith("/assets/") ||
 			url.pathname === "/coderunner-icon.png" ||
 			url.pathname === "/favicon.ico" ||
@@ -300,11 +300,10 @@ export async function createApp(
 		}
 
 		if (
-			(url.pathname === "/pathplanner" ||
-				url.pathname.startsWith("/pathplanner/")) &&
+			(url.pathname === "/choreo" || url.pathname.startsWith("/choreo/")) &&
 			request.method === "GET"
 		) {
-			return pathplannerResponse(storage, url.pathname);
+			return choreoWebAssetResponse(storage, url.pathname);
 		}
 
 		if (url.pathname === "/api/auth/providers" && request.method === "GET") {
@@ -352,7 +351,7 @@ export async function createApp(
 		}
 
 		// --- Default-deny: everything below requires a session (or admin token). ---
-		// Public routes (healthz, scope, /pathplanner, /api/auth/providers, other api/auth routes, /, /login,
+		// Public routes (healthz, scope, /choreo, /api/auth/providers, other api/auth routes, /, /login,
 		// /coderunner-icon.png, /assets/*) are handled above.
 		// If we reach here without matching a gated route, we return 404.
 

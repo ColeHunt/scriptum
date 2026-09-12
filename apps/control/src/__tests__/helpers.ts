@@ -150,12 +150,12 @@ export async function createAdvantageScopeDist(root: string): Promise<string> {
 	return ascopeDistDir;
 }
 
-export async function createPathPlannerDist(root: string): Promise<string> {
-	const pathplannerDistDir = join(root, "pathplanner-dist");
-	await mkdir(pathplannerDistDir, { recursive: true });
+export async function createChoreoDist(root: string): Promise<string> {
+	const choreoDistDir = join(root, "choreo-dist");
+	await mkdir(choreoDistDir, { recursive: true });
 	await writeFile(
-		join(pathplannerDistDir, "index.html"),
-		'<!doctype html><html><head><base href="/pathplanner/"><script src="main.dart.js" defer></script></head><body data-fake-pathplanner-ready="true">PathPlanner test dist</body></html>',
+		join(choreoDistDir, "index.html"),
+		'<!doctype html><html><head><base href="/choreo/"><script src="main.js" defer></script></head><body data-fake-choreo-ready="true">Choreo test dist</body></html>',
 		"utf8",
 	);
 	// Loads are counted in sessionStorage (shared with the parent page — same
@@ -163,18 +163,18 @@ export async function createPathPlannerDist(root: string): Promise<string> {
 	// project swap; its `src` is unchanged by the remount, so the counter is
 	// the only observable difference.
 	await writeFile(
-		join(pathplannerDistDir, "main.dart.js"),
-		`const key = "e2e:pathplanner-loads";
+		join(choreoDistDir, "main.js"),
+		`const key = "e2e:choreo-loads";
 let loads = 1;
 try {
 	loads = Number(sessionStorage.getItem(key) ?? "0") + 1;
 	sessionStorage.setItem(key, String(loads));
 } catch {}
-document.body.dataset.fakePathplannerLoads = String(loads);
+document.body.dataset.fakeChoreoLoads = String(loads);
 `,
 		"utf8",
 	);
-	return pathplannerDistDir;
+	return choreoDistDir;
 }
 
 export async function withApp<T>(
@@ -185,13 +185,13 @@ export async function withApp<T>(
 	const catalogDir = await createCatalogDir(root);
 	const webDistDir = await createWebDist(root);
 	const advantageScopeDistDir = await createAdvantageScopeDist(root);
-	const pathplannerDistDir = await createPathPlannerDist(root);
+	const choreoDistDir = await createChoreoDist(root);
 	const app = await createApp({
 		dataDir: join(root, "data"),
 		catalogDir,
 		webDistDir,
 		advantageScopeDistDir,
-		pathplannerDistDir,
+		choreoDistDir,
 		sessionSecret: "test-session-secret",
 		baseUrl: "http://localhost:4000",
 		idleStopMinutes: 30,
@@ -576,8 +576,8 @@ export class MockWorkspaceRuntimeProvider implements WorkspaceRuntimeProvider {
 			...runtime,
 			state: "missing",
 			runtimeName: null,
-			ports: { nt4: null, vscode: null, halsim: null },
-			endpoints: { vscode: null, nt4: null, halsim: null },
+			ports: { nt4: null, vscode: null, halsim: null, choreo: null },
+			endpoints: { vscode: null, nt4: null, halsim: null, choreo: null },
 		});
 	}
 

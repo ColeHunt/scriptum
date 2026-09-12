@@ -68,18 +68,14 @@ describe("templateRoute", () => {
 		expect([...unique][0]).toBe("/u/:slug/api/sim/status");
 	});
 
-	test("templates PathPlanner routes with bounded cardinality", () => {
-		expect(templateRoute("/pathplanner")).toBe("/pathplanner");
-		expect(templateRoute("/pathplanner/")).toBe("/pathplanner/*");
-		expect(templateRoute("/pathplanner/main.dart.js")).toBe("/pathplanner/*");
-		expect(templateRoute("/u/alice/api/deploy-files/snapshot")).toBe(
-			"/u/:slug/api/deploy-files/snapshot",
+	test("templates Choreo routes with bounded cardinality", () => {
+		expect(templateRoute("/choreo")).toBe("/choreo");
+		expect(templateRoute("/choreo/")).toBe("/choreo/*");
+		expect(templateRoute("/choreo/main.js")).toBe("/choreo/*");
+		expect(templateRoute("/u/alice/api/choreo")).toBe("/u/:slug/api/choreo/*");
+		expect(templateRoute("/u/alice/api/choreo/project/swerve")).toBe(
+			"/u/:slug/api/choreo/*",
 		);
-		expect(
-			templateRoute(
-				"/u/alice/api/deploy-files/src/main/deploy/pathplanner/paths/A.path",
-			),
-		).toBe("/u/:slug/api/deploy-files/*");
 	});
 });
 

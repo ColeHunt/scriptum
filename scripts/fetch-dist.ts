@@ -7,12 +7,12 @@ import { resolve } from "node:path";
 // `ascope-dist.tar.gz` and `web-dist.tar.gz` already published on each release.
 // The GCE deploy does the same thing (see .github/workflows/deploy.yml).
 //
-// PathPlanner ships from its own fork's releases, so it comes last and stays
-// optional here — a missing artifact leaves /pathplanner/ serving a 503 rather
-// than breaking demo setup. `bun run build` fetches it strictly instead.
+// Choreo's frontend is built (not downloaded) last via build-choreo.ts - it
+// needs only Bun + Vite, already required above, so there's no prebuilt
+// artifact to fetch the way there was for PathPlanner's Flutter build.
 
+import { buildChoreo } from "./build-choreo";
 import { downloadAndExtract, withScratch } from "./dist-download";
-import { fetchPathPlannerDist } from "./fetch-pathplanner-dist";
 
 const repoRoot = resolve(import.meta.dirname, "..");
 
@@ -58,7 +58,7 @@ async function main(): Promise<void> {
 			);
 		}
 	});
-	await fetchPathPlannerDist({ optional: true });
+	await buildChoreo();
 	console.log("\nPrebuilt web shell and AdvantageScope Lite assets are ready.");
 }
 

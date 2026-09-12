@@ -236,6 +236,164 @@ export async function vscodeWebSocketResponse(
 	return undefined as unknown as Response;
 }
 
+async function probeChoreoReady(
+	httpBaseUrl: string,
+	timeoutMs: number,
+	upstreamFetch: HttpFetch,
+): Promise<boolean> {
+	const deadline = Date.now() + timeoutMs;
+	const probeUrl = `${httpBaseUrl}/healthz`;
+	while (Date.now() < deadline) {
+		try {
+			const response = await upstreamFetch(probeUrl, {
+				signal: AbortSignal.timeout(500),
+			});
+			if (response.status >= 200 && response.status < 500) {
+				return true;
+			}
+		} catch {
+			// Connection refused or aborted; keep retrying.
+		}
+		await new Promise((resolveSleep) => setTimeout(resolveSleep, 250));
+	}
+	return false;
+}
+
+/**
+ * Proxies `/u/:slug/api/choreo/**` to choreo-server inside the workspace
+ * container. `fullPath` has the `/u/:slug/api/choreo` prefix already
+ * stripped by the caller - unlike the VSCode proxy, choreo-server has no
+ * base-path awareness of its own, so the upstream URL is rooted at "/".
+ */
+export async function choreoHttpProxyResponse(
+	storage: AppStorage,
+	runtimeProvider: WorkspaceRuntimeProvider,
+	auth: AuthContext,
+	request: Request,
+	fullPath: string,
+	upstreamFetch: HttpFetch,
+): Promise<Response> {
+	void storage;
+	const runtime = await runtimeProvider.ensureWorkspaceRunning(
+		auth.workspace.id,
+	);
+	const choreo = runtime.endpoints.choreo;
+	if (runtime.state !== "running" || !choreo) {
+		return new Response(runtime.error ?? "Choreo is not running.", {
+			status: 503,
+		});
+	}
+
+	if (!(await probeChoreoReady(choreo.httpBaseUrl, 30_000, upstreamFetch))) {
+		log.warn("choreo upstream did not become ready", {
+			workspaceId: auth.workspace.id,
+			httpBaseUrl: choreo.httpBaseUrl,
+		});
+		return new Response("Choreo upstream did not become ready.", {
+			status: 503,
+		});
+	}
+
+	const upstreamUrl = `${choreo.httpBaseUrl}${fullPath}`;
+	const forwardHeaders = stripHopByHopHeaders(request.headers);
+	log.trace("choreo http proxy", {
+		workspaceId: auth.workspace.id,
+		method: request.method,
+		path: fullPath,
+	});
+
+	const startedAt = performance.now();
+	let outcome = "ok";
+	try {
+		const upstream = await upstreamFetch(upstreamUrl, {
+			method: request.method,
+			headers: forwardHeaders,
+			body: request.body,
+			redirect: "manual",
+			decompress: false,
+		});
+
+		if (upstream.status >= 500) outcome = "upstream_5xx";
+		else if (upstream.status >= 400) outcome = "upstream_4xx";
+		const responseHeaders = stripHopByHopHeaders(upstream.headers);
+		return new Response(upstream.body, {
+			status: upstream.status,
+			statusText: upstream.statusText,
+			headers: responseHeaders,
+		});
+	} catch (err) {
+		outcome = "error";
+		log.warn("choreo upstream unreachable", {
+			workspaceId: auth.workspace.id,
+			upstreamUrl,
+			err: err instanceof Error ? err : new Error(String(err)),
+		});
+		return new Response("Choreo upstream is not reachable.", { status: 502 });
+	} finally {
+		proxyUpstreamDuration.observe(
+			{ upstream: "choreo", outcome },
+			(performance.now() - startedAt) / 1000,
+		);
+	}
+}
+
+export async function choreoWebSocketResponse(
+	storage: AppStorage,
+	runtimeProvider: WorkspaceRuntimeProvider,
+	auth: AuthContext,
+	request: Request,
+	fullPath: string,
+	upstreamFetch: HttpFetch,
+	server?: BunUpgradeServer,
+): Promise<Response> {
+	if (
+		!server ||
+		request.headers.get("upgrade")?.toLowerCase() !== "websocket"
+	) {
+		return new Response("Expected WebSocket upgrade.", { status: 426 });
+	}
+	const originError = requireWebSocketOrigin(request, storage.config.baseUrl);
+	if (originError) {
+		return originError;
+	}
+
+	const runtime = await runtimeProvider.ensureWorkspaceRunning(
+		auth.workspace.id,
+	);
+	const choreo = runtime.endpoints.choreo;
+	if (runtime.state !== "running" || !choreo) {
+		return new Response(runtime.error ?? "Choreo is not running.", {
+			status: 503,
+		});
+	}
+
+	if (!(await probeChoreoReady(choreo.httpBaseUrl, 30_000, upstreamFetch))) {
+		return new Response("Choreo upstream did not become ready.", {
+			status: 503,
+		});
+	}
+
+	const protocols = requestedProtocols(request);
+	const upstreamUrl = `${choreo.wsBaseUrl}${fullPath}`;
+	const upgradeOptions: { data: SocketData; headers?: HeadersInit } = {
+		data: {
+			kind: "choreo",
+			upstreamUrl,
+			protocols,
+			upstreamOpen: false,
+			pendingMessages: [],
+		},
+	};
+	if (protocols.length > 0) {
+		upgradeOptions.headers = { "sec-websocket-protocol": protocols[0] ?? "" };
+	}
+	const upgraded = server.upgrade(request, upgradeOptions);
+	if (!upgraded) {
+		return new Response("WebSocket upgrade failed.", { status: 400 });
+	}
+	return undefined as unknown as Response;
+}
+
 export async function nt4AliveResponse(
 	storage: AppStorage,
 	runtimeProvider: WorkspaceRuntimeProvider,

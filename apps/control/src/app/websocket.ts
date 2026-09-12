@@ -74,13 +74,14 @@ export function createWebSocketHandlers(ctx: WebSocketHandlerContext) {
 
 	function openProxyUpstream(
 		ws: AppSocket,
-		label: "NT4" | "VSCode" | "HALSim",
+		label: "NT4" | "VSCode" | "HALSim" | "Choreo",
 		protocols: string[] | undefined,
 	): void {
 		if (
 			ws.data.kind !== "nt4" &&
 			ws.data.kind !== "vscode" &&
-			ws.data.kind !== "halsim"
+			ws.data.kind !== "halsim" &&
+			ws.data.kind !== "choreo"
 		) {
 			return;
 		}
@@ -96,7 +97,8 @@ export function createWebSocketHandlers(ctx: WebSocketHandlerContext) {
 			if (
 				ws.data.kind !== "nt4" &&
 				ws.data.kind !== "vscode" &&
-				ws.data.kind !== "halsim"
+				ws.data.kind !== "halsim" &&
+				ws.data.kind !== "choreo"
 			) {
 				return;
 			}
@@ -167,6 +169,10 @@ export function createWebSocketHandlers(ctx: WebSocketHandlerContext) {
 				openProxyUpstream(ws, "HALSim", ws.data.protocols);
 				return;
 			}
+			if (ws.data.kind === "choreo") {
+				openProxyUpstream(ws, "Choreo", ws.data.protocols);
+				return;
+			}
 			if (ws.data.kind === "import" || ws.data.kind === "lesson-load") {
 				// WS is open; the client sends a request message to start the load.
 				return;
@@ -183,7 +189,8 @@ export function createWebSocketHandlers(ctx: WebSocketHandlerContext) {
 			if (
 				ws.data.kind === "nt4" ||
 				ws.data.kind === "vscode" ||
-				ws.data.kind === "halsim"
+				ws.data.kind === "halsim" ||
+				ws.data.kind === "choreo"
 			) {
 				if (ws.data.upstreamOpen && ws.data.upstream) {
 					sendUpstreamWebSocketMessage(ws.data.upstream, message);
@@ -380,7 +387,8 @@ export function createWebSocketHandlers(ctx: WebSocketHandlerContext) {
 			if (
 				ws.data.kind === "nt4" ||
 				ws.data.kind === "vscode" ||
-				ws.data.kind === "halsim"
+				ws.data.kind === "halsim" ||
+				ws.data.kind === "choreo"
 			) {
 				ws.data.upstream?.close();
 				ws.data.pendingMessages.length = 0;

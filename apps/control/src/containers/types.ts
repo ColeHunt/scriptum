@@ -60,4 +60,9 @@ export type PublishedPort = {
 export const SIM_CONTAINER_PORT = 5810;
 export const HALSIM_CONTAINER_PORT = 3300;
 export const VSCODE_CONTAINER_PORT = 3000;
+// Fixed in-container port for choreo-server (set via the CHOREO_PORT image
+// env var). Network mode connects to it by container name; unlike the other
+// three services, it is not yet leased a loopback port in port mode - see
+// docs/decisions/040-choreo-integration.md.
+export const CHOREO_CONTAINER_PORT = 5900;
 export const CODE_NAME_PREFIX = "coderunner-workspace-";

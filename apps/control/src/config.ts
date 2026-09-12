@@ -17,7 +17,7 @@ export type ControlConfig = {
 	migrationsDir: string;
 	webDistDir: string;
 	advantageScopeDistDir: string;
-	pathplannerDistDir: string;
+	choreoDistDir: string;
 	sessionSecret: string;
 	baseUrl: string;
 	githubClientId: string | null;
@@ -315,10 +315,10 @@ export function loadControlConfig(
 				Bun.env.FRC_ASCOPE_DIST_DIR ??
 				resolve(repoRoot, "dist", "advantagescope"),
 		),
-		pathplannerDistDir: resolve(
-			input.pathplannerDistDir ??
-				Bun.env.FRC_PATHPLANNER_DIST_DIR ??
-				resolve(repoRoot, "dist", "pathplanner"),
+		choreoDistDir: resolve(
+			input.choreoDistDir ??
+				Bun.env.FRC_CHOREO_DIST_DIR ??
+				resolve(repoRoot, "dist", "choreo"),
 		),
 		sessionSecret:
 			input.sessionSecret ??

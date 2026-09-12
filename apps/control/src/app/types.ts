@@ -92,6 +92,15 @@ export type HalSimSocketData = {
 	pendingMessages: Array<string | ArrayBuffer | Uint8Array>;
 };
 
+export type ChoreoSocketData = {
+	kind: "choreo";
+	upstreamUrl: string;
+	protocols: string[];
+	upstream?: WebSocket | undefined;
+	upstreamOpen: boolean;
+	pendingMessages: Array<string | ArrayBuffer | Uint8Array>;
+};
+
 export type ImportSocketData = {
 	kind: "import";
 	workspace: AuthContext["workspace"];
@@ -114,6 +123,7 @@ export type SocketData =
 	| Nt4SocketData
 	| VscodeSocketData
 	| HalSimSocketData
+	| ChoreoSocketData
 	| ImportSocketData
 	| LessonLoadSocketData
 	| GamepadSocketData;

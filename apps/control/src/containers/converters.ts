@@ -2,6 +2,7 @@ import type { ContainerState } from "@frc-coderunner/contracts";
 import type { WorkspaceRuntime } from "../runtime";
 import type { ContainerLeaseRow, WorkspaceRow } from "../storage";
 import {
+	CHOREO_CONTAINER_PORT,
 	type CodeContainerStatus,
 	HALSIM_CONTAINER_PORT,
 	type ManagedContainerStats,
@@ -51,7 +52,7 @@ export function upstreamEndpoints(
 	if (containerNetwork !== null) {
 		const containerName = lease?.vscode_container ?? null;
 		return {
-			ports: { nt4: null, vscode: null, halsim: null },
+			ports: { nt4: null, vscode: null, halsim: null, choreo: null },
 			endpoints: {
 				vscode:
 					containerName === null
@@ -74,6 +75,13 @@ export function upstreamEndpoints(
 						: {
 								wsUrl: `ws://${containerName}:${HALSIM_CONTAINER_PORT}/wpilibws`,
 							},
+				choreo:
+					containerName === null
+						? null
+						: {
+								httpBaseUrl: `http://${containerName}:${CHOREO_CONTAINER_PORT}`,
+								wsBaseUrl: `ws://${containerName}:${CHOREO_CONTAINER_PORT}`,
+							},
 			},
 		};
 	}
@@ -86,6 +94,8 @@ export function upstreamEndpoints(
 			nt4: nt4Port,
 			vscode: vscodePort,
 			halsim: halsimPort,
+			// Not leased in port mode yet - see docs/decisions/040-choreo-integration.md.
+			choreo: null,
 		},
 		endpoints: {
 			vscode:
@@ -109,6 +119,8 @@ export function upstreamEndpoints(
 					: {
 							wsUrl: `ws://127.0.0.1:${halsimPort}/wpilibws`,
 						},
+			// Port mode has no choreo-server endpoint yet.
+			choreo: null,
 		},
 	};
 }
