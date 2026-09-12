@@ -21,6 +21,41 @@ RUN apt-get update -qq \
     && npm version "${SPOTLESS_GRADLE_VERSION}" --no-git-tag-version --allow-same-version \
     && npx vsce package --no-dependencies --out /tmp/vscode-spotless-gradle.vsix
 
+# choreo-server is a small Rust HTTP/WS sidecar wrapping choreo-core's
+# trajectory editor/optimizer directly (no Tauri dependency) - see
+# docs/decisions/040-choreo-integration.md. Built from a pinned commit of
+# the fork below; release.yml builds each arch on a native runner (no
+# QEMU), so this stage only ever compiles natively, never cross-compiles.
+# GCC 14 is required: Sleipnir (the optimizer Choreo vendors) uses <format>
+# (GCC 13+) and <print> (GCC 14+), neither available on this stage's
+# default toolchain.
+FROM ubuntu:24.04 AS choreo-builder
+
+# Defaulted here, not before the Dockerfile's first FROM: an ARG's default
+# only carries into a later stage's bare re-declaration if the ARG was
+# declared before that *first* FROM (spotless-builder's, above) - declaring
+# it in between stages, as this originally did, scopes the default to the
+# stage it was declared in and silently drops it for every later one.
+ARG CHOREO_REPO=https://github.com/ColeHunt/Choreo.git
+ARG CHOREO_COMMIT=ac0e90c1de9d91d828d44094062df60d8e56fcd1
+
+RUN apt-get update -qq \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates curl git cmake ninja-build build-essential pkg-config \
+        gcc-14 g++-14 \
+    && rm -rf /var/lib/apt/lists/* \
+    && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 \
+    && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+        | sh -s -- -y --default-toolchain stable --profile minimal
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+RUN git clone "${CHOREO_REPO}" /choreo \
+    && git -C /choreo checkout "${CHOREO_COMMIT}" \
+    && cd /choreo \
+    && cargo build --release -p choreo-server
+
 # V2 merged code container
 # Layers JDK 17/21 + Gradle/WPILib cache + FRC extensions on linuxserver/vscodium-web
 # Base already provides: codium-server (VSCodium reh-web), s6-overlay, abc user,
@@ -90,6 +125,12 @@ ENV JAVA_HOME=/usr/lib/jvm/jdk-17
 ENV JDK_HOME=/usr/lib/jvm/jdk-21
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
+# choreo-server: loopback port and deploy root (matches the student project's
+# WORKDIR below - src/main/deploy/choreo is this image's side of the
+# deploy-files contract documented in docs/decisions/040-choreo-integration.md).
+ENV CHOREO_PORT=5900
+ENV CHOREO_DEPLOY_ROOT=/workspace/project/src/main/deploy/choreo
+
 RUN java -version && "${JDK_HOME}/bin/java" -version
 
 # ── Scripts ────────────────────────────────────────────────────────────
@@ -104,7 +145,8 @@ RUN chmod +x /usr/local/bin/start-sim.sh /usr/local/bin/run-sim.sh /usr/local/bi
 # Adds init-frc-setup oneshot and overrides svc-vscodium-web run script.
 COPY containers/code/root/ /
 RUN chmod +x /etc/s6-overlay/s6-rc.d/init-frc-setup/run \
-             /etc/s6-overlay/s6-rc.d/svc-vscodium-web/run
+             /etc/s6-overlay/s6-rc.d/svc-vscodium-web/run \
+             /etc/s6-overlay/s6-rc.d/svc-choreo/run
 
 # ── Download and install VS Code extensions ────────────────────────────
 ARG REDHAT_JAVA_VERSION=1.55.0
@@ -138,6 +180,13 @@ RUN mkdir -p /tmp/exts \
        -O /tmp/exts/vscode-java-pack.vsix
 
 COPY --from=spotless-builder /tmp/vscode-spotless-gradle.vsix /tmp/exts/vscode-spotless-gradle.vsix
+
+# ── Choreo server ────────────────────────────────────────────────────
+# choreo-server (a small HTTP/WS sidecar) replaces PathPlanner - see
+# docs/decisions/040-choreo-integration.md. Built in a separate stage near
+# the top of this file; the Rust/C++ toolchain stays out of the runtime
+# image, same reasoning as spotless-builder.
+COPY --from=choreo-builder /choreo/target/release/choreo-server /usr/local/bin/choreo-server
 
 # Do not resolve extension packs or dependencies from the gallery; every required
 # Java extension is installed explicitly below.
@@ -202,4 +251,4 @@ RUN mkdir -p /workspace/project \
 
 WORKDIR /workspace/project
 
-EXPOSE 3000 3300 5810
+EXPOSE 3000 3300 5810 5900
