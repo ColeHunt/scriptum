@@ -1,6 +1,6 @@
 import { Replace } from "lucide-react";
 import coderunnerHeaderImg from "@/assets/coderunner-header.png";
-import { SimPaneTabSelector } from "@/components/SimPaneSwitcher";
+import { PaneToggleRow } from "@/components/PaneVisibility";
 import { UserMenu } from "@/components/UserMenu";
 import { Button } from "@/components/ui/button";
 
@@ -10,8 +10,8 @@ interface TopbarProps {
 	avatarUrl: string | null;
 	isAdmin: boolean;
 	onSwitchProject: () => void;
-	/** Only for layouts that render the sim pane; requires a `SimPaneTabs` root. */
-	showSimPaneTabs?: boolean;
+	/** Only for layouts that render the sim pane; requires a `PaneVisibilityRoot`. */
+	showPaneToggle?: boolean;
 }
 
 export function Topbar({
@@ -20,7 +20,7 @@ export function Topbar({
 	avatarUrl,
 	isAdmin,
 	onSwitchProject,
-	showSimPaneTabs = false,
+	showPaneToggle = false,
 }: TopbarProps) {
 	return (
 		<header className="flex h-[48px] shrink-0 items-center border-b border-border px-4">
@@ -31,7 +31,7 @@ export function Topbar({
 				</strong>
 			</div>
 			<div className="ml-auto flex items-center gap-5">
-				{showSimPaneTabs && <SimPaneTabSelector />}
+				{showPaneToggle && <PaneToggleRow />}
 				<Button
 					type="button"
 					variant="outline"

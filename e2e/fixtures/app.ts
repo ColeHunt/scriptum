@@ -16,7 +16,7 @@ import { test as base } from "@playwright/test";
 import {
 	createAdvantageScopeDist,
 	createCatalogDir,
-	createPathPlannerDist,
+	createChoreoDist,
 	MockWorkspaceRuntimeProvider,
 	makeScriptedRunCommandFactory,
 } from "../../apps/control/src/__tests__/helpers";
@@ -103,7 +103,7 @@ export const test = base.extend<AppFixtures & AppOptions>({
 		const root = await mkdtemp(join(tmpdir(), "frc-e2e-"));
 		const catalogDir = await createCatalogDir(root);
 		const ascopeDistDir = await createAdvantageScopeDist(root);
-		const pathplannerDistDir = await createPathPlannerDist(root);
+		const choreoDistDir = await createChoreoDist(root);
 		const webDistDir = resolve(__dirname, "../../apps/web/dist");
 
 		const runtime = new MockWorkspaceRuntimeProvider();
@@ -121,7 +121,7 @@ export const test = base.extend<AppFixtures & AppOptions>({
 				catalogDir,
 				webDistDir,
 				advantageScopeDistDir: ascopeDistDir,
-				pathplannerDistDir,
+				choreoDistDir,
 				sessionSecret: "e2e-session-secret",
 				baseUrl,
 				idleStopMinutes: 30,

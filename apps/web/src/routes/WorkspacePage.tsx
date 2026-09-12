@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
+import { ChoreoPane } from "@/components/ChoreoPane";
 import { DemoBanner } from "@/components/DemoBanner";
 import { DriverStation } from "@/components/DriverStation";
 import { EditorPane } from "@/components/EditorPane";
 import { IDELayout } from "@/components/IDELayout";
-import { PathPlannerPane } from "@/components/PathPlannerPane";
+import { PaneVisibilityRoot } from "@/components/PaneVisibility";
 import { ScopePane } from "@/components/ScopePane";
-import { SimPanePanels, SimPaneTabs } from "@/components/SimPaneSwitcher";
 import { SwitchProjectDialog } from "@/components/SwitchProjectDialog";
 import { Topbar } from "@/components/Topbar";
 import { useAutoChoosers } from "@/hooks/useAutoChoosers";
@@ -201,7 +201,7 @@ export function WorkspacePage() {
 		sessionState.status === "error" ? sessionState.message : undefined;
 
 	return (
-		<SimPaneTabs className="flex h-screen flex-col gap-0 bg-background">
+		<PaneVisibilityRoot className="flex h-screen flex-col gap-0 bg-background">
 			{isDemo && <DemoBanner />}
 			<Topbar
 				displayName={displayName}
@@ -209,7 +209,7 @@ export function WorkspacePage() {
 				avatarUrl={avatarUrl}
 				isAdmin={isAdmin}
 				onSwitchProject={() => setSwitchOpen(true)}
-				showSimPaneTabs={!isConsoleModule}
+				showPaneToggle={!isConsoleModule}
 			/>
 			<IDELayout
 				showSimPanels={!isConsoleModule}
@@ -223,14 +223,8 @@ export function WorkspacePage() {
 						errorDetail={editorErrorDetail}
 					/>
 				}
-				scope={
-					<SimPanePanels
-						scope={<ScopePane ref={scopeFrameRef} />}
-						pathplanner={
-							<PathPlannerPane key={reloadNonce} workspaceSlug={simSlug} />
-						}
-					/>
-				}
+				scope={<ScopePane ref={scopeFrameRef} />}
+				choreo={<ChoreoPane key={reloadNonce} workspaceSlug={simSlug} />}
 				driverStation={
 					<DriverStation
 						simulationStatus={simulation.status}
@@ -270,6 +264,6 @@ export function WorkspacePage() {
 				currentModule={currentModule}
 				onSwapComplete={onSwapComplete}
 			/>
-		</SimPaneTabs>
+		</PaneVisibilityRoot>
 	);
 }
