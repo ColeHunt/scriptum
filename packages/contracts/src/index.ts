@@ -39,7 +39,7 @@ export const heartbeatRequestSchema = z.object({
 	closing: z.boolean().optional(),
 });
 
-export const lessonModuleKindSchema = z.enum(["plain-java", "robot"]);
+export const lessonModuleKindSchema = z.enum(["plain-java", "robot", "git"]);
 
 export const sessionResponseSchema = z.object({
 	user: z.object({
@@ -393,6 +393,35 @@ export const lessonModuleSubdirSchema = z
 		"Subdir must be a relative path made of safe path segments.",
 	);
 
+/**
+ * A checkpoint's verifier says how to check it. Only "script" exists today: a
+ * shell script baked into the image under `checkpoints/`, run as the
+ * workspace user against the student's project and expected to exit 0 (pass)
+ * or non-zero (fail). `path` is a catalog-root-relative subdir, resolved the
+ * same way `lessonModuleSubdirSchema` resolves a module's own subdir.
+ */
+export const lessonCheckpointVerifierSchema = z.discriminatedUnion("type", [
+	z.object({
+		type: z.literal("script"),
+		path: lessonModuleSubdirSchema,
+	}),
+]);
+
+export const lessonCheckpointSchema = z.object({
+	id: z
+		.string()
+		.min(1)
+		.max(100)
+		.regex(
+			/^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+			"Checkpoint id must be lowercase kebab-case.",
+		),
+	title: z.string().min(1),
+	description: z.string(),
+	optional: z.boolean().default(false),
+	verifier: lessonCheckpointVerifierSchema,
+});
+
 export const lessonModuleSchema = z.object({
 	id: z.string().min(1),
 	title: z.string().min(1),
@@ -400,6 +429,11 @@ export const lessonModuleSchema = z.object({
 	subdir: lessonModuleSubdirSchema,
 	kind: lessonModuleKindSchema,
 	order: z.number().int(),
+	/** Runs once, right after the module's files are copied in (e.g. the git
+	 * lesson builds its scenario repos here, since real `.git` directories
+	 * can't ship as static files). Catalog-root-relative, like `subdir`. */
+	setupScript: lessonModuleSubdirSchema.optional(),
+	checkpoints: z.array(lessonCheckpointSchema).default([]),
 });
 
 export const lessonCatalogSchema = z.object({
@@ -419,7 +453,59 @@ export const lessonLoadRequestSchema = z.object({
 
 export type LessonModuleKind = z.infer<typeof lessonModuleKindSchema>;
 export type LessonModuleSubdir = z.infer<typeof lessonModuleSubdirSchema>;
+export type LessonCheckpointVerifier = z.infer<
+	typeof lessonCheckpointVerifierSchema
+>;
+export type LessonCheckpoint = z.infer<typeof lessonCheckpointSchema>;
 export type LessonModule = z.infer<typeof lessonModuleSchema>;
 export type LessonCatalog = z.infer<typeof lessonCatalogSchema>;
 export type LessonCatalogResponse = z.infer<typeof lessonCatalogResponseSchema>;
 export type LessonLoadRequest = z.infer<typeof lessonLoadRequestSchema>;
+
+// --- Checkpoint verification ---
+
+export const checkpointStatusSchema = z.enum([
+	"not-run",
+	"passed",
+	"failed",
+	"error",
+]);
+
+export const checkpointResultSchema = z.object({
+	checkpointId: z.string(),
+	status: checkpointStatusSchema,
+	message: z.string().nullable(),
+	verifiedAt: z.string().nullable(),
+});
+
+/** A module's checkpoints, each paired with its most recent stored result. */
+export const checkpointsStateSchema = z.object({
+	moduleId: z.string().nullable(),
+	/** False when the current module has no checkpoints (or isn't loaded). */
+	available: z.boolean(),
+	checkpoints: z.array(
+		lessonCheckpointSchema.extend({
+			result: checkpointResultSchema.nullable(),
+		}),
+	),
+});
+
+export const checkpointsStateResponseSchema = z.object({
+	ok: z.literal(true),
+	state: checkpointsStateSchema,
+});
+
+export const verifyCheckpointsRequestSchema = z.object({
+	/** Omit to verify every checkpoint in the current module. */
+	checkpointIds: z.array(z.string()).optional(),
+});
+
+export type CheckpointStatus = z.infer<typeof checkpointStatusSchema>;
+export type CheckpointResult = z.infer<typeof checkpointResultSchema>;
+export type CheckpointsState = z.infer<typeof checkpointsStateSchema>;
+export type CheckpointsStateResponse = z.infer<
+	typeof checkpointsStateResponseSchema
+>;
+export type VerifyCheckpointsRequest = z.infer<
+	typeof verifyCheckpointsRequestSchema
+>;

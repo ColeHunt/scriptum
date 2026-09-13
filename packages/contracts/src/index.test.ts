@@ -3,6 +3,7 @@ import {
 	authProvidersResponseSchema,
 	autoChooserPatchSchema,
 	autoChoosersResponseSchema,
+	checkpointsStateResponseSchema,
 	driverStationPatchSchema,
 	gamepadClientMessageSchema,
 	gamepadServerMessageSchema,
@@ -232,6 +233,173 @@ describe("lesson catalog schemas", () => {
 		expect(lessonLoadRequestSchema.safeParse({ moduleId: "" }).success).toBe(
 			false,
 		);
+	});
+
+	test("accepts the git kind and a module with checkpoints + setupScript", () => {
+		const parsed = lessonCatalogSchema.parse({
+			schemaVersion: 1,
+			modules: [
+				{
+					id: "git-basics",
+					title: "Git Basics",
+					description: "Commit, branch, merge, and rebase.",
+					subdir: "modules/git-basics",
+					kind: "git",
+					order: 5,
+					setupScript: "checkpoints/git-basics/setup.sh",
+					checkpoints: [
+						{
+							id: "first-commit",
+							title: "First commit",
+							description: "Add your name and commit it.",
+							verifier: {
+								type: "script",
+								path: "checkpoints/git-basics/verify/first-commit.sh",
+							},
+						},
+					],
+				},
+			],
+		});
+		expect(parsed.modules[0]).toMatchObject({ kind: "git" });
+		expect(parsed.modules[0]?.checkpoints[0]).toMatchObject({
+			id: "first-commit",
+			optional: false,
+		});
+	});
+
+	test("a module without checkpoints defaults to an empty list", () => {
+		const parsed = lessonCatalogSchema.parse({
+			schemaVersion: 1,
+			modules: [
+				{
+					id: "hello-world",
+					title: "Hello, World",
+					description: "",
+					subdir: "modules/hello-world",
+					kind: "plain-java",
+					order: 10,
+				},
+			],
+		});
+		expect(parsed.modules[0]?.checkpoints).toEqual([]);
+	});
+
+	test("rejects a non-kebab-case checkpoint id", () => {
+		expect(
+			lessonCatalogSchema.safeParse({
+				schemaVersion: 1,
+				modules: [
+					{
+						id: "x",
+						title: "X",
+						description: "",
+						subdir: "modules/x",
+						kind: "git",
+						order: 10,
+						checkpoints: [
+							{
+								id: "First_Commit",
+								title: "X",
+								description: "",
+								verifier: { type: "script", path: "checkpoints/x/verify.sh" },
+							},
+						],
+					},
+				],
+			}).success,
+		).toBe(false);
+	});
+
+	test("rejects an unknown verifier type", () => {
+		expect(
+			lessonCatalogSchema.safeParse({
+				schemaVersion: 1,
+				modules: [
+					{
+						id: "x",
+						title: "X",
+						description: "",
+						subdir: "modules/x",
+						kind: "git",
+						order: 10,
+						checkpoints: [
+							{
+								id: "a",
+								title: "X",
+								description: "",
+								verifier: { type: "junit", testClass: "frc.Foo" },
+							},
+						],
+					},
+				],
+			}).success,
+		).toBe(false);
+	});
+});
+
+describe("checkpointsStateResponseSchema", () => {
+	test("parses a state payload with mixed checkpoint results", () => {
+		const parsed = checkpointsStateResponseSchema.parse({
+			ok: true,
+			state: {
+				moduleId: "git-basics",
+				available: true,
+				checkpoints: [
+					{
+						id: "first-commit",
+						title: "First commit",
+						description: "",
+						optional: false,
+						verifier: { type: "script", path: "checkpoints/git-basics/a.sh" },
+						result: {
+							checkpointId: "first-commit",
+							status: "passed",
+							message: null,
+							verifiedAt: new Date(0).toISOString(),
+						},
+					},
+					{
+						id: "rebase",
+						title: "Rebase",
+						description: "",
+						optional: false,
+						verifier: { type: "script", path: "checkpoints/git-basics/b.sh" },
+						result: null,
+					},
+				],
+			},
+		});
+		expect(
+			parsed.state.checkpoints.map((c) => c.result?.status ?? "not-run"),
+		).toEqual(["passed", "not-run"]);
+	});
+
+	test("rejects an unknown checkpoint status", () => {
+		expect(
+			checkpointsStateResponseSchema.safeParse({
+				ok: true,
+				state: {
+					moduleId: "git-basics",
+					available: true,
+					checkpoints: [
+						{
+							id: "a",
+							title: "A",
+							description: "",
+							optional: false,
+							verifier: { type: "script", path: "checkpoints/x/a.sh" },
+							result: {
+								checkpointId: "a",
+								status: "flaky",
+								message: null,
+								verifiedAt: null,
+							},
+						},
+					],
+				},
+			}).success,
+		).toBe(false);
 	});
 });
 
