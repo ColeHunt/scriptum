@@ -1,4 +1,4 @@
-import { Replace } from "lucide-react";
+import { ListChecks, Replace } from "lucide-react";
 import coderunnerHeaderImg from "@/assets/coderunner-header.png";
 import { PaneToggleRow } from "@/components/PaneVisibility";
 import { UserMenu } from "@/components/UserMenu";
@@ -12,6 +12,8 @@ interface TopbarProps {
 	onSwitchProject: () => void;
 	/** Only for layouts that render the sim pane; requires a `PaneVisibilityRoot`. */
 	showPaneToggle?: boolean;
+	/** Shown only when the current lesson has checkpoints to verify. */
+	checkpoints?: { passed: number; total: number; onOpen: () => void };
 }
 
 export function Topbar({
@@ -21,6 +23,7 @@ export function Topbar({
 	isAdmin,
 	onSwitchProject,
 	showPaneToggle = false,
+	checkpoints,
 }: TopbarProps) {
 	return (
 		<header className="flex h-[48px] shrink-0 items-center border-b border-border px-4">
@@ -32,6 +35,18 @@ export function Topbar({
 			</div>
 			<div className="ml-auto flex items-center gap-5">
 				{showPaneToggle && <PaneToggleRow />}
+				{checkpoints && (
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						className="h-8 gap-1.5 px-2.5 text-[12.5px]"
+						onClick={checkpoints.onOpen}
+					>
+						<ListChecks className="size-[15px] text-muted-foreground" />
+						Checkpoints {checkpoints.passed}/{checkpoints.total}
+					</Button>
+				)}
 				<Button
 					type="button"
 					variant="outline"

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
+import { CheckpointsDialog } from "@/components/CheckpointsDialog";
 import { ChoreoPane } from "@/components/ChoreoPane";
 import { DemoBanner } from "@/components/DemoBanner";
 import { DriverStation } from "@/components/DriverStation";
@@ -10,6 +11,7 @@ import { ScopePane } from "@/components/ScopePane";
 import { SwitchProjectDialog } from "@/components/SwitchProjectDialog";
 import { Topbar } from "@/components/Topbar";
 import { useAutoChoosers } from "@/hooks/useAutoChoosers";
+import { useCheckpoints } from "@/hooks/useCheckpoints";
 import { useEditorReachability } from "@/hooks/useEditorReachability";
 import { type GamepadInfo, useGamepad } from "@/hooks/useGamepad";
 import { useGamepadChannel } from "@/hooks/useGamepadChannel";
@@ -45,14 +47,19 @@ export function WorkspacePage() {
 	const currentModuleKind = workspace?.currentModuleKind ?? null;
 	const projectEmpty = workspace?.projectEmpty ?? false;
 
-	// `plain-java` console lessons hide the sim chrome; everything else (robot
-	// lessons, empty workspace, team import) renders the full robot layout.
-	const isConsoleModule = currentModuleKind === "plain-java";
+	// `plain-java` console lessons and the `git` lesson hide the sim chrome;
+	// everything else (robot lessons, empty workspace, team import) renders
+	// the full robot layout.
+	const hideSimChrome =
+		currentModuleKind === "plain-java" || currentModuleKind === "git";
 	// Gate the sim data hooks themselves (not just rendering): they no-op on a
-	// null slug, so console mode stops the sim polls + idle HALSim/run sockets.
-	const simSlug = isConsoleModule ? null : workspaceSlug;
+	// null slug, so hiding the sim chrome also stops the sim polls + idle
+	// HALSim/run sockets.
+	const simSlug = hideSimChrome ? null : workspaceSlug;
 
 	const [switchOpen, setSwitchOpen] = useState(false);
+	const [checkpointsOpen, setCheckpointsOpen] = useState(false);
+	const checkpoints = useCheckpoints(workspaceSlug);
 
 	const { connection: runConnection, consoleLines } = useRunChannel(simSlug);
 	const simulation = useSimulationState(simSlug);
@@ -178,7 +185,8 @@ export function WorkspacePage() {
 
 	const onSwapComplete = useCallback(() => {
 		setReloadNonce((n) => n + 1);
-	}, []);
+		checkpoints.refetch();
+	}, [checkpoints.refetch]);
 
 	const displayName =
 		sessionState.status === "ready"
@@ -209,10 +217,21 @@ export function WorkspacePage() {
 				avatarUrl={avatarUrl}
 				isAdmin={isAdmin}
 				onSwitchProject={() => setSwitchOpen(true)}
-				showPaneToggle={!isConsoleModule}
+				showPaneToggle={!hideSimChrome}
+				checkpoints={
+					checkpoints.state.available
+						? {
+								passed: checkpoints.state.checkpoints.filter(
+									(c) => c.result?.status === "passed",
+								).length,
+								total: checkpoints.state.checkpoints.length,
+								onOpen: () => setCheckpointsOpen(true),
+							}
+						: undefined
+				}
 			/>
 			<IDELayout
-				showSimPanels={!isConsoleModule}
+				showSimPanels={!hideSimChrome}
 				editor={
 					<EditorPane
 						key={reloadNonce}
@@ -263,6 +282,15 @@ export function WorkspacePage() {
 				workspaceSlug={workspaceSlug}
 				currentModule={currentModule}
 				onSwapComplete={onSwapComplete}
+			/>
+			<CheckpointsDialog
+				open={checkpointsOpen}
+				onOpenChange={setCheckpointsOpen}
+				state={checkpoints.state}
+				loading={checkpoints.loading}
+				verifying={checkpoints.verifying}
+				error={checkpoints.error}
+				verify={checkpoints.verify}
 			/>
 		</PaneVisibilityRoot>
 	);

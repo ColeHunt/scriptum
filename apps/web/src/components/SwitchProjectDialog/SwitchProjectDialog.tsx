@@ -1,4 +1,4 @@
-import { BookOpen, Cpu, RotateCcw, Terminal } from "lucide-react";
+import { BookOpen, Cpu, GitBranch, RotateCcw, Terminal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SiGithub } from "react-icons/si";
 import { Badge } from "@/components/ui/badge";
@@ -31,15 +31,24 @@ type Pending =
 	| { kind: "reset"; module: LessonModule }
 	| { kind: "import"; url: string };
 
+const KIND_TAGS: Record<
+	LessonModule["kind"],
+	{ label: string; icon: typeof Cpu }
+> = {
+	robot: { label: "Robot", icon: Cpu },
+	"plain-java": { label: "Console", icon: Terminal },
+	git: { label: "Git", icon: GitBranch },
+};
+
 function KindTag({ kind }: { kind: LessonModule["kind"] }) {
-	const isRobot = kind === "robot";
+	const { label, icon: Icon } = KIND_TAGS[kind];
 	return (
 		<Badge
 			variant="outline"
 			className="gap-1 border-border/70 px-1.5 py-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
 		>
-			{isRobot ? <Cpu className="size-3" /> : <Terminal className="size-3" />}
-			{isRobot ? "Robot" : "Console"}
+			<Icon className="size-3" />
+			{label}
 		</Badge>
 	);
 }
