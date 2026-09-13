@@ -23,7 +23,18 @@ describe("bundled lesson catalog", () => {
 
 		expect(catalog.schemaVersion).toBe(1);
 		const ids = catalog.modules.map((module) => module.id).sort();
-		expect(ids).toEqual(["git-basics", "hello-world", "robot-starter"]);
+		expect(ids).toEqual([
+			"git-basics",
+			"hello-world",
+			"java-arrays",
+			"java-classes-objects",
+			"java-conditions",
+			"java-loops",
+			"java-methods",
+			"java-operators",
+			"java-variables",
+			"robot-starter",
+		]);
 	});
 
 	test("every module subdir exists and is non-empty", async () => {
