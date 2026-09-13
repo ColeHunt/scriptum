@@ -4,8 +4,11 @@ import { mkdirSync } from "node:fs";
 import { chmod, mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import type {
+	CheckpointResult,
+	CheckpointStatus,
 	ContainerRole,
 	ContainerState,
+	LessonModuleKind,
 	WorkspaceId,
 	WorkspaceSlug,
 } from "@frc-coderunner/contracts";
@@ -30,7 +33,7 @@ export type WorkspaceRow = {
 	created_at: string;
 	last_accessed_at: string;
 	current_module: string | null;
-	current_module_kind: "plain-java" | "robot" | null;
+	current_module_kind: LessonModuleKind | null;
 };
 
 export type ContainerLeaseRow = {
@@ -362,13 +365,66 @@ export class AppStorage {
 	setCurrentModule(
 		workspaceId: WorkspaceId,
 		moduleId: string | null,
-		kind: "plain-java" | "robot" | null,
+		kind: LessonModuleKind | null,
 	): void {
 		this.db
 			.query(
 				"UPDATE workspaces SET current_module = ?, current_module_kind = ? WHERE id = ?",
 			)
 			.run(moduleId, kind, workspaceId);
+	}
+
+	getCheckpointResults(
+		workspaceId: WorkspaceId,
+		moduleId: string,
+	): CheckpointResult[] {
+		const rows = this.db
+			.query(
+				"SELECT checkpoint_id, status, message, verified_at FROM checkpoint_results WHERE workspace_id = ? AND module_id = ?",
+			)
+			.all(workspaceId, moduleId) as {
+			checkpoint_id: string;
+			status: CheckpointStatus;
+			message: string | null;
+			verified_at: string;
+		}[];
+		return rows.map((row) => ({
+			checkpointId: row.checkpoint_id,
+			status: row.status,
+			message: row.message,
+			verifiedAt: row.verified_at,
+		}));
+	}
+
+	setCheckpointResult(
+		workspaceId: WorkspaceId,
+		moduleId: string,
+		result: CheckpointResult,
+	): void {
+		this.db
+			.query(
+				`INSERT INTO checkpoint_results (workspace_id, module_id, checkpoint_id, status, message, verified_at)
+				 VALUES (?, ?, ?, ?, ?, ?)
+				 ON CONFLICT (workspace_id, module_id, checkpoint_id)
+				 DO UPDATE SET status = excluded.status, message = excluded.message, verified_at = excluded.verified_at`,
+			)
+			.run(
+				workspaceId,
+				moduleId,
+				result.checkpointId,
+				result.status,
+				result.message,
+				result.verifiedAt ?? nowIso(),
+			);
+	}
+
+	/** Called on every lesson (re)load: stale results from the previous attempt shouldn't linger. */
+	clearCheckpointResults(workspaceId: WorkspaceId, moduleId: string): void {
+		this.db
+			.query(
+				"DELETE FROM checkpoint_results WHERE workspace_id = ? AND module_id = ?",
+			)
+			.run(workspaceId, moduleId);
 	}
 
 	getContainerLease(workspaceId: WorkspaceId): ContainerLeaseRow | null {
@@ -553,7 +609,7 @@ export class AppStorage {
 			w_created_at: string;
 			w_last_accessed_at: string;
 			w_current_module: string | null;
-			w_current_module_kind: "plain-java" | "robot" | null;
+			w_current_module_kind: LessonModuleKind | null;
 			u_id: string | null;
 			u_name: string | null;
 			u_email: string | null;

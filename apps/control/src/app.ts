@@ -22,6 +22,7 @@ import { getDemoSessionResponseBody, seedDemoUser } from "./auth/demo";
 import { getSessionFromRequest, requireAdmin } from "./auth/middleware";
 import { getEnabledAuthProviders } from "./auth/providers";
 import { createCatalogSource } from "./catalog";
+import { CheckpointManager } from "./checkpoints";
 import { LocalDockerRuntimeProvider } from "./containers";
 import { GamepadSessions } from "./gamepad";
 import { HalSimBridge } from "./halsim";
@@ -162,6 +163,11 @@ export async function createApp(
 
 	const imports = new ImportManager(storage, runtimeProvider);
 	const catalogSource = createCatalogSource(storage.config);
+	const checkpoints = new CheckpointManager(
+		storage,
+		runtimeProvider,
+		catalogSource,
+	);
 	const idle = new IdleManager({
 		storage,
 		runtimeProvider,
@@ -186,6 +192,7 @@ export async function createApp(
 		gamepad,
 		nt4Auto,
 		catalogSource,
+		checkpoints,
 		upstreamFetch,
 	};
 

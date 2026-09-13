@@ -7,6 +7,7 @@ import { type ControlApp, type ControlAppOptions, createApp } from "../app";
 import type { DockerCommandResult, DockerRunner } from "../containers";
 import type { RunCommandFactory } from "../runs";
 import type {
+	ExecOptions,
 	ExecResult,
 	ManagedWorkspaceRuntime,
 	WorkspaceRuntime,
@@ -61,6 +62,40 @@ export async function createCatalogDir(root: string): Promise<string> {
 	);
 	await writeFile(join(robotDir, "README.md"), "# Robot Starter\n", "utf8");
 
+	// checkpoint-demo (git) - a minimal module carrying two checkpoints, for
+	// exercising the Checkpoints UI/API end to end. The MockWorkspaceRuntimeProvider
+	// never actually runs these scripts, but real ones ship anyway so the
+	// module is a faithful (if tiny) stand-in for catalog/modules/git-basics.
+	const checkpointDir = join(catalogDir, "modules", "checkpoint-demo");
+	const checkpointScriptsDir = join(
+		catalogDir,
+		"checkpoints",
+		"checkpoint-demo",
+		"verify",
+	);
+	await mkdir(checkpointDir, { recursive: true });
+	await mkdir(checkpointScriptsDir, { recursive: true });
+	await writeFile(
+		join(checkpointDir, "README.md"),
+		"# Checkpoint Demo\n",
+		"utf8",
+	);
+	await writeFile(
+		join(checkpointScriptsDir, "first-commit.sh"),
+		"#!/usr/bin/env bash\nexit 0\n",
+		"utf8",
+	);
+	await writeFile(
+		join(checkpointScriptsDir, "rebase.sh"),
+		"#!/usr/bin/env bash\nexit 1\n",
+		"utf8",
+	);
+	await writeFile(
+		join(catalogDir, "checkpoints", "checkpoint-demo", "setup.sh"),
+		"#!/usr/bin/env bash\nexit 0\n",
+		"utf8",
+	);
+
 	await writeFile(
 		join(catalogDir, "modules.json"),
 		JSON.stringify(
@@ -82,6 +117,35 @@ export async function createCatalogDir(root: string): Promise<string> {
 						subdir: "modules/robot-starter",
 						kind: "robot",
 						order: 20,
+					},
+					{
+						id: "checkpoint-demo",
+						title: "Checkpoint Demo",
+						description: "A tiny git lesson with two checkpoints.",
+						subdir: "modules/checkpoint-demo",
+						kind: "git",
+						order: 30,
+						setupScript: "checkpoints/checkpoint-demo/setup.sh",
+						checkpoints: [
+							{
+								id: "first-commit",
+								title: "First commit",
+								description: "Always passes.",
+								verifier: {
+									type: "script",
+									path: "checkpoints/checkpoint-demo/verify/first-commit.sh",
+								},
+							},
+							{
+								id: "rebase",
+								title: "Rebase",
+								description: "Always fails.",
+								verifier: {
+									type: "script",
+									path: "checkpoints/checkpoint-demo/verify/rebase.sh",
+								},
+							},
+						],
 					},
 				],
 			},
@@ -483,10 +547,16 @@ export type ExecOverride = {
 };
 
 export class MockWorkspaceRuntimeProvider implements WorkspaceRuntimeProvider {
-	readonly execCalls: Array<{ workspaceId: WorkspaceId; command: string[] }> =
-		[];
-	readonly streamCalls: Array<{ workspaceId: WorkspaceId; command: string[] }> =
-		[];
+	readonly execCalls: Array<{
+		workspaceId: WorkspaceId;
+		command: string[];
+		options: ExecOptions;
+	}> = [];
+	readonly streamCalls: Array<{
+		workspaceId: WorkspaceId;
+		command: string[];
+		options: ExecOptions;
+	}> = [];
 	private readonly runtimes = new Map<WorkspaceId, WorkspaceRuntime>();
 	private readonly execOverrides = new Map<WorkspaceId, ExecOverride[]>();
 
@@ -587,8 +657,12 @@ export class MockWorkspaceRuntimeProvider implements WorkspaceRuntimeProvider {
 		return this.getRuntime(workspaceId);
 	}
 
-	async exec(workspaceId: WorkspaceId, command: string[]): Promise<ExecResult> {
-		this.execCalls.push({ workspaceId, command: [...command] });
+	async exec(
+		workspaceId: WorkspaceId,
+		command: string[],
+		options: ExecOptions = {},
+	): Promise<ExecResult> {
+		this.execCalls.push({ workspaceId, command: [...command], options });
 		const overrides = this.execOverrides.get(workspaceId);
 		if (overrides) {
 			for (let i = 0; i < overrides.length; i += 1) {
@@ -605,8 +679,9 @@ export class MockWorkspaceRuntimeProvider implements WorkspaceRuntimeProvider {
 	execStream(
 		workspaceId: WorkspaceId,
 		command: string[],
+		options: ExecOptions = {},
 	): WorkspaceRuntimeCommand {
-		this.streamCalls.push({ workspaceId, command: [...command] });
+		this.streamCalls.push({ workspaceId, command: [...command], options });
 		return {
 			stdout: null,
 			stderr: null,

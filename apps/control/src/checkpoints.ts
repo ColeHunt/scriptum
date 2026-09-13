@@ -1,0 +1,181 @@
+import type {
+	CheckpointResult,
+	CheckpointStatus,
+	CheckpointsState,
+	LessonCheckpoint,
+	WorkspaceId,
+} from "@frc-coderunner/contracts";
+import { type CatalogSource, IMAGE_CATALOG_DIR } from "./catalog";
+import { ImportError } from "./imports";
+import { getLogger } from "./logging";
+import type { WorkspaceRuntimeProvider } from "./runtime";
+import type { AppStorage } from "./storage";
+
+const log = getLogger("checkpoints");
+
+const SCRIPT_TIMEOUT_MS = 15_000;
+const WORKSPACE_USER = "abc";
+const PROJECT_DIR = "/workspace/project";
+const HINT_MAX_LENGTH = 300;
+
+export class CheckpointVerifyError extends Error {}
+
+export class CheckpointVerifyBusyError extends CheckpointVerifyError {
+	constructor() {
+		super("A verify is already running for this workspace.");
+	}
+}
+
+/**
+ * Runs a lesson module's checkpoint verifiers on demand (never on a code
+ * change - only in response to the student clicking Verify) and persists
+ * results per workspace/module/checkpoint. Verification is only available for
+ * bundled modules, since the hidden checkpoint scripts live only in the
+ * image, not in a remote catalog.
+ */
+export class CheckpointManager {
+	private readonly active = new Set<WorkspaceId>();
+
+	constructor(
+		private readonly storage: AppStorage,
+		private readonly runtimeProvider: WorkspaceRuntimeProvider,
+		private readonly catalogSource: CatalogSource,
+	) {}
+
+	async getState(
+		workspaceId: WorkspaceId,
+		moduleId: string | null,
+	): Promise<CheckpointsState> {
+		if (!moduleId) {
+			return { moduleId: null, available: false, checkpoints: [] };
+		}
+		try {
+			const module = await this.catalogSource.resolveModule(moduleId);
+			return this.stateForModule(workspaceId, module.id, module.checkpoints);
+		} catch (error) {
+			if (error instanceof ImportError) {
+				return { moduleId, available: false, checkpoints: [] };
+			}
+			throw error;
+		}
+	}
+
+	private stateForModule(
+		workspaceId: WorkspaceId,
+		moduleId: string,
+		checkpoints: LessonCheckpoint[],
+	): CheckpointsState {
+		if (checkpoints.length === 0 || this.catalogSource.kind !== "bundled") {
+			return { moduleId, available: false, checkpoints: [] };
+		}
+		const results = new Map(
+			this.storage
+				.getCheckpointResults(workspaceId, moduleId)
+				.map((result) => [result.checkpointId, result] as const),
+		);
+		return {
+			moduleId,
+			available: true,
+			checkpoints: checkpoints.map((checkpoint) => ({
+				...checkpoint,
+				result: results.get(checkpoint.id) ?? null,
+			})),
+		};
+	}
+
+	/**
+	 * Verifies `checkpointIds` (or every checkpoint in the current module when
+	 * omitted), one at a time, and persists each result as it lands. Throws
+	 * `CheckpointVerifyBusyError` if a verify is already running for this
+	 * workspace, or `CheckpointVerifyError` for anything else that keeps it
+	 * from starting (no lesson loaded, module has no checkpoints, etc).
+	 */
+	async verify(
+		workspaceId: WorkspaceId,
+		moduleId: string | null,
+		checkpointIds?: string[],
+	): Promise<CheckpointsState> {
+		if (!moduleId) {
+			throw new CheckpointVerifyError("No lesson is loaded.");
+		}
+		if (this.active.has(workspaceId)) {
+			throw new CheckpointVerifyBusyError();
+		}
+		this.active.add(workspaceId);
+		try {
+			const runtime =
+				await this.runtimeProvider.ensureWorkspaceRunning(workspaceId);
+			if (runtime.state !== "running") {
+				throw new CheckpointVerifyError(
+					"The workspace isn't running. Open the editor, then try again.",
+				);
+			}
+			const module = await this.catalogSource.resolveModule(moduleId);
+			const state = this.stateForModule(
+				workspaceId,
+				module.id,
+				module.checkpoints,
+			);
+			if (!state.available) {
+				throw new CheckpointVerifyError(
+					"This lesson has no checkpoints to verify.",
+				);
+			}
+			const targets = checkpointIds
+				? module.checkpoints.filter((cp) => checkpointIds.includes(cp.id))
+				: module.checkpoints;
+			for (const checkpoint of targets) {
+				const result = await this.runVerifier(workspaceId, checkpoint);
+				this.storage.setCheckpointResult(workspaceId, module.id, result);
+			}
+			return this.stateForModule(workspaceId, module.id, module.checkpoints);
+		} finally {
+			this.active.delete(workspaceId);
+		}
+	}
+
+	private async runVerifier(
+		workspaceId: WorkspaceId,
+		checkpoint: LessonCheckpoint,
+	): Promise<CheckpointResult> {
+		const verifiedAt = new Date().toISOString();
+		const scriptPath = `${IMAGE_CATALOG_DIR}/${checkpoint.verifier.path}`;
+		try {
+			const result = await this.runtimeProvider.exec(
+				workspaceId,
+				["bash", scriptPath, PROJECT_DIR],
+				{
+					user: WORKSPACE_USER,
+					workdir: PROJECT_DIR,
+					timeoutMs: SCRIPT_TIMEOUT_MS,
+				},
+			);
+			const status: CheckpointStatus =
+				result.exitCode === 0 ? "passed" : "failed";
+			const message =
+				lastNonEmptyLine(result.stdout) ?? lastNonEmptyLine(result.stderr);
+			return { checkpointId: checkpoint.id, status, message, verifiedAt };
+		} catch (error) {
+			log.error("checkpoint verifier crashed", {
+				workspaceId,
+				checkpointId: checkpoint.id,
+				err: error instanceof Error ? error : new Error(String(error)),
+			});
+			return {
+				checkpointId: checkpoint.id,
+				status: "error",
+				message: "The verifier crashed. Try again, or ask a mentor.",
+				verifiedAt,
+			};
+		}
+	}
+}
+
+function lastNonEmptyLine(text: string): string | null {
+	const lines = text
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
+	const last = lines.at(-1);
+	return last ? last.slice(0, HINT_MAX_LENGTH) : null;
+}

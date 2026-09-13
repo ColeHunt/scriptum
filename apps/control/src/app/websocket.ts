@@ -325,6 +325,7 @@ export function createWebSocketHandlers(ctx: WebSocketHandlerContext) {
 							moduleId: module.id,
 							subdir: module.subdir,
 							kind: module.kind,
+							setupScript: remote ? null : (module.setupScript ?? null),
 							remote,
 							send,
 						});

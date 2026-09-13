@@ -8,6 +8,11 @@ export type ExecResult = {
 
 export type ExecOptions = {
 	timeoutMs?: number | undefined;
+	/** Run as this container user instead of the default (root). */
+	user?: string | undefined;
+	/** Run with this working directory instead of the container's default. */
+	workdir?: string | undefined;
+	env?: Record<string, string> | undefined;
 };
 
 export type WorkspaceRuntimeExit = {

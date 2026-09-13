@@ -60,6 +60,23 @@ import {
 
 const log = getLogger("containers");
 
+/** Maps `ExecOptions` to `docker exec` flags, placed before the container name. */
+function dockerExecFlags(options: ExecOptions): string[] {
+	const flags: string[] = [];
+	if (options.user) {
+		flags.push("-u", options.user);
+	}
+	if (options.workdir) {
+		flags.push("-w", options.workdir);
+	}
+	if (options.env) {
+		for (const [key, value] of Object.entries(options.env)) {
+			flags.push("-e", `${key}=${value}`);
+		}
+	}
+	return flags;
+}
+
 export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 	private readonly dockerRunner: DockerRunner;
 	private readonly customDockerRunner: DockerRunner | null;
@@ -198,14 +215,11 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		options: ExecOptions = {},
 	): Promise<ExecResult> {
 		const name = codeContainerName(workspaceId);
+		const execArgs = ["exec", ...dockerExecFlags(options), name, ...command];
 		if (!this.customDockerRunner) {
-			return runDockerCli(
-				this.storage.config.dockerPath,
-				["exec", name, ...command],
-				options,
-			);
+			return runDockerCli(this.storage.config.dockerPath, execArgs, options);
 		}
-		const run = this.runDocker(["exec", name, ...command], true);
+		const run = this.runDocker(execArgs, true);
 		if (!options.timeoutMs) {
 			return run;
 		}
@@ -237,7 +251,13 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 	): WorkspaceRuntimeCommand {
 		const name = codeContainerName(workspaceId);
 		const subprocess = Bun.spawn(
-			[this.storage.config.dockerPath, "exec", name, ...command],
+			[
+				this.storage.config.dockerPath,
+				"exec",
+				...dockerExecFlags(options),
+				name,
+				...command,
+			],
 			{
 				stdout: "pipe",
 				stderr: "pipe",

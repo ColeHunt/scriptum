@@ -6,6 +6,7 @@ import {
 	lessonLoadRequestSchema,
 	type SimRunCommandResponse,
 	simRunCommandRequestSchema,
+	verifyCheckpointsRequestSchema,
 	workspaceSlugSchema,
 } from "@frc-coderunner/contracts";
 import {
@@ -13,6 +14,11 @@ import {
 	requireWorkspaceOwnership,
 } from "../auth/middleware";
 import type { CatalogSource } from "../catalog";
+import {
+	type CheckpointManager,
+	CheckpointVerifyBusyError,
+	CheckpointVerifyError,
+} from "../checkpoints";
 import type { GamepadSessions } from "../gamepad";
 import type { HalSimBridge } from "../halsim";
 import { ImportError, parseGitHubUrl, RateLimitError } from "../imports";
@@ -89,6 +95,7 @@ export type WorkspaceRouteContext = {
 	gamepad: GamepadSessions;
 	nt4Auto: Nt4AutoChooserBridge;
 	catalogSource: CatalogSource;
+	checkpoints: CheckpointManager;
 	upstreamFetch: HttpFetch;
 };
 
@@ -111,6 +118,7 @@ export async function handleWorkspaceRoute(
 		gamepad,
 		nt4Auto,
 		catalogSource,
+		checkpoints,
 		upstreamFetch,
 	} = ctx;
 	const slug = workspaceMatch[1] ?? "";
@@ -520,6 +528,41 @@ export async function handleWorkspaceRoute(
 			workspace: auth.workspace,
 			userId: auth.user.id,
 		} satisfies LessonLoadSocketData);
+	}
+
+	// --- Checkpoint verification ---
+	if (suffix === "/api/checkpoints" && request.method === "GET") {
+		const state = await checkpoints.getState(
+			auth.workspace.id,
+			auth.workspace.current_module,
+		);
+		return jsonResponse({ ok: true, state });
+	}
+
+	if (suffix === "/api/checkpoints/verify" && request.method === "POST") {
+		try {
+			const body =
+				request.headers.get("content-length") === "0"
+					? {}
+					: await request.json().catch(() => ({}));
+			const parsed = verifyCheckpointsRequestSchema.parse(body);
+			const state = await checkpoints.verify(
+				auth.workspace.id,
+				auth.workspace.current_module,
+				parsed.checkpointIds,
+			);
+			return jsonResponse({ ok: true, state });
+		} catch (error) {
+			if (error instanceof CheckpointVerifyBusyError) {
+				return jsonResponse({ error: error.message }, { status: 409 });
+			}
+			if (error instanceof CheckpointVerifyError) {
+				return jsonResponse({ error: error.message }, { status: 400 });
+			}
+			const message =
+				error instanceof Error ? error.message : "Invalid verify request.";
+			return jsonResponse({ error: message }, { status: 400 });
+		}
 	}
 
 	// --- Import endpoints ---

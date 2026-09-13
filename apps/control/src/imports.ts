@@ -145,6 +145,11 @@ export type CatalogLoadContext = {
 	moduleId: string;
 	subdir: string;
 	kind: LessonModuleKind;
+	/** Catalog-root-relative script, run once after the files are copied in
+	 * (the `git` kind uses this to build its scenario repos). Bundled only —
+	 * a remote catalog's setup script would require fetching it separately,
+	 * which isn't implemented. */
+	setupScript?: string | null;
 	remote: { cloneUrl: string; branch: string } | null;
 	send: ImportSend;
 };
@@ -391,18 +396,42 @@ export class ImportManager {
 			// Size cap as cheap insurance.
 			await this.enforceSizeCap(workspace.id, projectRoot, send);
 
-			// Swap into /workspace/project, then drop any `.git` (lessons are gitless).
+			// Swap into /workspace/project. Every kind except `git` is gitless —
+			// the git lesson's checkpoints verify actual repo history, which the
+			// module's setup script builds fresh below.
 			await this.swapProject(workspace.id, projectRoot, send);
-			await this.runtimeExec(workspace.id, [
-				"rm",
-				"-rf",
-				"/workspace/project/.git",
-			]);
+			if (kind !== "git") {
+				await this.runtimeExec(workspace.id, [
+					"rm",
+					"-rf",
+					"/workspace/project/.git",
+				]);
+			}
 			await this.runtimeExec(workspace.id, [
 				"bash",
 				"-c",
 				"lsiown -R abc:abc /workspace/project",
 			]);
+			if (ctx.setupScript) {
+				send({
+					type: "progress",
+					stage: "materializing",
+					detail: "Preparing lesson scenarios…",
+				});
+				const setupPath = `${IMAGE_CATALOG_DIR}/${safeCatalogSubdir(ctx.setupScript)}`;
+				const setupResult = await this.runtimeProvider.exec(
+					workspace.id,
+					["bash", setupPath],
+					{ user: "abc", workdir: "/workspace/project", timeoutMs: 30_000 },
+				);
+				if (setupResult.exitCode !== 0) {
+					const detail =
+						setupResult.stderr.trim() ||
+						setupResult.stdout.trim() ||
+						`exit ${setupResult.exitCode}`;
+					throw new ImportError(`Lesson setup failed: ${detail}`);
+				}
+			}
 			// Clear the editor workspace cache so redhat.java rebuilds its project model.
 			await this.runtimeExec(workspace.id, [
 				"rm",
@@ -413,8 +442,10 @@ export class ImportManager {
 			await this.cleanupStaging(workspace.id, stagingName);
 		}
 
-		// Record the loaded module + kind (captured at load time).
+		// Record the loaded module + kind (captured at load time), and drop any
+		// stale checkpoint results from a previous attempt at this module.
 		this._storage.setCurrentModule(workspace.id, moduleId, kind);
+		this._storage.clearCheckpointResults(workspace.id, moduleId);
 
 		send({ type: "progress", stage: "complete", detail: "Lesson loaded." });
 	}

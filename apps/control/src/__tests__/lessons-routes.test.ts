@@ -26,6 +26,7 @@ describe("GET /u/:slug/api/lessons", () => {
 				expect(body.modules.map((m) => m.id)).toEqual([
 					"hello-world",
 					"robot-starter",
+					"checkpoint-demo",
 				]);
 				expect(body.modules[0]?.kind).toBe("plain-java");
 			},
