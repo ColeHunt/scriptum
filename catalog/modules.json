@@ -2,6 +2,62 @@
 	"schemaVersion": 1,
 	"modules": [
 		{
+			"id": "git-basics",
+			"title": "Git Basics",
+			"description": "Commit, branch, merge, resolve a conflict, and rebase across five small scenario repos.",
+			"subdir": "modules/git-basics",
+			"kind": "git",
+			"order": 5,
+			"setupScript": "checkpoints/git-basics/setup.sh",
+			"checkpoints": [
+				{
+					"id": "first-commit",
+					"title": "First commit",
+					"description": "Add your name to roster.txt and commit it with a real message.",
+					"verifier": {
+						"type": "script",
+						"path": "checkpoints/git-basics/verify/first-commit.sh"
+					}
+				},
+				{
+					"id": "feature-branch",
+					"title": "Feature branch",
+					"description": "Branch off develop as issue-12-<description> and make at least two commits.",
+					"verifier": {
+						"type": "script",
+						"path": "checkpoints/git-basics/verify/feature-branch.sh"
+					}
+				},
+				{
+					"id": "merge",
+					"title": "Merge",
+					"description": "Merge the finished issue-7-auto-distance branch into develop.",
+					"verifier": {
+						"type": "script",
+						"path": "checkpoints/git-basics/verify/merge.sh"
+					}
+				},
+				{
+					"id": "merge-conflict",
+					"title": "Merge conflict",
+					"description": "Merge issue-9-max-speed into develop and resolve the conflict.",
+					"verifier": {
+						"type": "script",
+						"path": "checkpoints/git-basics/verify/merge-conflict.sh"
+					}
+				},
+				{
+					"id": "rebase",
+					"title": "Rebase",
+					"description": "Rebase issue-15-led-colors onto the latest develop.",
+					"verifier": {
+						"type": "script",
+						"path": "checkpoints/git-basics/verify/rebase.sh"
+					}
+				}
+			]
+		},
+		{
 			"id": "hello-world",
 			"title": "Hello, World",
 			"description": "Basic java hello world project",

@@ -77,10 +77,12 @@ RUN VSCODE_PRODUCT_PATHS="/app/vscodium-web/product.json /app/vscodium-web/out" 
 
 # ── System dependencies ────────────────────────────────────────────────
 # Ubuntu 24.04 ships GLIBCXX_3.4.32+ natively — no PPA needed.
-# procps is needed for sim scripts (pkill/pgrep).
+# procps is needed for sim scripts (pkill/pgrep). nano is the git-basics
+# lesson's configured core.editor (a bare `git commit`/`merge --no-edit`
+# without one would hang waiting on vi, which nobody learning git wants).
 RUN apt-get update -qq \
     && apt-get install -y --no-install-recommends \
-        jq procps wget \
+        jq procps wget nano git \
     && rm -rf /var/lib/apt/lists/*
 
 # ── GitHub CLI (gh) ────────────────────────────────────────────────────
