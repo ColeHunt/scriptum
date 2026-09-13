@@ -221,6 +221,33 @@ describe("websocket message router", () => {
 				expect(ws.closes[0]?.code).toBe(1000);
 			});
 		});
+
+		test("a locked lesson (unmet prerequisite) sends an error and never swaps the project", async () => {
+			await withApp(async (app) => {
+				await login(app, "Alice");
+				const workspace = workspaceBySlug(app, "alice");
+				const ws = fakeSocket({
+					kind: "lesson-load",
+					workspace,
+					userId: workspace.user_id,
+				});
+
+				app.websocket.message(
+					ws,
+					JSON.stringify({ moduleId: "locked-followup" }),
+				);
+
+				await waitFor(() => ws.closes.length > 0);
+				expect(firstSentJson(ws)).toMatchObject({
+					type: "error",
+					message: expect.stringContaining("Checkpoint Demo"),
+				});
+				expect(ws.closes[0]?.code).toBe(1000);
+
+				const reloaded = app.storage.findWorkspaceById(workspace.id);
+				expect(reloaded?.current_module).not.toBe("locked-followup");
+			});
+		});
 	});
 
 	describe("message — proxy (nt4/vscode/halsim)", () => {

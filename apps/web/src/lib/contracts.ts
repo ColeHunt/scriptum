@@ -21,6 +21,7 @@ export type {
 	LessonCheckpoint,
 	LessonModule,
 	LessonModuleKind,
+	LessonModuleWithLockState,
 	RunServerMessage,
 	SessionResponse,
 	SimRunStatus,

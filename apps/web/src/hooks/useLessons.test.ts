@@ -13,6 +13,10 @@ const CATALOG = {
 			subdir: "modules/hello-world",
 			kind: "plain-java",
 			order: 10,
+			checkpoints: [],
+			requires: [],
+			locked: false,
+			missingPrerequisites: [],
 		},
 		{
 			id: "closest-distance",
@@ -21,6 +25,10 @@ const CATALOG = {
 			subdir: "modules/closest-distance",
 			kind: "robot",
 			order: 40,
+			checkpoints: [],
+			requires: ["hello-world"],
+			locked: true,
+			missingPrerequisites: ["Hello, World"],
 		},
 	],
 };
@@ -51,6 +59,25 @@ describe("useLessons", () => {
 		expect(result.current.modules).toHaveLength(2);
 		expect(result.current.modules[0]?.id).toBe("hello-world");
 		expect(result.current.error).toBeNull();
+	});
+
+	test("carries lock state through for a locked module", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: () => Promise.resolve(CATALOG),
+			}),
+		);
+		const { result } = renderHook(() => useLessons("test-slug"));
+		await waitFor(() => expect(result.current.loading).toBe(false));
+		const locked = result.current.modules.find(
+			(m) => m.id === "closest-distance",
+		);
+		expect(locked).toMatchObject({
+			locked: true,
+			missingPrerequisites: ["Hello, World"],
+		});
 	});
 
 	test("surfaces the catalog error string", async () => {

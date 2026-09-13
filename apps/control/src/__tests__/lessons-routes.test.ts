@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import type { LessonModule } from "@frc-coderunner/contracts";
-import { cookieFrom, createFakeDocker, login, withApp } from "./helpers";
+import type { LessonModuleWithLockState } from "@frc-coderunner/contracts";
+import {
+	cookieFrom,
+	createFakeDocker,
+	login,
+	withApp,
+	workspaceBySlug,
+} from "./helpers";
 
 describe("GET /u/:slug/api/lessons", () => {
 	test("returns the bundled manifest sorted by order", async () => {
@@ -18,7 +24,7 @@ describe("GET /u/:slug/api/lessons", () => {
 				expect(lessons.status).toBe(200);
 				const body = (await lessons.json()) as {
 					ok: boolean;
-					modules: LessonModule[];
+					modules: LessonModuleWithLockState[];
 					error: string | null;
 				};
 				expect(body.ok).toBe(true);
@@ -27,8 +33,59 @@ describe("GET /u/:slug/api/lessons", () => {
 					"hello-world",
 					"robot-starter",
 					"checkpoint-demo",
+					"locked-followup",
 				]);
 				expect(body.modules[0]?.kind).toBe("plain-java");
+			},
+			{ dockerRunner: docker.runner },
+		);
+	});
+
+	test("locks a module behind an incomplete prerequisite, and unlocks it once completed", async () => {
+		const docker = createFakeDocker();
+		await withApp(
+			async (app) => {
+				const resp = await login(app, "alice");
+				const cookie = cookieFrom(resp);
+				const workspace = workspaceBySlug(app, "alice");
+
+				const before = (await (
+					await app.fetch(
+						new Request("http://localhost/u/alice/api/lessons", {
+							headers: { cookie },
+						}),
+					)
+				).json()) as { modules: LessonModuleWithLockState[] };
+				const lockedBefore = before.modules.find(
+					(m) => m.id === "locked-followup",
+				);
+				expect(lockedBefore).toMatchObject({
+					locked: true,
+					missingPrerequisites: ["Checkpoint Demo"],
+				});
+
+				// Complete every required checkpoint of checkpoint-demo directly
+				// against storage - equivalent to the student passing Verify.
+				const now = new Date().toISOString();
+				for (const checkpointId of ["first-commit", "rebase"]) {
+					app.storage.setCheckpointResult(workspace.id, "checkpoint-demo", {
+						checkpointId,
+						status: "passed",
+						message: null,
+						verifiedAt: now,
+					});
+				}
+
+				const after = (await (
+					await app.fetch(
+						new Request("http://localhost/u/alice/api/lessons", {
+							headers: { cookie },
+						}),
+					)
+				).json()) as { modules: LessonModuleWithLockState[] };
+				expect(
+					after.modules.find((m) => m.id === "locked-followup"),
+				).toMatchObject({ locked: false, missingPrerequisites: [] });
 			},
 			{ dockerRunner: docker.runner },
 		);
@@ -88,6 +145,28 @@ describe("POST /u/:slug/api/lessons/load", () => {
 					}),
 				);
 				expect(bad.status).toBe(400);
+			},
+			{ dockerRunner: docker.runner },
+		);
+	});
+
+	test("423s a locked module with a message naming the missing prerequisite", async () => {
+		const docker = createFakeDocker();
+		await withApp(
+			async (app) => {
+				const resp = await login(app, "alice");
+				const cookie = cookieFrom(resp);
+
+				const locked = await app.fetch(
+					new Request("http://localhost/u/alice/api/lessons/load", {
+						method: "POST",
+						headers: { cookie, "content-type": "application/json" },
+						body: JSON.stringify({ moduleId: "locked-followup" }),
+					}),
+				);
+				expect(locked.status).toBe(423);
+				const body = (await locked.json()) as { error: string };
+				expect(body.error).toContain("Checkpoint Demo");
 			},
 			{ dockerRunner: docker.runner },
 		);

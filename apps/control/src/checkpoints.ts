@@ -3,6 +3,8 @@ import type {
 	CheckpointStatus,
 	CheckpointsState,
 	LessonCheckpoint,
+	LessonModule,
+	LessonModuleWithLockState,
 	WorkspaceId,
 } from "@frc-coderunner/contracts";
 import { type CatalogSource, IMAGE_CATALOG_DIR } from "./catalog";
@@ -132,6 +134,58 @@ export class CheckpointManager {
 		} finally {
 			this.active.delete(workspaceId);
 		}
+	}
+
+	/**
+	 * True when every non-optional checkpoint of `module` has passed for this
+	 * workspace. A module with no required checkpoints of its own is always
+	 * "complete" - there is nothing to gate on.
+	 */
+	isModuleComplete(workspaceId: WorkspaceId, module: LessonModule): boolean {
+		const required = module.checkpoints.filter((cp) => !cp.optional);
+		if (required.length === 0) return true;
+		const results = new Map(
+			this.storage
+				.getCheckpointResults(workspaceId, module.id)
+				.map((result) => [result.checkpointId, result] as const),
+		);
+		return required.every(
+			(checkpoint) => results.get(checkpoint.id)?.status === "passed",
+		);
+	}
+
+	/**
+	 * Resolves `module.requires` against `allModules` and reports which of
+	 * them are still incomplete. Hard lock: any incomplete prerequisite locks
+	 * the module. An unknown prerequisite id (a manifest typo) is skipped
+	 * rather than permanently locking the module.
+	 */
+	lockState(
+		workspaceId: WorkspaceId,
+		module: LessonModule,
+		allModules: LessonModule[],
+	): { locked: boolean; missingPrerequisites: string[] } {
+		if (module.requires.length === 0) {
+			return { locked: false, missingPrerequisites: [] };
+		}
+		const byId = new Map(allModules.map((m) => [m.id, m]));
+		const missing = module.requires
+			.map((id) => byId.get(id))
+			.filter((prereq): prereq is LessonModule => Boolean(prereq))
+			.filter((prereq) => !this.isModuleComplete(workspaceId, prereq))
+			.map((prereq) => prereq.title);
+		return { locked: missing.length > 0, missingPrerequisites: missing };
+	}
+
+	/** Attaches lock state to every module in a catalog listing (GET /api/lessons). */
+	withLockState(
+		workspaceId: WorkspaceId,
+		modules: LessonModule[],
+	): LessonModuleWithLockState[] {
+		return modules.map((module) => ({
+			...module,
+			...this.lockState(workspaceId, module, modules),
+		}));
 	}
 
 	private async runVerifier(

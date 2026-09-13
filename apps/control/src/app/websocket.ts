@@ -7,6 +7,7 @@ import {
 	type WorkspaceId,
 } from "@frc-coderunner/contracts";
 import { type CatalogSource, RemoteCatalogSource } from "../catalog";
+import type { CheckpointManager } from "../checkpoints";
 import { upstreamEndpoints } from "../containers/converters";
 import type { GamepadLease, GamepadSessions } from "../gamepad";
 import type { HalSimBridge } from "../halsim";
@@ -33,6 +34,7 @@ export type WebSocketHandlerContext = {
 	gamepad: GamepadSessions;
 	imports: ImportManager;
 	catalogSource: CatalogSource;
+	checkpoints: CheckpointManager;
 };
 
 function socketMessageText(message: string | ArrayBuffer | Uint8Array): string {
@@ -43,8 +45,16 @@ function socketMessageText(message: string | ArrayBuffer | Uint8Array): string {
 }
 
 export function createWebSocketHandlers(ctx: WebSocketHandlerContext) {
-	const { storage, runs, halsim, nt4Auto, gamepad, imports, catalogSource } =
-		ctx;
+	const {
+		storage,
+		runs,
+		halsim,
+		nt4Auto,
+		gamepad,
+		imports,
+		catalogSource,
+		checkpoints,
+	} = ctx;
 
 	// Stop the active run and disconnect all sim state before a destructive
 	// project swap (D12).
@@ -309,6 +319,17 @@ export function createWebSocketHandlers(ctx: WebSocketHandlerContext) {
 							JSON.parse(socketMessageText(message)),
 						);
 						const module = await catalogSource.resolveModule(parsed.moduleId);
+						const { modules: allModules } = await catalogSource.getManifest();
+						const { locked, missingPrerequisites } = checkpoints.lockState(
+							workspace.id,
+							module,
+							allModules,
+						);
+						if (locked) {
+							throw new ImportError(
+								`Complete ${missingPrerequisites.join(", ")} first.`,
+							);
+						}
 						const remote =
 							catalogSource instanceof RemoteCatalogSource
 								? {

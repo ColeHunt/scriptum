@@ -406,6 +406,7 @@ export async function createApp(
 		gamepad,
 		imports,
 		catalogSource,
+		checkpoints,
 	});
 
 	return {

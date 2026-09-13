@@ -503,14 +503,30 @@ export async function handleWorkspaceRoute(
 	// --- Lesson catalog endpoints ---
 	if (suffix === "/api/lessons" && request.method === "GET") {
 		const { modules, error } = await catalogSource.getManifest();
-		return jsonResponse({ ok: true, modules, error });
+		return jsonResponse({
+			ok: true,
+			modules: checkpoints.withLockState(auth.workspace.id, modules),
+			error,
+		});
 	}
 
 	if (suffix === "/api/lessons/load" && request.method === "POST") {
 		try {
 			const parsed = lessonLoadRequestSchema.parse(await request.json());
 			// Resolve only — the actual load streams over WS.
-			await catalogSource.resolveModule(parsed.moduleId);
+			const module = await catalogSource.resolveModule(parsed.moduleId);
+			const { modules } = await catalogSource.getManifest();
+			const { locked, missingPrerequisites } = checkpoints.lockState(
+				auth.workspace.id,
+				module,
+				modules,
+			);
+			if (locked) {
+				return jsonResponse(
+					{ error: `Complete ${missingPrerequisites.join(", ")} first.` },
+					{ status: 423 },
+				);
+			}
 			return jsonResponse({ ok: true });
 		} catch (error) {
 			if (error instanceof ImportError) {

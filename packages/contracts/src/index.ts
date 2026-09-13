@@ -434,6 +434,14 @@ export const lessonModuleSchema = z.object({
 	 * can't ship as static files). Catalog-root-relative, like `subdir`. */
 	setupScript: lessonModuleSubdirSchema.optional(),
 	checkpoints: z.array(lessonCheckpointSchema).default([]),
+	/** Display grouping shown in the Switch Project picker (e.g. "Software
+	 * Onboarding"). Purely cosmetic - `requires` is what actually gates a
+	 * module, tracks are just modules that happen to chain via it. */
+	track: z.string().min(1).optional(),
+	/** Module ids that must be fully complete (every non-optional checkpoint
+	 * passed) before this one can be loaded. A module with no checkpoints of
+	 * its own can still be a prerequisite target as long as it exists. */
+	requires: z.array(z.string().min(1)).default([]),
 });
 
 export const lessonCatalogSchema = z.object({
@@ -441,9 +449,17 @@ export const lessonCatalogSchema = z.object({
 	modules: z.array(lessonModuleSchema),
 });
 
+/** A catalog module as returned to a specific workspace: whether it's
+ * currently locked, and the titles of whatever unmet prerequisites are
+ * blocking it (empty when unlocked). */
+export const lessonModuleWithLockStateSchema = lessonModuleSchema.extend({
+	locked: z.boolean(),
+	missingPrerequisites: z.array(z.string()),
+});
+
 export const lessonCatalogResponseSchema = z.object({
 	ok: z.literal(true),
-	modules: z.array(lessonModuleSchema),
+	modules: z.array(lessonModuleWithLockStateSchema),
 	error: z.string().nullable().optional(),
 });
 
@@ -458,6 +474,9 @@ export type LessonCheckpointVerifier = z.infer<
 >;
 export type LessonCheckpoint = z.infer<typeof lessonCheckpointSchema>;
 export type LessonModule = z.infer<typeof lessonModuleSchema>;
+export type LessonModuleWithLockState = z.infer<
+	typeof lessonModuleWithLockStateSchema
+>;
 export type LessonCatalog = z.infer<typeof lessonCatalogSchema>;
 export type LessonCatalogResponse = z.infer<typeof lessonCatalogResponseSchema>;
 export type LessonLoadRequest = z.infer<typeof lessonLoadRequestSchema>;

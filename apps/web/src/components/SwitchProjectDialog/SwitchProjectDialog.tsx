@@ -1,4 +1,11 @@
-import { BookOpen, Cpu, GitBranch, RotateCcw, Terminal } from "lucide-react";
+import {
+	BookOpen,
+	Cpu,
+	GitBranch,
+	Lock,
+	RotateCcw,
+	Terminal,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SiGithub } from "react-icons/si";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +21,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLessons } from "@/hooks/useLessons";
 import { type ProjectSwapKind, useProjectSwap } from "@/hooks/useProjectSwap";
-import type { LessonModule } from "@/lib/contracts";
+import type { LessonModule, LessonModuleWithLockState } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 
 interface SwitchProjectDialogProps {
@@ -50,6 +57,124 @@ function KindTag({ kind }: { kind: LessonModule["kind"] }) {
 			<Icon className="size-3" />
 			{label}
 		</Badge>
+	);
+}
+
+type TrackGroup = {
+	/** null for modules with no `track` set - always sorted last, under a plain "Lessons" heading. */
+	track: string | null;
+	modules: LessonModuleWithLockState[];
+};
+
+/** Groups modules by their `track` label, preserving each module's catalog
+ * order within its group, and ordering tracks by the lowest `order` among
+ * their modules - so tracks appear in roughly curriculum sequence. */
+function groupByTrack(modules: LessonModuleWithLockState[]): TrackGroup[] {
+	const byTrack = new Map<string | null, LessonModuleWithLockState[]>();
+	for (const module of modules) {
+		const key = module.track ?? null;
+		const group = byTrack.get(key);
+		if (group) {
+			group.push(module);
+		} else {
+			byTrack.set(key, [module]);
+		}
+	}
+	return [...byTrack.entries()]
+		.map(([track, groupModules]) => ({ track, modules: groupModules }))
+		.sort((a, b) => {
+			if (a.track === null) return 1;
+			if (b.track === null) return -1;
+			const aOrder = Math.min(...a.modules.map((m) => m.order));
+			const bOrder = Math.min(...b.modules.map((m) => m.order));
+			return aOrder - bOrder;
+		});
+}
+
+function LessonCard({
+	module,
+	isCurrent,
+	onLoad,
+	onReset,
+}: {
+	module: LessonModuleWithLockState;
+	isCurrent: boolean;
+	onLoad: () => void;
+	onReset: () => void;
+}) {
+	return (
+		<div
+			className={cn(
+				"group relative flex flex-col rounded-lg border bg-card/40 p-3 transition-colors",
+				module.locked
+					? "border-border/60 opacity-60"
+					: isCurrent
+						? "border-primary/60 ring-1 ring-primary/40"
+						: "border-border hover:border-border/80 hover:bg-accent/40",
+			)}
+		>
+			<div className="mb-1 flex items-start justify-between gap-2">
+				<h4 className="text-[13px] font-semibold leading-tight text-foreground">
+					{module.title}
+				</h4>
+				<KindTag kind={module.kind} />
+			</div>
+			<p className="mb-3 line-clamp-2 flex-1 text-[11.5px] leading-snug text-muted-foreground">
+				{module.description}
+			</p>
+			{module.locked ? (
+				<div className="flex items-center justify-between">
+					<span
+						className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground"
+						title={`Complete ${module.missingPrerequisites.join(", ")} first.`}
+					>
+						<Lock className="size-3 shrink-0" />
+						<span className="truncate">
+							Requires {module.missingPrerequisites.join(", ")}
+						</span>
+					</span>
+					<Button
+						type="button"
+						size="sm"
+						disabled
+						className="h-7 shrink-0 px-3 text-[12px]"
+					>
+						Locked
+					</Button>
+				</div>
+			) : (
+				<div className="flex items-center justify-between">
+					{isCurrent ? (
+						<span className="text-[10.5px] font-medium uppercase tracking-wide text-primary">
+							Current
+						</span>
+					) : (
+						<span />
+					)}
+					{isCurrent ? (
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="h-7 gap-1.5 px-2 text-[12px]"
+							onClick={onReset}
+						>
+							<RotateCcw className="size-3.5" />
+							Reset
+						</Button>
+					) : (
+						<Button
+							type="button"
+							size="sm"
+							className="h-7 px-3 text-[12px]"
+							onClick={onLoad}
+						>
+							Load
+						</Button>
+					)}
+				</div>
+			)}
+		</div>
 	);
 }
 
@@ -159,13 +284,6 @@ export function SwitchProjectDialog({
 
 						<ScrollArea className="max-h-[60vh]">
 							<div className="px-5 py-4">
-								<div className="mb-2.5 flex items-center gap-2">
-									<BookOpen className="size-3.5 text-muted-foreground" />
-									<h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-										Lessons
-									</h3>
-								</div>
-
 								{error && (
 									<p className="mb-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-[12px] text-destructive">
 										{error}
@@ -182,66 +300,36 @@ export function SwitchProjectDialog({
 									</p>
 								)}
 
-								<div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-									{modules.map((module, index) => {
-										const isCurrent = module.id === currentModule;
-										return (
-											<div
-												key={module.id}
-												className={cn(
-													"group relative flex flex-col rounded-lg border bg-card/40 p-3 transition-colors",
-													isCurrent
-														? "border-primary/60 ring-1 ring-primary/40"
-														: "border-border hover:border-border/80 hover:bg-accent/40",
-												)}
-											>
-												<div className="mb-1 flex items-start justify-between gap-2">
-													<h4 className="text-[13px] font-semibold leading-tight text-foreground">
-														{index + 1}. {module.title}
-													</h4>
-													<KindTag kind={module.kind} />
-												</div>
-												<p className="mb-3 line-clamp-2 flex-1 text-[11.5px] leading-snug text-muted-foreground">
-													{module.description}
-												</p>
-												<div className="flex items-center justify-between">
-													{isCurrent ? (
-														<span className="text-[10.5px] font-medium uppercase tracking-wide text-primary">
-															Current
-														</span>
-													) : (
-														<span />
-													)}
-													{isCurrent ? (
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															className="h-7 gap-1.5 px-2 text-[12px]"
-															onClick={() =>
-																setPending({ kind: "reset", module })
-															}
-														>
-															<RotateCcw className="size-3.5" />
-															Reset
-														</Button>
-													) : (
-														<Button
-															type="button"
-															size="sm"
-															className="h-7 px-3 text-[12px]"
-															onClick={() =>
-																setPending({ kind: "lesson", module })
-															}
-														>
-															Load
-														</Button>
-													)}
-												</div>
+								{groupByTrack(modules).map(
+									({ track, modules: trackModules }) => (
+										<div
+											key={track ?? "\0untracked"}
+											className="mb-5 last:mb-0"
+										>
+											<div className="mb-2.5 flex items-center gap-2">
+												<BookOpen className="size-3.5 text-muted-foreground" />
+												<h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+													{track ?? "Lessons"}
+												</h3>
 											</div>
-										);
-									})}
-								</div>
+											<div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+												{trackModules.map((module) => (
+													<LessonCard
+														key={module.id}
+														module={module}
+														isCurrent={module.id === currentModule}
+														onLoad={() =>
+															setPending({ kind: "lesson", module })
+														}
+														onReset={() =>
+															setPending({ kind: "reset", module })
+														}
+													/>
+												))}
+											</div>
+										</div>
+									),
+								)}
 
 								{/* ── Import from GitHub ─────────────────────────── */}
 								<div className="mt-5 border-t border-border pt-4">
