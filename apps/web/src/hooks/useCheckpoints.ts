@@ -24,9 +24,15 @@ interface UseCheckpointsReturn {
  * Loads and re-runs a workspace's lesson checkpoints
  * (`GET`/`POST /api/checkpoints`). Verification only ever runs when `verify`
  * is called explicitly - never automatically on a poll or code change.
+ *
+ * `getScopeLayout`, when given, is called right before each verify POST and
+ * its result is sent along as `scopeLayout` - a snapshot of the
+ * AdvantageScope Lite iframe's own saved UI state, for lessons with layout
+ * checkpoints. Omitted (or returning `null`) for every other lesson.
  */
 export function useCheckpoints(
 	workspaceSlug: string | null,
+	getScopeLayout?: () => unknown,
 ): UseCheckpointsReturn {
 	const [state, setState] = useState<CheckpointsState>(EMPTY_STATE);
 	const [loading, setLoading] = useState(false);
@@ -81,13 +87,17 @@ export function useCheckpoints(
 			setVerifying(true);
 			setError(null);
 			try {
+				const scopeLayout = getScopeLayout?.();
 				const response = await fetch(
 					`/u/${workspaceSlug}/api/checkpoints/verify`,
 					{
 						method: "POST",
 						credentials: "same-origin",
 						headers: { "content-type": "application/json" },
-						body: JSON.stringify(checkpointIds ? { checkpointIds } : {}),
+						body: JSON.stringify({
+							...(checkpointIds ? { checkpointIds } : {}),
+							...(scopeLayout !== undefined ? { scopeLayout } : {}),
+						}),
 					},
 				);
 				const body = await response.json();
@@ -104,7 +114,7 @@ export function useCheckpoints(
 				setVerifying(false);
 			}
 		},
-		[workspaceSlug],
+		[workspaceSlug, getScopeLayout],
 	);
 
 	return { state, loading, verifying, error, refetch, verify };

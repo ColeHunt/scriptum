@@ -66,3 +66,6 @@ export const VSCODE_CONTAINER_PORT = 3000;
 // docs/decisions/040-choreo-integration.md.
 export const CHOREO_CONTAINER_PORT = 5900;
 export const CODE_NAME_PREFIX = "coderunner-workspace-";
+/** Bind-mount target for a workspace's captured AdvantageScope layout
+ * snapshot - see `workspaceScopeStatePath` in ./metadata.ts. */
+export const SCOPE_STATE_CONTAINER_DIR = "/workspace/.scope-state";

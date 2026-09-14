@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import type {
 	CheckpointResult,
 	CheckpointStatus,
@@ -8,6 +10,8 @@ import type {
 	WorkspaceId,
 } from "@frc-coderunner/contracts";
 import { type CatalogSource, IMAGE_CATALOG_DIR } from "./catalog";
+import { workspaceScopeStatePath } from "./containers/metadata";
+import { SCOPE_STATE_CONTAINER_DIR } from "./containers/types";
 import { ImportError } from "./imports";
 import { getLogger } from "./logging";
 import type { WorkspaceRuntimeProvider } from "./runtime";
@@ -18,6 +22,7 @@ const log = getLogger("checkpoints");
 const SCRIPT_TIMEOUT_MS = 15_000;
 const WORKSPACE_USER = "abc";
 const PROJECT_DIR = "/workspace/project";
+const SCOPE_LAYOUT_FILENAME = "layout.json";
 const HINT_MAX_LENGTH = 300;
 
 export class CheckpointVerifyError extends Error {}
@@ -96,6 +101,7 @@ export class CheckpointManager {
 		workspaceId: WorkspaceId,
 		moduleId: string | null,
 		checkpointIds?: string[],
+		scopeLayout?: unknown,
 	): Promise<CheckpointsState> {
 		if (!moduleId) {
 			throw new CheckpointVerifyError("No lesson is loaded.");
@@ -122,6 +128,22 @@ export class CheckpointManager {
 				throw new CheckpointVerifyError(
 					"This lesson has no checkpoints to verify.",
 				);
+			}
+			// Written before the loop so every checkpoint in this pass sees the
+			// exact same snapshot, captured at the moment the student clicked
+			// Verify. Direct host-fs write (no docker exec) into the bind mount
+			// set up alongside `project`/`home` - see workspaceScopeStatePath.
+			if (scopeLayout !== undefined) {
+				const workspace = this.storage.findWorkspaceById(workspaceId);
+				if (workspace) {
+					const dir = workspaceScopeStatePath(workspace);
+					await mkdir(dir, { recursive: true, mode: 0o755 });
+					await writeFile(
+						resolve(dir, SCOPE_LAYOUT_FILENAME),
+						JSON.stringify(scopeLayout ?? null),
+						"utf8",
+					);
+				}
 			}
 			const targets = checkpointIds
 				? module.checkpoints.filter((cp) => checkpointIds.includes(cp.id))
@@ -197,7 +219,12 @@ export class CheckpointManager {
 		try {
 			const result = await this.runtimeProvider.exec(
 				workspaceId,
-				["bash", scriptPath, PROJECT_DIR],
+				[
+					"bash",
+					scriptPath,
+					PROJECT_DIR,
+					`${SCOPE_STATE_CONTAINER_DIR}/${SCOPE_LAYOUT_FILENAME}`,
+				],
 				{
 					user: WORKSPACE_USER,
 					workdir: PROJECT_DIR,

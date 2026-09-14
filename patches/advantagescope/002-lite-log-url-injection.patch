@@ -1,0 +1,81 @@
+diff --git a/src/main/lite/main.ts b/src/main/lite/main.ts
+index a93a42bc..618fa9b6 100644
+--- a/src/main/lite/main.ts
++++ b/src/main/lite/main.ts
+@@ -145,6 +145,42 @@ function installFrcSimEndpointHandshake() {
+ 
+ installFrcSimEndpointHandshake();
+ 
++// --- CodeRunner: open a log by URL, injected from the parent page ---
++//
++// Lets the embedding app (which may have a log file sitting inside a student
++// workspace container, not the browser's own filesystem) tell this page to
++// fetch and open it, without going through the local file picker. Reuses the
++// existing remote-log plumbing: "open-files" (normally fed by the download
++// popup's remote folder browser) asks the hub to open a path, which in turn
++// asks US for the bytes via "historical-start" - we just answer that request
++// from the injected URL instead of the default `logs/<path>?folder=` shape
++// when the path matches our own sentinel.
++// Must end in ".csv" - HistoricalDataSource picks its parser worker by
++// matching the path's extension (WORKER_NAMES in HistoricalDataSource.ts),
++// and we always fetch CSV (see catalog/modules/advantagescope-intro).
++const FRC_SIM_LOG_PATH = "coderunner:live-log.csv";
++let frcSimLogUrl: string | null = null;
++
++function requestFrcSimOpenLog(url: string, attemptsLeft = 20) {
++  frcSimLogUrl = url;
++  if (hubPort === null) {
++    // The hub iframe may not have finished initHub() yet if this fires very
++    // soon after the Scope pane mounts. Retry briefly rather than dropping
++    // the request - there's no other signal this page exposes for "the hub
++    // is ready".
++    if (attemptsLeft <= 0) return;
++    window.setTimeout(() => requestFrcSimOpenLog(url, attemptsLeft - 1), 250);
++    return;
++  }
++  sendMessage(hubPort, "open-files", { files: [FRC_SIM_LOG_PATH], merge: false });
++}
++
++window.addEventListener("message", (event) => {
++  let message = event.data as { type?: unknown; url?: unknown } | null;
++  if (message?.type !== "frc-sim:open-log" || typeof message.url !== "string" || message.url.length === 0) return;
++  requestFrcSimOpenLog(message.url);
++});
++
+ /**
+  * Open a new popup menu
+  * @param rect The rectangle for the button
+@@ -437,6 +473,33 @@ async function handleHubMessage(message: NamedMessage) {
+         const uuid: string = message.data.uuid;
+         const path: string = message.data.path;
+ 
++        if (path === FRC_SIM_LOG_PATH && frcSimLogUrl !== null) {
++          try {
++            let response = await fetch(frcSimLogUrl);
++            if (!response.ok) throw new Error(response.statusText || "Fetch failed");
++            let buffer = await response.arrayBuffer();
++            let array = new Uint8Array(buffer);
++            sendMessage(hubPort, "historical-data", {
++              files: [array],
++              error: null,
++              uuid: uuid
++            });
++            window.parent.postMessage({ type: "frc-sim:log-ready" }, window.location.origin);
++          } catch (e) {
++            let errorMessage = e instanceof Error ? e.message : "Fetch failed";
++            sendMessage(hubPort, "historical-data", {
++              files: [null],
++              error: errorMessage,
++              uuid: uuid
++            });
++            window.parent.postMessage(
++              { type: "frc-sim:log-error", error: errorMessage },
++              window.location.origin
++            );
++          }
++          break;
++        }
++
+         let prefs = DEFAULT_PREFS;
+         let prefsRaw = localStorage.getItem(LocalStorageKeys.PREFS);
+         if (prefsRaw !== null) mergePreferences(prefs, JSON.parse(prefsRaw));

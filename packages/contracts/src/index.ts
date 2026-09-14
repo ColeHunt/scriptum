@@ -442,6 +442,11 @@ export const lessonModuleSchema = z.object({
 	 * passed) before this one can be loaded. A module with no checkpoints of
 	 * its own can still be a prerequisite target as long as it exists. */
 	requires: z.array(z.string().min(1)).default([]),
+	/** Mounts the AdvantageScope pane (and its supporting panes) for a
+	 * `plain-java` module that isn't a full robot simulation - e.g. a lesson
+	 * where the student's program writes a log file and opens it in Scope by
+	 * hand, rather than connecting to a live NT4 server. */
+	showScope: z.boolean().default(false).optional(),
 });
 
 export const lessonCatalogSchema = z.object({
@@ -517,6 +522,13 @@ export const checkpointsStateResponseSchema = z.object({
 export const verifyCheckpointsRequestSchema = z.object({
 	/** Omit to verify every checkpoint in the current module. */
 	checkpointIds: z.array(z.string()).optional(),
+	/** A snapshot of the AdvantageScope Lite iframe's own saved UI state
+	 * (tabs, plotted fields, axis ranges, etc.), read from its localStorage by
+	 * the web client right before this request. Deliberately untyped - it's
+	 * AdvantageScope's own schema, not ours, and only the catalog's jq-based
+	 * checkpoint scripts need to track its shape. Persisted server-side so
+	 * every checkpoint in this verify pass sees the same snapshot. */
+	scopeLayout: z.unknown().optional(),
 });
 
 export type CheckpointStatus = z.infer<typeof checkpointStatusSchema>;

@@ -10,13 +10,16 @@ import { PaneVisibilityRoot } from "@/components/PaneVisibility";
 import { ScopePane } from "@/components/ScopePane";
 import { SwitchProjectDialog } from "@/components/SwitchProjectDialog";
 import { Topbar } from "@/components/Topbar";
+import { Button } from "@/components/ui/button";
 import { useAutoChoosers } from "@/hooks/useAutoChoosers";
 import { useCheckpoints } from "@/hooks/useCheckpoints";
 import { useEditorReachability } from "@/hooks/useEditorReachability";
 import { type GamepadInfo, useGamepad } from "@/hooks/useGamepad";
 import { useGamepadChannel } from "@/hooks/useGamepadChannel";
+import { useLessons } from "@/hooks/useLessons";
 import { useRunChannel } from "@/hooks/useRunChannel";
 import { useScopeHandshake } from "@/hooks/useScopeHandshake";
+import { useScopeLogOpener } from "@/hooks/useScopeLogOpener";
 import { useSession } from "@/hooks/useSession";
 import { useSimulationState } from "@/hooks/useSimulationState";
 import { isWorkspaceSlug } from "@/lib/contracts";
@@ -28,6 +31,7 @@ import {
 	keyboardCodesToWpilib,
 	NEUTRAL_GAMEPAD_STATE,
 } from "@/lib/keyboard-mapping";
+import { readScopeLayout } from "@/lib/scope-layout";
 import { useUIStore } from "@/state/store";
 
 export function WorkspacePage() {
@@ -57,9 +61,22 @@ export function WorkspacePage() {
 	// HALSim/run sockets.
 	const simSlug = hideSimChrome ? null : workspaceSlug;
 
+	// A `showScope: true` module (e.g. the AdvantageScope Tools lesson) wants
+	// the Scope pane mounted despite being `plain-java` - it has no live NT4
+	// server, so `simSlug` stays null and the run-channel/Driver-Station/NT4
+	// handshake hooks below still never try to connect.
+	const lessons = useLessons(workspaceSlug);
+	const showScope =
+		lessons.modules.find((m) => m.id === currentModule)?.showScope === true;
+
 	const [switchOpen, setSwitchOpen] = useState(false);
 	const [checkpointsOpen, setCheckpointsOpen] = useState(false);
-	const checkpoints = useCheckpoints(workspaceSlug);
+	const scopeFrameRef = useRef<HTMLIFrameElement>(null);
+	const getScopeLayout = useCallback(
+		() => (showScope ? readScopeLayout(scopeFrameRef.current) : undefined),
+		[showScope],
+	);
+	const checkpoints = useCheckpoints(workspaceSlug, getScopeLayout);
 
 	const { connection: runConnection, consoleLines } = useRunChannel(simSlug);
 	const simulation = useSimulationState(simSlug);
@@ -72,8 +89,11 @@ export function WorkspacePage() {
 		waitingSeconds: editorWaitingSeconds,
 		errorDetail: editorErrorDetail,
 	} = useEditorReachability(editorUrl);
-	const scopeFrameRef = useRef<HTMLIFrameElement>(null);
 	useScopeHandshake(simSlug, scopeFrameRef);
+	const scopeLog = useScopeLogOpener(
+		scopeFrameRef,
+		showScope && workspaceSlug ? `/u/${workspaceSlug}/api/scope-log` : null,
+	);
 
 	const gamepad = useGamepad();
 	const channel = useGamepadChannel(simSlug);
@@ -217,7 +237,7 @@ export function WorkspacePage() {
 				avatarUrl={avatarUrl}
 				isAdmin={isAdmin}
 				onSwitchProject={() => setSwitchOpen(true)}
-				showPaneToggle={!hideSimChrome}
+				showPaneToggle={!hideSimChrome || showScope}
 				checkpoints={
 					checkpoints.state.available
 						? {
@@ -231,7 +251,7 @@ export function WorkspacePage() {
 				}
 			/>
 			<IDELayout
-				showSimPanels={!hideSimChrome}
+				showSimPanels={!hideSimChrome || showScope}
 				editor={
 					<EditorPane
 						key={reloadNonce}
@@ -242,7 +262,33 @@ export function WorkspacePage() {
 						errorDetail={editorErrorDetail}
 					/>
 				}
-				scope={<ScopePane ref={scopeFrameRef} />}
+				scope={
+					<ScopePane
+						ref={scopeFrameRef}
+						expectNt4Endpoint={simSlug !== null}
+						toolbar={
+							showScope ? (
+								<div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-2 text-[12px] text-muted-foreground">
+									<span>
+										{scopeLog.status === "loaded"
+											? "Log loaded."
+											: scopeLog.status === "error"
+												? (scopeLog.error ?? "Couldn't load the log.")
+												: "Click to load the log into AdvantageScope."}
+									</span>
+									<Button
+										size="sm"
+										variant="outline"
+										onClick={scopeLog.openLog}
+										disabled={scopeLog.status === "loading"}
+									>
+										Open log in AdvantageScope
+									</Button>
+								</div>
+							) : undefined
+						}
+					/>
+				}
 				choreo={<ChoreoPane key={reloadNonce} workspaceSlug={simSlug} />}
 				driverStation={
 					<DriverStation

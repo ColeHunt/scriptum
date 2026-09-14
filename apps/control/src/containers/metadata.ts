@@ -20,6 +20,15 @@ export function workspaceHomePath(workspace: WorkspaceRow): string {
 	return resolve(dirname(workspace.project_path), "home");
 }
 
+/** Host dir bind-mounted at `/workspace/.scope-state` - a sibling of
+ * `project`, not inside it, so it survives a module-swap wipe. Holds only a
+ * captured snapshot of the AdvantageScope Lite iframe's UI state, written
+ * directly by the control plane's own host-fs access (see
+ * `CheckpointManager.verify`) for layout checkpoint scripts to read. */
+export function workspaceScopeStatePath(workspace: WorkspaceRow): string {
+	return resolve(dirname(workspace.project_path), "scope-state");
+}
+
 export function isLoopbackHost(hostIp: string): boolean {
 	return (
 		hostIp === "127.0.0.1" ||

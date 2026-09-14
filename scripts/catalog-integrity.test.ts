@@ -24,6 +24,7 @@ describe("bundled lesson catalog", () => {
 		expect(catalog.schemaVersion).toBe(1);
 		const ids = catalog.modules.map((module) => module.id).sort();
 		expect(ids).toEqual([
+			"advantagescope-intro",
 			"git-basics",
 			"hello-world",
 			"java-arrays",

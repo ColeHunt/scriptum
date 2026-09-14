@@ -8,7 +8,7 @@
 			"subdir": "modules/git-basics",
 			"kind": "git",
 			"order": 5,
-			"track": "Version Control",
+			"track": "Tools",
 			"setupScript": "checkpoints/git-basics/setup.sh",
 			"checkpoints": [
 				{
@@ -54,6 +54,64 @@
 					"verifier": {
 						"type": "script",
 						"path": "checkpoints/git-basics/verify/rebase.sh"
+					}
+				}
+			]
+		},
+		{
+			"id": "advantagescope-intro",
+			"title": "AdvantageScope: Reading Robot Telemetry",
+			"description": "Generate a telemetry log, then configure AdvantageScope's layout to display it.",
+			"subdir": "modules/advantagescope-intro",
+			"kind": "plain-java",
+			"order": 7,
+			"track": "Tools",
+			"showScope": true,
+			"checkpoints": [
+				{
+					"id": "flywheel-rpm",
+					"title": "Flywheel RPM",
+					"description": "flywheelRpm(t) oscillates between 0 and 6000.",
+					"verifier": {
+						"type": "script",
+						"path": "checkpoints/advantagescope-intro/verify/flywheel-rpm.sh"
+					}
+				},
+				{
+					"id": "game-piece-loaded",
+					"title": "Game piece loaded",
+					"description": "gamePieceLoaded(t) toggles as t changes.",
+					"verifier": {
+						"type": "script",
+						"path": "checkpoints/advantagescope-intro/verify/game-piece-loaded.sh"
+					}
+				},
+				{
+					"id": "flywheel-graph",
+					"title": "Flywheel line graph",
+					"description": "A Line Graph tab plots FlywheelRPM.",
+					"verifier": {
+						"type": "script",
+						"path": "checkpoints/advantagescope-intro/verify/flywheel-graph.sh"
+					}
+				},
+				{
+					"id": "flywheel-axis-scale",
+					"title": "Locked axis scale",
+					"description": "The Line Graph's Y axis is locked to roughly 0-6000.",
+					"verifier": {
+						"type": "script",
+						"path": "checkpoints/advantagescope-intro/verify/flywheel-axis-scale.sh"
+					}
+				},
+				{
+					"id": "game-piece-table",
+					"title": "Game piece table",
+					"description": "A Table tab lists GamePieceLoaded.",
+					"optional": true,
+					"verifier": {
+						"type": "script",
+						"path": "checkpoints/advantagescope-intro/verify/game-piece-table.sh"
 					}
 				}
 			]

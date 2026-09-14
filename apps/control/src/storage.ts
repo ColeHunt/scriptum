@@ -105,13 +105,23 @@ async function ensureWorkspaceFiles(
 	const projectDir = projectPathFor(config, workspaceId);
 	const homeDir = resolve(workspaceDir, "home");
 
+	const scopeStateDir = resolve(workspaceDir, "scope-state");
+
 	await mkdir(projectDir, { recursive: true });
 	await mkdir(homeDir, { recursive: true, mode: 0o700 });
 	await mkdir(resolve(workspaceDir, "logs", "runs"), { recursive: true });
 	await mkdir(resolve(workspaceDir, "assets"), { recursive: true });
+	// See workspaceScopeStatePath (containers/metadata.ts) for why this one is
+	// world-readable rather than owner-only like homeDir.
+	await mkdir(scopeStateDir, { recursive: true, mode: 0o755 });
 
 	try {
 		await chmod(homeDir, 0o700);
+	} catch {
+		// Windows filesystems may ignore POSIX modes; the Linux Docker host enforces ownership at runtime.
+	}
+	try {
+		await chmod(scopeStateDir, 0o755);
 	} catch {
 		// Windows filesystems may ignore POSIX modes; the Linux Docker host enforces ownership at runtime.
 	}

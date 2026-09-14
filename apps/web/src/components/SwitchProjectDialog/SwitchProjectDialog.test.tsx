@@ -15,7 +15,7 @@ const TRACKED_CATALOG = {
 			order: 5,
 			checkpoints: [],
 			requires: [],
-			track: "Version Control",
+			track: "Tools",
 			locked: false,
 			missingPrerequisites: [],
 		},
@@ -117,9 +117,7 @@ describe("SwitchProjectDialog — track grouping", () => {
 			/>,
 		);
 
-		await waitFor(() =>
-			expect(screen.getByText("Version Control")).toBeInTheDocument(),
-		);
+		await waitFor(() => expect(screen.getByText("Tools")).toBeInTheDocument());
 		expect(screen.getByText("Java Basics")).toBeInTheDocument();
 		expect(screen.getByText("FRC Robot")).toBeInTheDocument();
 		// The generic fallback heading for modules with no track.
@@ -132,7 +130,7 @@ describe("SwitchProjectDialog — track grouping", () => {
 		// the untracked group always sorts last regardless of its own order.
 		// "Import from GitHub" is the dialog's own trailing section, also an h3.
 		expect(headings).toEqual([
-			"Version Control",
+			"Tools",
 			"Java Basics",
 			"FRC Robot",
 			"Lessons",

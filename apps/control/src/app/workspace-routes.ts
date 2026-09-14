@@ -1,4 +1,5 @@
-import { readdir } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
+import { resolve } from "node:path";
 import {
 	autoChooserPatchSchema,
 	driverStationPatchSchema,
@@ -566,6 +567,7 @@ export async function handleWorkspaceRoute(
 				auth.workspace.id,
 				auth.workspace.current_module,
 				parsed.checkpointIds,
+				parsed.scopeLayout,
 			);
 			return jsonResponse({ ok: true, state });
 		} catch (error) {
@@ -579,6 +581,30 @@ export async function handleWorkspaceRoute(
 				error instanceof Error ? error.message : "Invalid verify request.";
 			return jsonResponse({ error: message }, { status: 400 });
 		}
+	}
+
+	// --- AdvantageScope "Tools" lesson: serve the student's own generated
+	// log straight off the project bind mount, so the Scope pane can fetch it
+	// by URL (see patches/advantagescope's log-url-injection patch) instead of
+	// requiring the browser's local file picker, which can't see files inside
+	// the workspace container. ---
+	if (suffix === "/api/scope-log" && request.method === "GET") {
+		const logPath = resolve(
+			auth.workspace.project_path,
+			"logs",
+			"telemetry.csv",
+		);
+		try {
+			const fileStat = await stat(logPath);
+			if (!fileStat.isFile()) {
+				return jsonResponse({ error: "No log file yet." }, { status: 404 });
+			}
+		} catch {
+			return jsonResponse({ error: "No log file yet." }, { status: 404 });
+		}
+		return new Response(Bun.file(logPath), {
+			headers: { "content-type": "text/csv" },
+		});
 	}
 
 	// --- Import endpoints ---

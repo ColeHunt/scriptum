@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { chmod, mkdir } from "node:fs/promises";
 import type {
 	ContainersStatusResponse,
 	WorkspaceId,
@@ -43,6 +43,7 @@ import {
 	publishedPortFor,
 	v2LabelsMatch,
 	workspaceHomePath,
+	workspaceScopeStatePath,
 } from "./metadata";
 import { toHostPath } from "./paths";
 import { allocatePortFromRange, portIsFree } from "./ports";
@@ -54,6 +55,7 @@ import {
 	type DockerRunner,
 	HALSIM_CONTAINER_PORT,
 	type ManagedContainerStats,
+	SCOPE_STATE_CONTAINER_DIR,
 	SIM_CONTAINER_PORT,
 	VSCODE_CONTAINER_PORT,
 } from "./types";
@@ -624,6 +626,17 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		const config = this.storage.config;
 		const homePath = workspaceHomePath(workspace);
 		await mkdir(homePath, { recursive: true, mode: 0o700 });
+		const scopeStatePath = workspaceScopeStatePath(workspace);
+		// World-readable: this is the one directory the control plane's host
+		// process writes file *content* into (a captured layout snapshot) for
+		// the container's `abc` user to read, rather than just creating an
+		// empty dir for `abc` itself to populate via `docker exec` - unlike
+		// `project`/`home`, there's no existing UID-alignment precedent to
+		// lean on here.
+		await mkdir(scopeStatePath, { recursive: true, mode: 0o755 });
+		await chmod(scopeStatePath, 0o755).catch(() => {
+			// Windows filesystems may ignore POSIX modes; the Linux Docker host enforces ownership at runtime.
+		});
 
 		const name = codeContainerName(workspace.id);
 		// /config holds only regenerable state (Gradle caches, extensions, editor
@@ -668,6 +681,11 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			configVolume
 				? `type=volume,src=${configVolume},dst=/config`
 				: `${toHostPath(config, homePath)}:/config:z`,
+			// Always a real bind (never a demo-mode named volume like /config) -
+			// the control plane writes layout snapshots here directly via its own
+			// host-fs access, so it must be a real host path in every mode.
+			"-v",
+			`${toHostPath(config, scopeStatePath)}:${SCOPE_STATE_CONTAINER_DIR}:z`,
 		];
 
 		// Nest workspace containers under the control plane's compose project in
