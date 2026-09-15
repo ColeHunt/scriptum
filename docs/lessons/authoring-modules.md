@@ -167,7 +167,7 @@ repo for the real bundled manifest, which exercises all of this at once):
 | `requires` | string[] | no | Ids of other modules that must be completed first (every non-optional checkpoint passed) before this one can be loaded — the actual hard-lock gate. Default `[]` (no prerequisites). An id that doesn't resolve to a real module is skipped, not treated as blocking. |
 | `checkpoints` | array | no | Verifiable goals for this module. Default `[]` (no checkpoints, no lock gating possible for anything that `requires` this module). See [Checkpoints](#checkpoints-and-hard-prerequisites). |
 | `setupScript` | string | no | A repo-root-relative script run once, immediately after the module's files are copied in. Used by the `git` kind to build real commit history — see below. |
-| `showScope` | boolean | no | Default `false`. Mounts the AdvantageScope telemetry pane even for a non-`robot` module (used by `advantagescope-intro`, a `plain-java` module that still wants students looking at AdvantageScope). |
+| `showScope` | boolean | no | Default `false`. Mounts the AdvantageScope telemetry pane even for a non-`robot` module - for a `plain-java` module that generates a static log file and wants students opening it in AdvantageScope with no live robot involved. `advantagescope-intro` is `robot`-kind (live NT4 telemetry) and does not use this. |
 
 ### Sparse ordering
 
