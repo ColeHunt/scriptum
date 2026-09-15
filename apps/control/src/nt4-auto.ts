@@ -514,10 +514,24 @@ export class Nt4AutoChooserBridge extends ReconnectingWsBridge<
 		entry.stale = false;
 		entry.error = null;
 		if (typeof raw === "string") {
-			const messages = JSON.parse(raw) as Array<{
-				method: string;
-				params: Record<string, unknown>;
-			}>;
+			let messages: Array<{ method: string; params: Record<string, unknown> }>;
+			try {
+				const parsed: unknown = JSON.parse(raw);
+				if (!Array.isArray(parsed)) {
+					// Real NT4 servers always batch JSON messages into an array,
+					// even a single one. A bare object (or anything else) isn't
+					// the NT4 wire format - ignore it rather than crash the
+					// bridge on whatever sent it.
+					return;
+				}
+				messages = parsed;
+			} catch (error) {
+				entry.error =
+					error instanceof Error
+						? error.message
+						: "Unable to decode NT4 text frame.";
+				return;
+			}
 			for (const message of messages) {
 				if (message.method === "announce") {
 					const id = message.params.id;

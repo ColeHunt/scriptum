@@ -227,3 +227,94 @@ test("NT4 proxy rejects cross-workspace access", async ({
 		await fakeNt4.stop();
 	}
 });
+
+/**
+ * Regression test for the Elastic Dashboard connect/disconnect loop found
+ * while wiring it up to a real NT4 server: Elastic's client offers
+ * `["networktables.first.wpi.edu", "v4.1.networktables.first.wpi.edu"]` (base
+ * protocol first), the opposite order from AS Lite/nt4-auto. A real NT4
+ * server still prefers the versioned protocol regardless of the offered
+ * order - that's normal WebSocket subprotocol negotiation (the server picks,
+ * not the client) - but the proxy used to require the upstream's choice to
+ * exactly equal the browser's first-offered protocol, closing the connection
+ * with code 1002 every single time this order was used. See
+ * apps/control/src/app/websocket.ts's subprotocol-mismatch check.
+ */
+test("NT4 proxy tolerates upstream picking a non-first offered subprotocol", async ({
+	app,
+	page,
+	runtime,
+	fakeVscode,
+	fakeHalsim,
+}) => {
+	const fakeNt4 = await startFakeNt4({
+		announceTopics: [{ name: "/Robot/Elastic", type: "string", id: 1 }],
+		// Mimics a real NT4 server: always prefers the versioned protocol when
+		// offered, regardless of the client's own preference order.
+		selectProtocol: (offered) =>
+			offered.includes("v4.1.networktables.first.wpi.edu")
+				? "v4.1.networktables.first.wpi.edu"
+				: offered[0],
+	});
+
+	try {
+		const alice = await loginAs(page, app, { name: "NtElastic" });
+		const aliceWs = app.storage.findWorkspaceBySlug(alice.user.slug as never)!;
+
+		runtime.setRuntime({
+			workspaceId: aliceWs.id,
+			state: "running",
+			image: "coderunner-workspace",
+			runtimeName: `frc-${aliceWs.id.slice(0, 8)}`,
+			ports: { nt4: 8080, vscode: 8081, halsim: 8082 },
+			endpoints: {
+				vscode: {
+					httpBaseUrl: fakeVscode.httpBaseUrl,
+					wsBaseUrl: fakeVscode.wsBaseUrl,
+					basePath: "/",
+				},
+				nt4: { httpUrl: fakeNt4.httpUrl, wsUrl: fakeNt4.wsUrl },
+				halsim: { wsUrl: fakeHalsim.wsUrl },
+			},
+			lastUsedAt: new Date().toISOString(),
+			error: null,
+		});
+
+		const baseUrl = app.storage.config.baseUrl;
+		const nt4Url = `${baseUrl.replace(/^http/, "ws")}/u/${alice.user.slug}/sim/nt4`;
+		const socket = new WebSocket(nt4Url, {
+			protocols: [
+				"networktables.first.wpi.edu",
+				"v4.1.networktables.first.wpi.edu",
+			],
+			headers: { cookie: cookieHeader(alice) },
+		} as never);
+
+		const closeCode: number | null = await new Promise((resolve) => {
+			let resolved = false;
+			socket.addEventListener("message", () => {
+				if (resolved) return;
+				resolved = true;
+				resolve(null);
+			});
+			socket.addEventListener("close", (event) => {
+				if (resolved) return;
+				resolved = true;
+				resolve(event.code);
+			});
+			setTimeout(() => {
+				if (resolved) return;
+				resolved = true;
+				resolve(null);
+			}, 5000);
+		});
+
+		// Should have received the announce message, not a 1002 protocol-error close.
+		expect(closeCode).toBeNull();
+		expect(fakeNt4.connections()).toBe(1);
+
+		socket.close();
+	} finally {
+		await fakeNt4.stop();
+	}
+});

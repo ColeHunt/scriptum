@@ -30,6 +30,15 @@ export type FakeNt4Handle = {
 export type FakeNt4Options = {
 	/** Topic announcements sent to every new client on connect */
 	announceTopics?: Array<{ name: string; type: string; id: number }>;
+	/**
+	 * Chooses which subprotocol to accept from the client's offered list (the
+	 * `Sec-WebSocket-Protocol` header, split in the order the client sent it).
+	 * Defaults to accepting none, matching every existing test. Real NT4
+	 * servers pick whichever protocol they prefer from that list - not
+	 * necessarily the client's first choice - which is exactly what this
+	 * models for the subprotocol-negotiation regression test.
+	 */
+	selectProtocol?: (offered: string[]) => string | undefined;
 };
 
 export async function startFakeNt4(
@@ -55,7 +64,17 @@ export async function startFakeNt4(
 		port: 0,
 		fetch(request, srv) {
 			if (request.headers.get("upgrade")?.toLowerCase() === "websocket") {
-				const upgraded = srv.upgrade(request);
+				const offered = (request.headers.get("sec-websocket-protocol") ?? "")
+					.split(",")
+					.map((protocol) => protocol.trim())
+					.filter(Boolean);
+				const chosen = options.selectProtocol?.(offered);
+				const upgraded = srv.upgrade(
+					request,
+					chosen
+						? { headers: { "sec-websocket-protocol": chosen } }
+						: undefined,
+				);
 				return upgraded
 					? undefined
 					: new Response("upgrade failed", { status: 400 });

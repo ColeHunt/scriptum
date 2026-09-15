@@ -112,20 +112,25 @@ export function createWebSocketHandlers(ctx: WebSocketHandlerContext) {
 			) {
 				return;
 			}
-			// The browser was told (in the upgrade handshake) that we picked
-			// protocols[0]. If upstream actually negotiated something else, the
-			// browser believes a protocol that the upstream isn't speaking. Close
-			// with 1002 (protocol error) so AS Lite reconnects rather than silently
-			// talking past the sim.
+			// The browser was told (in the upgrade handshake, decided before the
+			// upstream connection even opens) that we picked protocols[0]. The
+			// upstream is free to choose any protocol from that same offered
+			// list - a server picking a client's second-choice subprotocol is
+			// normal WebSocket negotiation, not an error (e.g. Elastic offers
+			// the base NT4 protocol first and the versioned one second, the
+			// opposite order from AS Lite/nt4-auto, but a real NT4 server still
+			// prefers the versioned one either way). Only close the connection
+			// when upstream picks something the browser never offered at all -
+			// that's the case where the browser would be talking past the sim.
 			if (
 				protocols &&
 				protocols.length > 0 &&
 				upstream.protocol &&
-				upstream.protocol !== protocols[0]
+				!protocols.includes(upstream.protocol)
 			) {
 				log.warn("upstream subprotocol mismatch", {
 					label,
-					browserExpected: protocols[0],
+					browserOffered: protocols,
 					upstreamChose: upstream.protocol,
 				});
 				ws.close(1002, `${label} subprotocol mismatch.`);
