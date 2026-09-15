@@ -1,4 +1,4 @@
-import { Code, Gamepad2, LayoutDashboard, Waypoints } from "lucide-react";
+import { Code, Gamepad2 } from "lucide-react";
 import type { ReactNode } from "react";
 import {
 	createContext,
@@ -8,6 +8,8 @@ import {
 	useState,
 } from "react";
 import advantagescopeLogo from "@/assets/advantagescope-logo.png";
+import choreoLogo from "@/assets/choreo-logo.png";
+import elasticLogo from "@/assets/elastic-logo.png";
 import { cn } from "@/lib/utils";
 
 export type PaneKey =
@@ -183,11 +185,11 @@ export function PaneToggleRow() {
 			/>
 			<PaneToggleButton
 				paneKey="choreo"
-				icon={<Waypoints className="size-4 shrink-0" />}
+				icon={<img src={choreoLogo} alt="" className="size-4 shrink-0" />}
 			/>
 			<PaneToggleButton
 				paneKey="elastic"
-				icon={<LayoutDashboard className="size-4 shrink-0" />}
+				icon={<img src={elasticLogo} alt="" className="size-4 shrink-0" />}
 			/>
 			<PaneToggleButton
 				paneKey="driverStation"

@@ -98,11 +98,20 @@ philosophy instead.
   always wins. Left as a known rough edge for v1 rather than patching
   Elastic's settings UI, matching how PathPlanner's original v1 accepted
   known gaps (NT4 sync deferred) rather than gold-plating.
-- The Dart patch was hand-verified with `git apply --check` against the real
-  vendored source and reviewed line-by-line, but **not** compiled — this
-  sandbox has no Flutter/Dart SDK. The `build-elastic` CI job is the first
-  real compile of the patched tree; treat the patch as unverified beyond
-  static review until that job runs green once.
+- **Update**: the Dart patch has since been compiled and verified for real
+  (a Flutter SDK turned out to be available after all — `bun run build:elastic`
+  succeeds, producing a working `dist/elastic/` whose compiled
+  `main.dart.js` contains the expected injected behavior:
+  `sim/nt4?app=Elastic` and `api/elastic-layout` as literal strings, which
+  survive release-build minification since they're runtime string literals,
+  not Dart symbols). `scripts/verify-elastic.ts` (`bun run verify:elastic`,
+  mirroring `verify-ascope.ts`) checks this on demand: patch applicability,
+  the staged bundle's presence and injected-behavior strings, and
+  `/elastic/` static serving. The `pubspec.lock`/`analysis_options.yaml`
+  changes a local build produces alongside the four patched source files
+  are normal `flutter pub get`/tooling side effects (dependency-resolution
+  drift and an automatic "upgrading analysis_options.yaml" migration,
+  respectively) — not something the patch itself needs to capture.
 - Manual layout imports/exports (Elastic's local file-picker flow) are
   already hidden on web builds upstream and are untouched by this patch;
   only the SharedPreferences-backed autosave/autoload path is intercepted.

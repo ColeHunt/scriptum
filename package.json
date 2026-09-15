@@ -20,6 +20,7 @@
 		"build:ascope": "bun scripts/build-ascope-lite.ts",
 		"build:choreo": "bun scripts/build-choreo.ts",
 		"build:elastic": "bun scripts/build-elastic.ts",
+		"verify:elastic": "bun scripts/verify-elastic.ts",
 		"apply:ascope-patches": "bun scripts/apply-vendor-patches.ts --tool=advantagescope",
 		"apply:elastic-patches": "bun scripts/apply-vendor-patches.ts --tool=elastic",
 		"check:vendor-manifest": "bun scripts/check-vendor-manifest.ts",
