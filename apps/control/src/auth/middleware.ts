@@ -145,7 +145,7 @@ export async function requireAdmin(
 		return new Response(null, {
 			status: 303,
 			headers: {
-				location: `${storage.config.legionBaseUrl}/sso/stepup?app=coderunner&return_to=${encodeURIComponent(returnTo)}`,
+				location: `${storage.config.legionBaseUrl}/sso/stepup?app=fabrica&return_to=${encodeURIComponent(returnTo)}`,
 			},
 		});
 	}

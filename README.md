@@ -1,14 +1,14 @@
-# CodeRunner
+# Fabrica
 
 A self-hosted, browser-based IDE for learning FRC robot programming. Students get a hosted VS Code editor, isolated Docker workspaces, one-click robot simulation, live AdvantageScope/Elastic Dashboard telemetry, and a Choreo path/auto editor — all with no local setup. Lesson modules guide beginners, while GitHub team import supports real robot projects.
 
 ## Quick Start
 
-Try CodeRunner locally in demo mode — no Legion setup, no configuration required. Just Docker:
+Try Fabrica locally in demo mode — no Legion setup, no configuration required. Just Docker:
 
 ```bash
-git clone https://github.com/mathewdunne/CodeRunner coderunner
-cd coderunner
+git clone https://github.com/mathewdunne/CodeRunner fabrica
+cd fabrica
 FABRICA_DEMO_MODE=1 docker compose up
 ```
 
@@ -35,7 +35,7 @@ bun run docs:dev
 Main sections:
 
 - [Quick Start](docs/quick-start.md) — demo mode walkthrough
-- [Using CodeRunner](docs/using-coderunner.md) — student guide: projects, running a simulation, Choreo, Elastic Dashboard
+- [Using Fabrica](docs/using-coderunner.md) — student guide: projects, running a simulation, Choreo, Elastic Dashboard
 - [Architecture](docs/about/architecture.md) — how the system is put together
 - [Lessons & Modules](docs/lessons/overview.md) — lesson catalog, module authoring, GitHub import
 - [Deploying](docs/deploying/overview.md) — running a real multi-user instance
@@ -62,6 +62,6 @@ See [docs/development/dev-servers.md](docs/development/dev-servers.md) for the f
 
 ## License
 
-CodeRunner is released under the [MIT License](LICENSE).
+Fabrica is released under the [MIT License](LICENSE).
 
-It redistributes third-party software that remains under its own terms — most notably [AdvantageScope](https://github.com/Mechanical-Advantage/AdvantageScope) (BSD-3-Clause, modified), [Choreo](https://github.com/SleipnirGroup/Choreo) (BSD-3-Clause, unmodified fork), [Elastic Dashboard](https://github.com/Gold872/elastic_dashboard) (MIT, modified), [VSCodium](https://github.com/VSCodium/vscodium) (MIT), and [WPILib](https://github.com/wpilibsuite/allwpilib) (BSD-3-Clause). Required notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and ship inside both images at `/usr/share/coderunner/`. None of those projects endorse or are affiliated with CodeRunner.
+It redistributes third-party software that remains under its own terms — most notably [AdvantageScope](https://github.com/Mechanical-Advantage/AdvantageScope) (BSD-3-Clause, modified), [Choreo](https://github.com/SleipnirGroup/Choreo) (BSD-3-Clause, unmodified fork), [Elastic Dashboard](https://github.com/Gold872/elastic_dashboard) (MIT, modified), [VSCodium](https://github.com/VSCodium/vscodium) (MIT), and [WPILib](https://github.com/wpilibsuite/allwpilib) (BSD-3-Clause). Required notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and ship inside both images at `/usr/share/fabrica/`. None of those projects endorse or are affiliated with Fabrica.

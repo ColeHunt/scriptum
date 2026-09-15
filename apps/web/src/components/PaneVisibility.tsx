@@ -42,7 +42,7 @@ const WORKBENCH_PANE_KEYS: readonly PaneKey[] = [
 
 export type PaneVisibility = Record<PaneKey, boolean>;
 
-const STORAGE_KEY = "coderunner:pane-visibility";
+const STORAGE_KEY = "fabrica:pane-visibility";
 const DEFAULT_VISIBILITY: PaneVisibility = {
 	editor: true,
 	scope: true,

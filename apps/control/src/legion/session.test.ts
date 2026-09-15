@@ -63,7 +63,7 @@ describe("magic-link (via:link) sessions", () => {
 				expect(response.status).toBe(303);
 				const location = response.headers.get("location") ?? "";
 				expect(location).toContain("https://legion.example.test/sso/stepup");
-				expect(location).toContain("app=coderunner");
+				expect(location).toContain("app=fabrica");
 			},
 			{ legionBaseUrl: "https://legion.example.test" },
 		);

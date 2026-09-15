@@ -17,6 +17,8 @@ Record active architecture decisions here.
 
 - [`040-selinux-container-mounts.md`](040-selinux-container-mounts.md) — exempts the control plane from SELinux labeling and relabels student bind mounts for shared access while preserving demo named volumes.
 - [`041-elastic-dashboard-integration.md`](041-elastic-dashboard-integration.md) — serves Elastic Dashboard as an independently-toggleable pane beside AdvantageScope and Choreo; vendors and source-patches it like AdvantageScope, but builds its Flutter web bundle outside this repo's own Docker/CI, unlike AdvantageScope's in-image emsdk stage.
+- [`048-head-worker-fleet-deployment.md`](048-head-worker-fleet-deployment.md) — **Proposed**, design/roadmap only. Replaces the dedicated GCP VM with a small always-on "head" co-located on the shared MARS/WARS droplet, fleet-managing a dynamically scaled pool of DigitalOcean worker droplets over SSH-based remote Docker.
+- [`049-fabrica-rename.md`](049-fabrica-rename.md) — full technical rename from CodeRunner to Fabrica, matching the MARS/WARS family's Latin naming convention — package/env-var/Docker/CLI identifiers renamed, existing decision logs (001–048) kept as historical record of the old name.
 
 ## Archive
 

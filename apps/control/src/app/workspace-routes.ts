@@ -142,10 +142,10 @@ export async function handleWorkspaceRoute(
 	// Older web bundles emitted a relative favicon path, which browsers resolve
 	// under /u/:slug/. Serve the root icon here so those bundles keep working.
 	if (
-		(suffix === "/coderunner-icon.png" || suffix === "/favicon.ico") &&
+		(suffix === "/fabrica-icon.png" || suffix === "/favicon.ico") &&
 		request.method === "GET"
 	) {
-		return webAssetResponse(storage, "coderunner-icon.png");
+		return webAssetResponse(storage, "fabrica-icon.png");
 	}
 
 	const isApiRequest = suffix.startsWith("/api/");

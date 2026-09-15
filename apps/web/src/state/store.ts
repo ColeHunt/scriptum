@@ -36,7 +36,7 @@ export const useUIStore = create<UIState>()(
 				set((s) => ({ scopeCollapsed: !s.scopeCollapsed })),
 		}),
 		{
-			name: "frc-coderunner-ui",
+			name: "frc-fabrica-ui",
 			partialize: (state) => ({ inputMode: state.inputMode }),
 		},
 	),
