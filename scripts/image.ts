@@ -1,10 +1,10 @@
-// Build or pull Fabrica's Docker images under their canonical names:
-//   ${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-<kind>:${FABRICA_TAG:-latest}
+// Build or pull Scriptum's Docker images under their canonical names:
+//   ${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-<kind>:${SCRIPTUM_TAG:-latest}
 //
 // Usage: bun scripts/image.ts <build|pull> <workspace|control>
 //
 // The image name itself is still literally "coderunner-<kind>", not
-// "fabrica-<kind>" — that's the currently-published GHCR artifact name
+// "scriptum-<kind>" — that's the currently-published GHCR artifact name
 // (upstream's own release channel, unrelated to this repo's own rename).
 // Renaming it here would just point the default at an image that doesn't
 // exist. See decision 049 for the full rename scope and this deliberate
@@ -26,8 +26,8 @@ type Kind = keyof typeof dockerfiles;
 
 function imageName(kind: Kind): string {
 	if (kind === "workspace" && Bun.env.CODE_IMAGE) return Bun.env.CODE_IMAGE;
-	const ns = Bun.env.FABRICA_IMAGE_NS ?? "ghcr.io/mathewdunne";
-	const tag = Bun.env.FABRICA_TAG ?? "latest";
+	const ns = Bun.env.SCRIPTUM_IMAGE_NS ?? "ghcr.io/mathewdunne";
+	const tag = Bun.env.SCRIPTUM_TAG ?? "latest";
 	return `${ns}/coderunner-${kind}:${tag}`;
 }
 

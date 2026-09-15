@@ -11,7 +11,7 @@ import type {
 	LessonModuleKind,
 	WorkspaceId,
 	WorkspaceSlug,
-} from "@frc-fabrica/contracts";
+} from "@frc-scriptum/contracts";
 import type { ControlConfig, ControlConfigInput } from "./config";
 import { loadControlConfig } from "./config";
 import { getLogger } from "./logging";

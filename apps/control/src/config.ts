@@ -277,12 +277,12 @@ export function loadControlConfig(
 		);
 	}
 
-	const demo = parseBoolean(input.demo ?? Bun.env.FABRICA_DEMO_MODE, false);
+	const demo = parseBoolean(input.demo ?? Bun.env.SCRIPTUM_DEMO_MODE, false);
 	const ssoSecret = input.ssoSecret ?? Bun.env.SSO_SECRET ?? null;
 	if (!demo && !ssoSecret) {
 		throw new Error(
 			"SSO_SECRET is required outside demo mode. Set it to the same value " +
-				"as Legion's own SSO_SECRET, or set FABRICA_DEMO_MODE=1 to run " +
+				"as Legion's own SSO_SECRET, or set SCRIPTUM_DEMO_MODE=1 to run " +
 				"without Legion configured.",
 		);
 	}
@@ -328,7 +328,7 @@ export function loadControlConfig(
 		),
 		baseUrl:
 			input.baseUrl ??
-			Bun.env.FABRICA_BASE_URL ??
+			Bun.env.SCRIPTUM_BASE_URL ??
 			`http://localhost:${input.port ?? Bun.env.PORT ?? 4000}`,
 		ssoSecret,
 		ssoSessionTtlSeconds: parsePositiveInteger(
@@ -341,7 +341,7 @@ export function loadControlConfig(
 		codeImage:
 			input.codeImage ??
 			Bun.env.CODE_IMAGE ??
-			`${Bun.env.FABRICA_IMAGE_NS ?? "ghcr.io/mathewdunne"}/coderunner-workspace:${Bun.env.FABRICA_TAG ?? "latest"}`,
+			`${Bun.env.SCRIPTUM_IMAGE_NS ?? "ghcr.io/mathewdunne"}/coderunner-workspace:${Bun.env.SCRIPTUM_TAG ?? "latest"}`,
 		codeMemoryLimit:
 			input.codeMemoryLimit ?? Bun.env.CODE_MEMORY_LIMIT ?? "4096m",
 		// `??` would turn an explicit null (disable) into the env/default value.

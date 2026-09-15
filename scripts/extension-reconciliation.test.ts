@@ -42,7 +42,7 @@ function record(id: string, version: string, root: string): ExtensionRecord {
 }
 
 async function fixture() {
-	const root = await mkdtemp(join(tmpdir(), "fabrica-extensions-"));
+	const root = await mkdtemp(join(tmpdir(), "scriptum-extensions-"));
 	temporaryRoots.push(root);
 	const cache = join(root, "cache");
 	const target = join(root, "target");

@@ -39,30 +39,30 @@ Then start the demo for your platform:
 <TabItem value="linux" label="Linux / WSL2" default>
 
 ```bash
-FABRICA_DOCKER_GID=$(stat -c '%g' /var/run/docker.sock) FABRICA_DEMO_MODE=1 docker compose up
+SCRIPTUM_DOCKER_GID=$(stat -c '%g' /var/run/docker.sock) SCRIPTUM_DEMO_MODE=1 docker compose up
 ```
 
-`FABRICA_DOCKER_GID` is required on Linux and WSL2 so the control plane can access the Docker socket.
+`SCRIPTUM_DOCKER_GID` is required on Linux and WSL2 so the control plane can access the Docker socket.
 
 </TabItem>
 <TabItem value="macos" label="macOS">
 
 ```bash
-FABRICA_DEMO_MODE=1 docker compose up
+SCRIPTUM_DEMO_MODE=1 docker compose up
 ```
 
 </TabItem>
 <TabItem value="powershell" label="Windows (PowerShell)">
 
 ```powershell
-$env:FABRICA_DEMO_MODE = "1"; docker compose up
+$env:SCRIPTUM_DEMO_MODE = "1"; docker compose up
 ```
 
 </TabItem>
 <TabItem value="cmd" label="Windows (cmd)">
 
 ```bat
-set "FABRICA_DEMO_MODE=1" && docker compose up
+set "SCRIPTUM_DEMO_MODE=1" && docker compose up
 ```
 
 </TabItem>

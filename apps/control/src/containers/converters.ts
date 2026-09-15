@@ -1,4 +1,4 @@
-import type { ContainerState } from "@frc-fabrica/contracts";
+import type { ContainerState } from "@frc-scriptum/contracts";
 import type { WorkspaceRuntime } from "../runtime";
 import type { ContainerLeaseRow, WorkspaceRow } from "../storage";
 import {

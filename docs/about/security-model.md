@@ -35,7 +35,7 @@ address; the local `user.email` field is populated with Legion's `username`.
 
 ## Admin role
 
-Admin access is a Legion **group membership** (`fabrica-admin`), not a
+Admin access is a Legion **group membership** (`scriptum-admin`), not a
 locally stored field — it's recomputed fresh from the `mw_sso` cookie's
 `groups` claim on every request, so revoking it in Legion's `/admin/groups`
 takes effect on the very next request, with no CodeRunner-side action needed.
@@ -70,9 +70,9 @@ modes.
 In the standard `docker compose` deployment, the control plane runs as a
 container and needs the host Docker socket bind-mounted so it can manage
 per-student containers as siblings. That container runs as a **non-root**
-uid:gid — the user that owns the bind-mounted data directory (`FABRICA_UID`
-/ `FABRICA_GID`, defaulting to `1000:1000`), with the host `docker` group
-gid added as a supplementary group (`FABRICA_DOCKER_GID`) so the non-root
+uid:gid — the user that owns the bind-mounted data directory (`SCRIPTUM_UID`
+/ `SCRIPTUM_GID`, defaulting to `1000:1000`), with the host `docker` group
+gid added as a supplementary group (`SCRIPTUM_DOCKER_GID`) so the non-root
 process can still reach the socket. Running non-root keeps the data directory
 host-owned rather than root-owned and reduces the blast radius of a compromise.
 
@@ -150,7 +150,7 @@ through the admin API.
 ## WebSocket origin validation
 
 Before upgrading any WebSocket connection the control plane validates the
-`Origin` header against the configured `FABRICA_BASE_URL`. Cross-origin
+`Origin` header against the configured `SCRIPTUM_BASE_URL`. Cross-origin
 WebSocket upgrades are rejected with `403`. Loopback aliases
 (`localhost` / `127.0.0.1`) are treated as equivalent to support local
 development, but production deployments served over a real hostname are not
@@ -158,7 +158,7 @@ affected by that exception.
 
 ## Demo mode
 
-Starting the control plane with `--demo` (or `FABRICA_DEMO_MODE=1`) bypasses
+Starting the control plane with `--demo` (or `SCRIPTUM_DEMO_MODE=1`) bypasses
 Legion entirely: every request is treated as a single synthetic admin session,
 and `SSO_SECRET` doesn't need to be set at all. This is designed for
 zero-configuration local evaluation only.

@@ -4,7 +4,7 @@
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { WorkspaceId } from "@frc-fabrica/contracts";
+import type { WorkspaceId } from "@frc-scriptum/contracts";
 import type { MockWorkspaceRuntimeProvider } from "../../apps/control/src/__tests__/helpers";
 import type { FakeHalsimHandle, FakeVscodeHandle } from "./types";
 

@@ -5,7 +5,7 @@
  * with centralized helpers backed by Legion's `mw_sso` cookie (see `../legion/`).
  */
 
-import type { WorkspaceSlug } from "@frc-fabrica/contracts";
+import type { WorkspaceSlug } from "@frc-scriptum/contracts";
 import { getLegionSessionFromRequest } from "../legion/session";
 import { getLogger } from "../logging";
 import type { AppStorage, AuthContext } from "../storage";
@@ -145,7 +145,7 @@ export async function requireAdmin(
 		return new Response(null, {
 			status: 303,
 			headers: {
-				location: `${storage.config.legionBaseUrl}/sso/stepup?app=fabrica&return_to=${encodeURIComponent(returnTo)}`,
+				location: `${storage.config.legionBaseUrl}/sso/stepup?app=scriptum&return_to=${encodeURIComponent(returnTo)}`,
 			},
 		});
 	}

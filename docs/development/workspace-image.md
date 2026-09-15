@@ -38,10 +38,10 @@ docker build -f containers/code/Dockerfile -t ghcr.io/mathewdunne/coderunner-wor
 ```
 
 The build context is the repo root. The image is tagged with its canonical
-name — `${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${FABRICA_TAG:-latest}` —
+name — `${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${SCRIPTUM_TAG:-latest}` —
 the same name docker compose and the control plane's `CODE_IMAGE` default
 resolve to, so a local build is picked up directly by `docker compose up` or
-`bun run dev:control` with no re-tagging. Forks set `FABRICA_IMAGE_NS` (in
+`bun run dev:control` with no re-tagging. Forks set `SCRIPTUM_IMAGE_NS` (in
 `.env`) to their own registry/owner; `CODE_IMAGE` overrides the full image
 name outright.
 
@@ -66,7 +66,7 @@ prereleases, as are tags with prerelease suffixes on any branch. Only tags
 without a suffix whose commits are in `main` update `latest`. Classification
 uses `main` ancestry when the workflow runs; Git tags do not record a source
 branch. All releases run verification and publish both architectures.
-To test one, set `FABRICA_TAG` in `.env`
+To test one, set `SCRIPTUM_TAG` in `.env`
 to the full tag and follow the [update steps](../deploying/local.md#updating-coderunner-to-a-new-release).
 
 ## When to rebuild

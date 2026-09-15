@@ -2,7 +2,7 @@ import { expect } from "bun:test";
 import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { WorkspaceId } from "@frc-fabrica/contracts";
+import type { WorkspaceId } from "@frc-scriptum/contracts";
 import { type ControlApp, type ControlAppOptions, createApp } from "../app";
 import { getSessionFromRequest } from "../auth/middleware";
 import type { DockerCommandResult, DockerRunner } from "../containers";
@@ -183,7 +183,7 @@ export async function createWebDist(root: string): Promise<string> {
 		"console.log('v2 shell');\n",
 		"utf8",
 	);
-	await writeFile(join(webDistDir, "fabrica-icon.png"), "fake png\n", "utf8");
+	await writeFile(join(webDistDir, "scriptum-icon.png"), "fake png\n", "utf8");
 	return webDistDir;
 }
 
@@ -300,7 +300,7 @@ export async function withApp<T>(
 		idleStopMinutes: 30,
 		containerAutoStart: false,
 		// Explicit false (not nullish, so `??` can't fall through to
-		// Bun.env.FABRICA_DEMO_MODE) - same class of bug as catalogRepo
+		// Bun.env.SCRIPTUM_DEMO_MODE) - same class of bug as catalogRepo
 		// above: a developer's real .env with demo mode on for local testing
 		// would otherwise silently flip every test into demo mode. Tests that
 		// actually want demo mode still override it via `options`, spread below.
@@ -927,7 +927,7 @@ export async function login(
 		role: "student",
 		team_number: null,
 		groups: [
-			...((options.role ?? "student") === "admin" ? ["fabrica-admin"] : []),
+			...((options.role ?? "student") === "admin" ? ["scriptum-admin"] : []),
 			...(options.groups ?? []),
 		],
 		slack_user_id: null,

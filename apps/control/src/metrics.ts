@@ -118,7 +118,7 @@ const KNOWN_TOP_LEVEL: ReadonlySet<string> = new Set([
 	"/admin",
 	"/admin/",
 	"/favicon.ico",
-	"/fabrica-icon.png",
+	"/scriptum-icon.png",
 	"/api/openapi.json",
 	"/api/session",
 	"/scope",
@@ -152,7 +152,7 @@ const KNOWN_WORKSPACE_SUFFIXES: ReadonlySet<string> = new Set([
 	"/api/elastic-layout",
 	"/api/project/import",
 	"/api/heartbeat",
-	"/fabrica-icon.png",
+	"/scriptum-icon.png",
 	"/favicon.ico",
 ]);
 

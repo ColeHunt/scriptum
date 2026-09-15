@@ -9,7 +9,7 @@ import type {
 	LessonModule,
 	LessonModuleWithLockState,
 	WorkspaceId,
-} from "@frc-fabrica/contracts";
+} from "@frc-scriptum/contracts";
 import { runIsActive } from "./app/status";
 import { type CatalogSource, IMAGE_CATALOG_DIR } from "./catalog";
 import { workspaceScopeStatePath } from "./containers/metadata";

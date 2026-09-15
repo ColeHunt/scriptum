@@ -1,4 +1,4 @@
-# 049 — Rename CodeRunner to Fabrica
+# 049 — Rename CodeRunner to Scriptum
 
 Status: **Accepted** — 2026-09-15
 
@@ -15,25 +15,25 @@ user-facing text.
 
 ## Decision
 
-**New name: Fabrica** — Latin for "workshop/forge," evoking building and
+**New name: Scriptum** — Latin for "workshop/forge," evoking building and
 crafting robot code. Applied as a full technical rename, not a cosmetic
 skin:
 
-- Package names (`frc-coderunner` → `frc-fabrica`, `@frc-coderunner/*` →
-  `@frc-fabrica/*`) and every import of them.
-- The `CODERUNNER_*` env var prefix → `FABRICA_*`, everywhere it's
+- Package names (`frc-coderunner` → `frc-scriptum`, `@frc-coderunner/*` →
+  `@frc-scriptum/*`) and every import of them.
+- The `CODERUNNER_*` env var prefix → `SCRIPTUM_*`, everywhere it's
   live/current.
-- Docker/container/network naming, the `coderunner` CLI dispatcher → `fabrica`,
+- Docker/container/network naming, the `coderunner` CLI dispatcher → `scriptum`,
   the per-student workspace container name prefix (`CODE_NAME_PREFIX`), the
-  `coderunner-admin` Legion group name → `fabrica-admin`, the `app=coderunner`
+  `coderunner-admin` Legion group name → `scriptum-admin`, the `app=coderunner`
   query param sent to Legion's SSO authorize/step-up endpoints, localStorage/
   Zustand persist keys, the `x-coderunner-editor-state` proxy header, the
-  favicon asset (`coderunner-icon.png` → `fabrica-icon.png`).
+  favicon asset (`coderunner-icon.png` → `scriptum-icon.png`).
 - `README.md`, `AGENTS.md`/`CLAUDE.md`.
 
 **Deliberately kept as `coderunner-workspace`/`coderunner-control`**: the
 *default* GHCR image reference in `docker-compose.yml` and
-`scripts/image.ts` (`${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-<kind>`).
+`scripts/image.ts` (`${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-<kind>`).
 That string is the literal name of images actually published today under
 the upstream maintainer's GHCR account — renaming it would point every
 zero-config install (`bun run demo:docker`, the quick-start guide) at an
@@ -41,7 +41,7 @@ image that doesn't exist, a real breakage rather than a cosmetic one. This
 fork's own `release.yml`/`deploy.yml`, by contrast, publish under
 `github.repository_owner`'s own namespace and had never published anything
 as `coderunner-*` that anyone depends on, so those were renamed freely to
-`fabrica-workspace`/`fabrica-control`.
+`scriptum-workspace`/`scriptum-control`.
 
 **Deliberately not touched**: the 48 existing decision logs (001–048) and
 `docs/decisions/README.md`'s existing summary bullets — they're historical
@@ -72,7 +72,7 @@ change.
   since that's cryptographically baked into a frozen signature and can't be
   renamed; the test's expected claims were reverted to match, with a comment
   explaining why.
-- If CodeRunner/Fabrica is ever actually registered as a Legion SSO consumer
-  app, it needs to be registered under `fabrica`, not `coderunner` — nothing
+- If CodeRunner/Scriptum is ever actually registered as a Legion SSO consumer
+  app, it needs to be registered under `scriptum`, not `coderunner` — nothing
   in this rename touches Legion's own configuration, since no live Legion
   instance was found to have this app registered under either name.

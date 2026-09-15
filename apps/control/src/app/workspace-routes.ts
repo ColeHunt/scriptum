@@ -9,7 +9,7 @@ import {
 	simRunCommandRequestSchema,
 	verifyCheckpointsRequestSchema,
 	workspaceSlugSchema,
-} from "@frc-fabrica/contracts";
+} from "@frc-scriptum/contracts";
 import {
 	requireWebSocketOrigin,
 	requireWorkspaceOwnership,
@@ -142,10 +142,10 @@ export async function handleWorkspaceRoute(
 	// Older web bundles emitted a relative favicon path, which browsers resolve
 	// under /u/:slug/. Serve the root icon here so those bundles keep working.
 	if (
-		(suffix === "/fabrica-icon.png" || suffix === "/favicon.ico") &&
+		(suffix === "/scriptum-icon.png" || suffix === "/favicon.ico") &&
 		request.method === "GET"
 	) {
-		return webAssetResponse(storage, "fabrica-icon.png");
+		return webAssetResponse(storage, "scriptum-icon.png");
 	}
 
 	const isApiRequest = suffix.startsWith("/api/");

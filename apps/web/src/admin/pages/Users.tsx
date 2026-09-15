@@ -61,7 +61,7 @@ export function Users() {
 				<h2 className="text-xl font-semibold">Users</h2>
 				<p className="text-muted-foreground text-sm">
 					Roles come from Legion group membership and can't be changed here —
-					grant or revoke <code className="font-mono">fabrica-admin</code> in
+					grant or revoke <code className="font-mono">scriptum-admin</code> in
 					Legion's own <code className="font-mono">/admin/groups</code>.
 				</p>
 			</div>

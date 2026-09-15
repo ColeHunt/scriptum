@@ -35,7 +35,7 @@ describe("routing and shell APIs", () => {
 			expect(rootFavicon.headers.get("content-type")).toContain("image/png");
 
 			const workspaceFavicon = await app.fetch(
-				new Request("http://localhost/u/alice/fabrica-icon.png"),
+				new Request("http://localhost/u/alice/scriptum-icon.png"),
 			);
 			expect(workspaceFavicon.status).toBe(200);
 			expect(workspaceFavicon.headers.get("content-type")).toContain(

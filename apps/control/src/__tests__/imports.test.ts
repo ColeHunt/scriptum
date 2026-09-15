@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { ImportServerMessage, WorkspaceId } from "@frc-fabrica/contracts";
+import type { ImportServerMessage, WorkspaceId } from "@frc-scriptum/contracts";
 import {
 	type CatalogLoadContext,
 	type GithubImportContext,

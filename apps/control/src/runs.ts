@@ -6,7 +6,7 @@ import type {
 	RunServerMessage,
 	SimRunStatus,
 	WorkspaceId,
-} from "@frc-fabrica/contracts";
+} from "@frc-scriptum/contracts";
 import { getLogger } from "./logging";
 import { runActiveDuration, runBuildDuration, runsTotal } from "./metrics";
 import type {

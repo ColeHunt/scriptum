@@ -1,37 +1,37 @@
-# Fabrica — base compose file (the minimal local/self-hosted deployment).
+# Scriptum — base compose file (the minimal local/self-hosted deployment).
 #
 #   docker compose up -d        → control plane on http://localhost:4000
-#   FABRICA_DEMO_MODE=1 docker compose up -d
+#   SCRIPTUM_DEMO_MODE=1 docker compose up -d
 #                                → demo mode (auth bypassed, shared workspace)
 #
 # Overrides:
 #   docker-compose.prod.yml     adds Caddy (TLS) + Grafana Alloy for the
 #                               production VM; selected there via COMPOSE_FILE
-#                               in /opt/fabrica/.env
+#                               in /opt/scriptum/.env
 #
 # Configuration lives in .env (see .env.example). The control plane drives the
 # HOST's Docker daemon through the bind-mounted socket, so per-student
 # workspace containers run as siblings of this one, joined to the shared
-# `fabrica` network below. It inspects its own container at startup to
+# `scriptum` network below. It inspects its own container at startup to
 # auto-detect the workspace network, the host-side data path, and the uid:gid
 # that owns the data dir, so those need no env plumbing here (the matching
 # FRC_* env vars remain optional overrides).
 
-name: fabrica
+name: scriptum
 
 services:
   control:
     # Pin the container name (drops compose's `-1` replica suffix) so it reads
-    # as `fabrica-control` in Portainer / `docker ps`. Does not change the
+    # as `scriptum-control` in Portainer / `docker ps`. Does not change the
     # hostname, so the control plane's self-inspection (docker inspect
     # $HOSTNAME) is unaffected; the service name still resolves on the network
     # for Caddy.
-    container_name: fabrica-control
+    container_name: scriptum-control
     # NOTE: the image name below stays "coderunner-*" — that's the literal,
     # currently-published GHCR artifact name (upstream's own release
     # channel), not a local identifier. Renaming this string would just point
     # zero-config installs at an image that doesn't exist. See decision 049.
-    image: ${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-control:${FABRICA_TAG:-latest}
+    image: ${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-control:${SCRIPTUM_TAG:-latest}
     restart: unless-stopped
     # Run as the host owner of the data dir (keeps ./data host-owned, drops
     # root). group_add grants the non-root process access to the bind-mounted
@@ -44,13 +44,13 @@ services:
     # on macOS and native Windows (hence the 0 default, which makes those
     # zero-config), a `docker` group on Linux and WSL2 (WSL2 integration
     # included), where you must set
-    # FABRICA_DOCKER_GID — find it with `stat -c '%g' /var/run/docker.sock`
+    # SCRIPTUM_DOCKER_GID — find it with `stat -c '%g' /var/run/docker.sock`
     # (prod writes it into .env from cloud-init). Supplementary groups do not
     # affect the ownership of files the process creates, so ./data stays
     # host-owned either way.
-    user: "${FABRICA_UID:-1000}:${FABRICA_GID:-1000}"
+    user: "${SCRIPTUM_UID:-1000}:${SCRIPTUM_GID:-1000}"
     group_add:
-      - "${FABRICA_DOCKER_GID:-0}"
+      - "${SCRIPTUM_DOCKER_GID:-0}"
     # The control plane needs host Docker socket and data access on SELinux
     # hosts. Exempt only this trusted orchestrator; student containers retain
     # SELinux confinement and relabel their own bind mounts for shared access.
@@ -62,20 +62,20 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # Compose resolves ./ against the project directory. Set
-      # FABRICA_HOST_DATA_DIR to relocate the data dir (e.g. a mounted disk).
+      # SCRIPTUM_HOST_DATA_DIR to relocate the data dir (e.g. a mounted disk).
       # Do not relabel the whole tree: it includes student container mounts.
-      - ${FABRICA_HOST_DATA_DIR:-./data}:/data
+      - ${SCRIPTUM_HOST_DATA_DIR:-./data}:/data
     environment:
-      CODE_IMAGE: ${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${FABRICA_TAG:-latest}
+      CODE_IMAGE: ${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${SCRIPTUM_TAG:-latest}
       # Demo mode: auth bypassed, everyone shares one admin workspace. Unset
       # (or any falsy value) keeps normal auth. Never expose a demo instance
       # publicly.
-      FABRICA_DEMO_MODE: ${FABRICA_DEMO_MODE:-}
+      SCRIPTUM_DEMO_MODE: ${SCRIPTUM_DEMO_MODE:-}
     env_file:
       - path: .env
         required: false
     networks:
-      - fabrica
+      - scriptum
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:4000/healthz"]
       interval: 15s
@@ -89,16 +89,16 @@ services:
   # `workspace-template` because it represents the per-student template image,
   # not a running service.
   workspace-template:
-    container_name: fabrica-workspace-template
-    image: ${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${FABRICA_TAG:-latest}
+    container_name: scriptum-workspace-template
+    image: ${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${SCRIPTUM_TAG:-latest}
     entrypoint: ["/bin/true"]
     restart: "no"
     network_mode: "none"
 
 networks:
-  fabrica:
+  scriptum:
     # Explicit (non-project-prefixed) name so the control plane can pass it
     # verbatim to `docker run --network`. Self-inspection reads it back from
     # this container's own network attachment at startup.
-    name: fabrica
+    name: scriptum
     driver: bridge

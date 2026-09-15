@@ -1,4 +1,4 @@
-import type { ContainerState, WorkspaceId } from "@frc-fabrica/contracts";
+import type { ContainerState, WorkspaceId } from "@frc-scriptum/contracts";
 
 export type ExecResult = {
 	exitCode: number;

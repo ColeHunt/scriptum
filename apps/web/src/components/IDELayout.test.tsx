@@ -93,7 +93,7 @@ describe("IDELayout", () => {
 		// real browser. This just confirms the panel isn't unmounted, which
 		// is what preserves the iframe's live state while hidden.
 		sessionStorage.setItem(
-			"fabrica:pane-visibility",
+			"scriptum:pane-visibility",
 			JSON.stringify({ editor: true, scope: false, choreo: false }),
 		);
 
@@ -105,7 +105,7 @@ describe("IDELayout", () => {
 
 	test("Driver Station toggled off in shared state stays mounted, letting the editor fill the screen", () => {
 		sessionStorage.setItem(
-			"fabrica:pane-visibility",
+			"scriptum:pane-visibility",
 			JSON.stringify({
 				editor: true,
 				scope: false,

@@ -1,5 +1,5 @@
 {
-	"name": "frc-fabrica",
+	"name": "frc-scriptum",
 	"private": true,
 	"version": "2.0.0",
 	"license": "MIT",
@@ -30,7 +30,7 @@
 		"docs:dev": "bun run --cwd website start",
 		"docs:build": "bun run --cwd website build",
 		"docs:install": "bun install --cwd website",
-		"demo:docker": "FABRICA_DEMO_MODE=1 docker compose up",
+		"demo:docker": "SCRIPTUM_DEMO_MODE=1 docker compose up",
 		"docker:build:workspace": "bun scripts/image.ts build workspace",
 		"docker:build:control": "bun scripts/image.ts build control",
 		"docker:pull:workspace": "bun scripts/image.ts pull workspace",

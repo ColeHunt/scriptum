@@ -1,4 +1,4 @@
-import type { WorkspaceId } from "@frc-fabrica/contracts";
+import type { WorkspaceId } from "@frc-scriptum/contracts";
 import { getLogger } from "../logging";
 import type { AppStorage } from "../storage";
 import { parseDockerStatsLine } from "./converters";

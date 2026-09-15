@@ -246,7 +246,7 @@ USER root
 # extensions; the BSD-3-Clause components require their notice to accompany
 # the distribution. Placed after the Gradle priming so notice edits don't
 # invalidate that layer.
-COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/fabrica/
+COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/scriptum/
 
 # ── Runtime defaults ──────────────────────────────────────────────────
 RUN mkdir -p /workspace/project \

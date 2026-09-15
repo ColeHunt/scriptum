@@ -37,7 +37,7 @@ describe("UI store", () => {
 		useUIStore.getState().toggleConsoleCollapsed();
 		// Read the persisted blob directly
 		const persisted = JSON.parse(
-			localStorage.getItem("frc-fabrica-ui") ?? "{}",
+			localStorage.getItem("frc-scriptum-ui") ?? "{}",
 		);
 		expect(persisted?.state?.inputMode).toBe("keyboard");
 		// consoleCollapsed should NOT be persisted
@@ -47,7 +47,7 @@ describe("UI store", () => {
 	test("inputMode persists after store rehydration from localStorage", () => {
 		// Write keyboard mode into localStorage as if a previous session saved it
 		localStorage.setItem(
-			"frc-fabrica-ui",
+			"frc-scriptum-ui",
 			JSON.stringify({ state: { inputMode: "keyboard" }, version: 0 }),
 		);
 		// Trigger rehydration

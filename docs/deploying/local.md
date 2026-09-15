@@ -58,28 +58,28 @@ SSO_SESSION_TTL=43200
 LEGION_BASE_URL=https://legion.yourteam.org
 
 # The address students will open. Replace this example with the host's LAN IP.
-FABRICA_BASE_URL=http://192.168.1.50:4000
+SCRIPTUM_BASE_URL=http://192.168.1.50:4000
 
 # REQUIRED on Linux and WSL2. Run this and paste the number it prints:
 #   stat -c '%g' /var/run/docker.sock
-FABRICA_DOCKER_GID=<docker-socket-group-id>
+SCRIPTUM_DOCKER_GID=<docker-socket-group-id>
 ```
 
-`FABRICA_DOCKER_GID` **must be set on Linux and WSL2**, including Docker
+`SCRIPTUM_DOCKER_GID` **must be set on Linux and WSL2**, including Docker
 Desktop's WSL2 integration, or the control plane cannot manage student
 containers. Omit it on Docker Desktop for macOS and native Windows.
 
 CodeRunner and Legion must share a parent domain so the browser can send the
 `mw_sso` cookie to both — see [Legion Setup](./legion-setup.md). Use
-`localhost` for `FABRICA_BASE_URL` only when the browser is on the host
+`localhost` for `SCRIPTUM_BASE_URL` only when the browser is on the host
 machine; use the host's LAN IP when students connect from other devices.
 
 Student projects and the database are stored in `./data`. To use another disk,
-set `FABRICA_HOST_DATA_DIR` to an absolute host path.
+set `SCRIPTUM_HOST_DATA_DIR` to an absolute host path.
 
 The control container defaults to uid:gid `1000:1000`. On Linux or WSL2, check
-the data directory with `stat -c '%u:%g' ./data`; set `FABRICA_UID` and
-`FABRICA_GID` only if its non-root owner differs. Leave both unset for the
+the data directory with `stat -c '%u:%g' ./data`; set `SCRIPTUM_UID` and
+`SCRIPTUM_GID` only if its non-root owner differs. Leave both unset for the
 usual `1000:1000` owner and on Docker Desktop for macOS or native Windows. See
 the [Configuration Reference](../reference/configuration.md#docker-compose-deployment)
 for non-standard layouts.
@@ -125,7 +125,7 @@ Students can then open `http://<your-LAN-IP>:4000/`.
 Click "Sign in via Legion" and authenticate the way you always do for any
 MARS/WARS app. Anyone who can sign in through Legion can use CodeRunner —
 there is no separate local allowlist. To reach the admin panel, add yourself
-to the `fabrica-admin` group in Legion's own `/admin/groups` (see
+to the `scriptum-admin` group in Legion's own `/admin/groups` (see
 [Legion Setup](./legion-setup.md)); no CodeRunner-side command or restart is
 needed for that to take effect.
 
@@ -144,10 +144,10 @@ students are active, then complete every step below.
 
 ### 1. Choose the new version
 
-Set `FABRICA_TAG` in `.env` to the new release tag, for example:
+Set `SCRIPTUM_TAG` in `.env` to the new release tag, for example:
 
 ```bash
-FABRICA_TAG=v2.5.0
+SCRIPTUM_TAG=v2.5.0
 ```
 
 If you intentionally track `latest`, leave the existing value unchanged.

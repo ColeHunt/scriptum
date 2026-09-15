@@ -119,7 +119,7 @@ describe("session login and ownership", () => {
 });
 
 describe("role from Legion groups", () => {
-	test("fabrica-admin group grants admin; its absence does not", async () => {
+	test("scriptum-admin group grants admin; its absence does not", async () => {
 		await withApp(async (app) => {
 			const admin = await login(app, "coach", { role: "admin" });
 			const student = await login(app, "alice", { role: "student" });

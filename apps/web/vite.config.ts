@@ -24,13 +24,13 @@ export default defineConfig({
 			"/scope": controlPlane,
 			"/choreo": controlPlane,
 			"/elastic": controlPlane,
-			"/fabrica-icon.png": controlPlane,
+			"/scriptum-icon.png": controlPlane,
 			"/favicon.ico": controlPlane,
 			"/login/legion": controlPlane,
 			"/logout": controlPlane,
 			"^/admin/(assets|lessons|audit-log|users|containers|workspaces|config|status)(/.*)?$":
 				proxyOpts,
-			"^/u/[^/]+/(api|ws|sim|vscode|assets|fabrica-icon\\.png|favicon\\.ico)(/.*)?$":
+			"^/u/[^/]+/(api|ws|sim|vscode|assets|scriptum-icon\\.png|favicon\\.ico)(/.*)?$":
 				proxyOpts,
 		},
 	},

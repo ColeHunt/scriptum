@@ -93,7 +93,7 @@ for poking at the app without setting up Legion:
 bun run dev:control -- --demo
 ```
 
-The `--demo` flag (or the `FABRICA_DEMO_MODE` env var) is read at startup. Do
+The `--demo` flag (or the `SCRIPTUM_DEMO_MODE` env var) is read at startup. Do
 not enable it for anything reachable by real students.
 
 ### Web shell: `bun run dev:web`

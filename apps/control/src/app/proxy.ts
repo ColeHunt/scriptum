@@ -1,4 +1,4 @@
-import { EDITOR_STATE_HEADER } from "@frc-fabrica/contracts";
+import { EDITOR_STATE_HEADER } from "@frc-scriptum/contracts";
 import { requireWebSocketOrigin } from "../auth/middleware";
 import { getLogger } from "../logging";
 import { proxyUpstreamDuration } from "../metrics";

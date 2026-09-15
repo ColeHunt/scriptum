@@ -10,7 +10,7 @@ describe("templateRoute", () => {
 			"/admin",
 			"/admin/",
 			"/favicon.ico",
-			"/fabrica-icon.png",
+			"/scriptum-icon.png",
 			"/api/openapi.json",
 			"/api/session",
 			"/login/legion",

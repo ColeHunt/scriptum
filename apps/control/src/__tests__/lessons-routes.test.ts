@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { LessonModuleWithLockState } from "@frc-fabrica/contracts";
+import type { LessonModuleWithLockState } from "@frc-scriptum/contracts";
 import {
 	cookieFrom,
 	createFakeDocker,

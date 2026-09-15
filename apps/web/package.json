@@ -1,5 +1,5 @@
 {
-	"name": "frc-fabrica-web",
+	"name": "frc-scriptum-web",
 	"private": true,
 	"version": "0.0.1",
 	"license": "MIT",
@@ -16,7 +16,7 @@
 	"dependencies": {
 		"@base-ui/react": "^1.4.1",
 		"@fontsource-variable/geist": "^5.2.8",
-		"@frc-fabrica/contracts": "workspace:*",
+		"@frc-scriptum/contracts": "workspace:*",
 		"@tailwindcss/vite": "^4.2.1",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",

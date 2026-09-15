@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { LessonModule, WorkspaceId } from "@frc-fabrica/contracts";
+import type { LessonModule, WorkspaceId } from "@frc-scriptum/contracts";
 import { BundledCatalogSource, type CatalogSource } from "../catalog";
 import {
 	CheckpointManager,

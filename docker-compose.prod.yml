@@ -2,11 +2,11 @@
 # Grafana Alloy (metrics + logs shipping to Grafana Cloud).
 #
 # Selected on the VM via COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
-# in /opt/fabrica/.env, so a plain `docker compose up -d` runs the full
+# in /opt/scriptum/.env, so a plain `docker compose up -d` runs the full
 # stack. The referenced config files are rendered at boot by cloud-init's
 # render-env.sh (see deploy/cloud-init/user-data.yaml):
-#   /opt/fabrica/caddy/Caddyfile     domain + reverse_proxy control:4000
-#   /opt/fabrica/alloy/config.alloy  Grafana Cloud credentials + pipelines
+#   /opt/scriptum/caddy/Caddyfile     domain + reverse_proxy control:4000
+#   /opt/scriptum/alloy/config.alloy  Grafana Cloud credentials + pipelines
 #
 # Forks that don't ship telemetry to Grafana Cloud can delete the alloy
 # service (and its render step) — nothing else depends on it.
@@ -27,11 +27,11 @@ services:
       - "443:443"
       - "443:443/udp"
     volumes:
-      - /opt/fabrica/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/scriptum/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:
-      - fabrica
+      - scriptum
     depends_on:
       - control
 
@@ -43,7 +43,7 @@ services:
       - --storage.path=/var/lib/alloy/data
       - /etc/alloy/config.alloy
     volumes:
-      - /opt/fabrica/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /opt/scriptum/alloy/config.alloy:/etc/alloy/config.alloy:ro
       # Read-only socket access for discovery.docker + loki.source.docker
       # (container log collection — journald is not used in this deployment).
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -54,7 +54,7 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     networks:
-      - fabrica
+      - scriptum
 
 volumes:
   caddy_data:

@@ -7,7 +7,7 @@
  *
  * Requires a running database at FRC_DB_PATH (default: data/app.db). Role is
  * not settable here — it's recomputed on every request from the signed-in
- * member's Legion `fabrica-admin` group membership (see
+ * member's Legion `scriptum-admin` group membership (see
  * apps/control/src/legion/session.ts), so grant/revoke admin access in
  * Legion's own /admin/groups instead.
  */
