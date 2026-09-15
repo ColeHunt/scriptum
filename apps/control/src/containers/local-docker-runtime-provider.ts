@@ -2,7 +2,7 @@ import { chmod, mkdir } from "node:fs/promises";
 import type {
 	ContainersStatusResponse,
 	WorkspaceId,
-} from "@frc-coderunner/contracts";
+} from "@frc-fabrica/contracts";
 import { getLogger } from "../logging";
 import { containerStartDuration } from "../metrics";
 import type {
@@ -643,7 +643,7 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		// state, build output). Demo mode puts it on a named volume so it stays off
 		// the host filesystem, where a bind mount crossing the Docker Desktop VM
 		// boundary makes seeding and startup drastically slower. Real deployments
-		// keep the bind mount, which lands the caches on CODERUNNER_HOST_DATA_DIR
+		// keep the bind mount, which lands the caches on FABRICA_HOST_DATA_DIR
 		// and leaves them visible to the operator.
 		const configVolume = config.demo ? codeVolumeName(workspace.id) : null;
 		if (configVolume) {

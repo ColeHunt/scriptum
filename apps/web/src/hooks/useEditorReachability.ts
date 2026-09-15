@@ -1,4 +1,4 @@
-import { EDITOR_STATE_HEADER } from "@frc-coderunner/contracts";
+import { EDITOR_STATE_HEADER } from "@frc-fabrica/contracts";
 import { useEffect, useState } from "react";
 
 export type EditorStatus = "loading" | "starting" | "reachable" | "error";

@@ -5,7 +5,7 @@
  * with centralized helpers backed by Legion's `mw_sso` cookie (see `../legion/`).
  */
 
-import type { WorkspaceSlug } from "@frc-coderunner/contracts";
+import type { WorkspaceSlug } from "@frc-fabrica/contracts";
 import { getLegionSessionFromRequest } from "../legion/session";
 import { getLogger } from "../logging";
 import type { AppStorage, AuthContext } from "../storage";

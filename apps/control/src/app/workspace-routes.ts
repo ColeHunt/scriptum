@@ -9,7 +9,7 @@ import {
 	simRunCommandRequestSchema,
 	verifyCheckpointsRequestSchema,
 	workspaceSlugSchema,
-} from "@frc-coderunner/contracts";
+} from "@frc-fabrica/contracts";
 import {
 	requireWebSocketOrigin,
 	requireWorkspaceOwnership,

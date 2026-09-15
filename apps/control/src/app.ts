@@ -1,4 +1,4 @@
-import type { TopLevelSessionResponse } from "@frc-coderunner/contracts";
+import type { TopLevelSessionResponse } from "@frc-fabrica/contracts";
 import { handleAdminRoute } from "./app/admin-routes";
 import {
 	choreoWebAssetResponse,

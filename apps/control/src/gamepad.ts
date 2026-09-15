@@ -1,7 +1,4 @@
-import type {
-	GamepadClientMessage,
-	WorkspaceId,
-} from "@frc-coderunner/contracts";
+import type { GamepadClientMessage, WorkspaceId } from "@frc-fabrica/contracts";
 import { type HalSimBridge, HalSimBridgeUnavailableError } from "./halsim";
 import { getLogger } from "./logging";
 

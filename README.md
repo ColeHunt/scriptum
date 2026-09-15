@@ -9,12 +9,12 @@ Try CodeRunner locally in demo mode — no Legion setup, no configuration requir
 ```bash
 git clone https://github.com/mathewdunne/CodeRunner coderunner
 cd coderunner
-CODERUNNER_DEMO_MODE=1 docker compose up
+FABRICA_DEMO_MODE=1 docker compose up
 ```
 
 Open [http://localhost:4000](http://localhost:4000). You land directly in the IDE as a single seeded admin user.
 
-**Prerequisites:** Docker with the Compose plugin (running). No Bun, Flutter, submodules, or emscripten needed — the control image ships the web shell, AdvantageScope, and Choreo assets prebuilt (Elastic Dashboard too, if the published image was built with it — see [decision 041](docs/decisions/041-elastic-dashboard-integration.md)). On macOS and native Windows there is nothing to configure; on **Linux and WSL2** (Docker Desktop's WSL2 integration included) the socket belongs to the `docker` group, so prefix the command with `CODERUNNER_DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)` or set that variable in `.env`.
+**Prerequisites:** Docker with the Compose plugin (running). No Bun, Flutter, submodules, or emscripten needed — the control image ships the web shell, AdvantageScope, and Choreo assets prebuilt (Elastic Dashboard too, if the published image was built with it — see [decision 041](docs/decisions/041-elastic-dashboard-integration.md)). On macOS and native Windows there is nothing to configure; on **Linux and WSL2** (Docker Desktop's WSL2 integration included) the socket belongs to the `docker` group, so prefix the command with `FABRICA_DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)` or set that variable in `.env`.
 
 > **Warning:** Demo mode bypasses authentication entirely. Every visitor shares the same admin user and workspace. Do not expose a demo instance to the public internet. See [docs/quick-start.md](docs/quick-start.md) for full details and next steps.
 

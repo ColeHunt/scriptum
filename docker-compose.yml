@@ -1,7 +1,7 @@
 # CodeRunner — base compose file (the minimal local/self-hosted deployment).
 #
 #   docker compose up -d        → control plane on http://localhost:4000
-#   CODERUNNER_DEMO_MODE=1 docker compose up -d
+#   FABRICA_DEMO_MODE=1 docker compose up -d
 #                                → demo mode (auth bypassed, shared workspace)
 #
 # Overrides:
@@ -27,7 +27,7 @@ services:
     # $HOSTNAME) is unaffected; the service name still resolves on the network
     # for Caddy.
     container_name: coderunner-control
-    image: ${CODERUNNER_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-control:${CODERUNNER_TAG:-latest}
+    image: ${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-control:${FABRICA_TAG:-latest}
     restart: unless-stopped
     # Run as the host owner of the data dir (keeps ./data host-owned, drops
     # root). group_add grants the non-root process access to the bind-mounted
@@ -40,13 +40,13 @@ services:
     # on macOS and native Windows (hence the 0 default, which makes those
     # zero-config), a `docker` group on Linux and WSL2 (WSL2 integration
     # included), where you must set
-    # CODERUNNER_DOCKER_GID — find it with `stat -c '%g' /var/run/docker.sock`
+    # FABRICA_DOCKER_GID — find it with `stat -c '%g' /var/run/docker.sock`
     # (prod writes it into .env from cloud-init). Supplementary groups do not
     # affect the ownership of files the process creates, so ./data stays
     # host-owned either way.
-    user: "${CODERUNNER_UID:-1000}:${CODERUNNER_GID:-1000}"
+    user: "${FABRICA_UID:-1000}:${FABRICA_GID:-1000}"
     group_add:
-      - "${CODERUNNER_DOCKER_GID:-0}"
+      - "${FABRICA_DOCKER_GID:-0}"
     # The control plane needs host Docker socket and data access on SELinux
     # hosts. Exempt only this trusted orchestrator; student containers retain
     # SELinux confinement and relabel their own bind mounts for shared access.
@@ -58,15 +58,15 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # Compose resolves ./ against the project directory. Set
-      # CODERUNNER_HOST_DATA_DIR to relocate the data dir (e.g. a mounted disk).
+      # FABRICA_HOST_DATA_DIR to relocate the data dir (e.g. a mounted disk).
       # Do not relabel the whole tree: it includes student container mounts.
-      - ${CODERUNNER_HOST_DATA_DIR:-./data}:/data
+      - ${FABRICA_HOST_DATA_DIR:-./data}:/data
     environment:
-      CODE_IMAGE: ${CODERUNNER_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${CODERUNNER_TAG:-latest}
+      CODE_IMAGE: ${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${FABRICA_TAG:-latest}
       # Demo mode: auth bypassed, everyone shares one admin workspace. Unset
       # (or any falsy value) keeps normal auth. Never expose a demo instance
       # publicly.
-      CODERUNNER_DEMO_MODE: ${CODERUNNER_DEMO_MODE:-}
+      FABRICA_DEMO_MODE: ${FABRICA_DEMO_MODE:-}
     env_file:
       - path: .env
         required: false
@@ -86,7 +86,7 @@ services:
   # not a running service.
   workspace-template:
     container_name: coderunner-workspace-template
-    image: ${CODERUNNER_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${CODERUNNER_TAG:-latest}
+    image: ${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${FABRICA_TAG:-latest}
     entrypoint: ["/bin/true"]
     restart: "no"
     network_mode: "none"

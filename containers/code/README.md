@@ -39,7 +39,7 @@ The runtime seeds conservative memory defaults for classroom density:
 bun run docker:build:workspace
 ```
 
-Tags the image as `${CODERUNNER_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${CODERUNNER_TAG:-latest}` —
+Tags the image as `${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${FABRICA_TAG:-latest}` —
 the same name docker compose and the control plane resolve, so a local build is
 used directly. Override the full name with the `CODE_IMAGE` env var.
 
@@ -78,8 +78,8 @@ frc-sim.workspace=<workspaceId>
 | `PUID` | Yes | User ID for file permissions (matches host UID) |
 | `PGID` | Yes | Group ID for file permissions (matches host GID) |
 | `VSCODE_BASE_PATH` | Yes behind proxy | Reverse proxy base path, e.g. `/u/<slug>/vscode/` |
-| `CODERUNNER_JDT_LS_VMARGS` | No | Overrides the seeded Java language-server VM args |
-| `CODERUNNER_GRADLE_JVMARGS` | No | Overrides the seeded Gradle daemon/import VM args |
+| `FABRICA_JDT_LS_VMARGS` | No | Overrides the seeded Java language-server VM args |
+| `FABRICA_GRADLE_JVMARGS` | No | Overrides the seeded Gradle daemon/import VM args |
 | `GRADLE_SIM_JVMARGS` | No | Overrides the Gradle daemon VM args for `start-sim.sh` |
 | `GRADLE_MAX_WORKERS` | No | Overrides the Gradle worker cap for `start-sim.sh` |
 | `ROBOT_SIM_JVMARGS` | No | Overrides the robot JavaExec VM args applied by `sim-headless.init.gradle` |

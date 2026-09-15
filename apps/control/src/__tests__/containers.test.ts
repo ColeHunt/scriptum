@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { WorkspaceId } from "@frc-coderunner/contracts";
+import type { WorkspaceId } from "@frc-fabrica/contracts";
 import { type ControlAppOptions, createApp } from "../app";
 import {
 	managedContainerStats,
@@ -333,7 +333,7 @@ describe("code container orchestration", () => {
 			catalogDir,
 			// Explicit, not omitted: Bun auto-loads .env for every process
 			// including `bun test`, so a developer's real LESSONS_CATALOG_REPO/
-			// CODERUNNER_DEMO_MODE would otherwise silently change this test's
+			// FABRICA_DEMO_MODE would otherwise silently change this test's
 			// behavior. See the identical guard in helpers.ts's withApp().
 			catalogRepo: "",
 			demo: false,

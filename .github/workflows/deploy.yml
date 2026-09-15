@@ -177,10 +177,10 @@ jobs:
           sudo install -o root -g root -m 644 /tmp/docker-compose.prod.yml /opt/coderunner/docker-compose.prod.yml
           rm -f /tmp/docker-compose.yml /tmp/docker-compose.prod.yml
 
-          # Pin the deployed tag. render-env.sh preserves CODERUNNER_TAG across
+          # Pin the deployed tag. render-env.sh preserves FABRICA_TAG across
           # reboots; compose interpolates it into the control + workspace images.
-          sudo sed -i '/^CODERUNNER_TAG=/d' /opt/coderunner/.env
-          echo "CODERUNNER_TAG=$TAG" | sudo tee -a /opt/coderunner/.env >/dev/null
+          sudo sed -i '/^FABRICA_TAG=/d' /opt/coderunner/.env
+          echo "FABRICA_TAG=$TAG" | sudo tee -a /opt/coderunner/.env >/dev/null
 
           cd /opt/coderunner
           sudo docker compose pull

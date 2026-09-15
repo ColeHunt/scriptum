@@ -11,10 +11,10 @@ DEFAULT_JDT_LS_VMARGS="-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePoli
 DEFAULT_GRADLE_JVMARGS="-Xms64m -Xmx384m -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=96m -XX:+HeapDumpOnOutOfMemoryError -XX:ActiveProcessorCount=2 -Dfile.encoding=UTF-8"
 TOOLING_JAVA_HOME="${JDK_HOME:-/usr/lib/jvm/jdk-21}"
 PROJECT_JAVA_HOME="${PROJECT_JAVA_HOME:-/usr/lib/jvm/jdk-17}"
-LEGACY_CODERUNNER_JDT_HOME="/usr/lib/jvm/jdk-21"
+LEGACY_FABRICA_JDT_HOME="/usr/lib/jvm/jdk-21"
 LEGACY_GRADLE_ARGS="--no-daemon --no-watch-fs --max-workers=2"
-CODERUNNER_JDT_LS_VMARGS="${CODERUNNER_JDT_LS_VMARGS:-${DEFAULT_JDT_LS_VMARGS}}"
-CODERUNNER_GRADLE_JVMARGS="${CODERUNNER_GRADLE_JVMARGS:-${DEFAULT_GRADLE_JVMARGS}}"
+FABRICA_JDT_LS_VMARGS="${FABRICA_JDT_LS_VMARGS:-${DEFAULT_JDT_LS_VMARGS}}"
+FABRICA_GRADLE_JVMARGS="${FABRICA_GRADLE_JVMARGS:-${DEFAULT_GRADLE_JVMARGS}}"
 
 mkdir -p "${GRADLE_USER_HOME}" "${EXTENSIONS_DIR}" "${HOME}/data/Machine" "${HOME}/data/User"
 
@@ -43,14 +43,14 @@ fi
 GRADLE_PROPERTIES="${GRADLE_USER_HOME}/gradle.properties"
 if [[ ! -e "${GRADLE_PROPERTIES}" ]]; then
   cat > "${GRADLE_PROPERTIES}" <<EOF
-org.gradle.jvmargs=${CODERUNNER_GRADLE_JVMARGS}
+org.gradle.jvmargs=${FABRICA_GRADLE_JVMARGS}
 org.gradle.daemon=false
 org.gradle.parallel=false
 org.gradle.workers.max=2
 org.gradle.vfs.watch=false
 EOF
 else
-  grep -q '^org\.gradle\.jvmargs=' "${GRADLE_PROPERTIES}" || printf 'org.gradle.jvmargs=%s\n' "${CODERUNNER_GRADLE_JVMARGS}" >> "${GRADLE_PROPERTIES}"
+  grep -q '^org\.gradle\.jvmargs=' "${GRADLE_PROPERTIES}" || printf 'org.gradle.jvmargs=%s\n' "${FABRICA_GRADLE_JVMARGS}" >> "${GRADLE_PROPERTIES}"
   grep -q '^org\.gradle\.daemon=' "${GRADLE_PROPERTIES}" || printf 'org.gradle.daemon=false\n' >> "${GRADLE_PROPERTIES}"
   grep -q '^org\.gradle\.parallel=' "${GRADLE_PROPERTIES}" || printf 'org.gradle.parallel=false\n' >> "${GRADLE_PROPERTIES}"
   grep -q '^org\.gradle\.workers\.max=' "${GRADLE_PROPERTIES}" || printf 'org.gradle.workers.max=2\n' >> "${GRADLE_PROPERTIES}"
@@ -69,11 +69,11 @@ merge_vscode_settings() {
 
   tmp_settings="$(mktemp)"
   if jq \
-    --arg jdtVmargs "${CODERUNNER_JDT_LS_VMARGS}" \
+    --arg jdtVmargs "${FABRICA_JDT_LS_VMARGS}" \
     --arg toolingJavaHome "${TOOLING_JAVA_HOME}" \
-    --arg legacyJdtJavaHome "${LEGACY_CODERUNNER_JDT_HOME}" \
+    --arg legacyJdtJavaHome "${LEGACY_FABRICA_JDT_HOME}" \
     --arg projectJavaHome "${PROJECT_JAVA_HOME}" \
-    --arg gradleJvmargs "${CODERUNNER_GRADLE_JVMARGS}" \
+    --arg gradleJvmargs "${FABRICA_GRADLE_JVMARGS}" \
     --arg defaultGradleJvmargs "${DEFAULT_GRADLE_JVMARGS}" \
     --arg legacyGradleArgs "${LEGACY_GRADLE_ARGS}" \
     --arg mode "${mode}" \

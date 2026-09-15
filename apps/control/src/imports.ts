@@ -3,8 +3,8 @@ import type {
 	ImportServerMessage,
 	LessonModuleKind,
 	WorkspaceId,
-} from "@frc-coderunner/contracts";
-import { lessonModuleSubdirSchema } from "@frc-coderunner/contracts";
+} from "@frc-fabrica/contracts";
+import { lessonModuleSubdirSchema } from "@frc-fabrica/contracts";
 import { IMAGE_CATALOG_DIR } from "./catalog";
 import { getLogger } from "./logging";
 import type { WorkspaceRuntimeProvider } from "./runtime";

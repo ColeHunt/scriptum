@@ -4,7 +4,7 @@ import type {
 	DriverStationPatch,
 	DsMode,
 	WorkspaceId,
-} from "@frc-coderunner/contracts";
+} from "@frc-fabrica/contracts";
 import { getLogger } from "./logging";
 import { type BridgeEntryBase, ReconnectingWsBridge } from "./ws-bridge";
 

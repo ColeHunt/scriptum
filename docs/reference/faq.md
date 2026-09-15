@@ -62,7 +62,7 @@ communications are ready, choose a mode and click **Enable**.
 
 For a real team deployment, students sign in through Legion, your team's own SSO service — the same sign-in every other MARS/WARS app uses. No accounts are created in advance in CodeRunner itself; anyone who can sign in through Legion gets a workspace automatically on first login. Admin access is a Legion group membership, not something configured here.
 
-For a solo evaluation or demo, start the demo stack (`CODERUNNER_DEMO_MODE=1 docker compose up`, or `bun run demo:docker`). Demo mode bypasses all authentication. See [Quick Start (Installation)](../quick-start.md).
+For a solo evaluation or demo, start the demo stack (`FABRICA_DEMO_MODE=1 docker compose up`, or `bun run demo:docker`). Demo mode bypasses all authentication. See [Quick Start (Installation)](../quick-start.md).
 
 ### What happens to a student's work when they switch lessons?
 

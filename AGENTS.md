@@ -68,7 +68,7 @@ portal's Lessons tab — unassigned modules stay visible to everyone; see
 **Auth (post-V2):** sign-in is delegated entirely to Legion
 (`/prj/frc/apps/legion`), the same Slack-native SSO the sibling MARS/WARS apps
 use — verified locally from the `mw_sso` cookie (`apps/control/src/legion/`),
-no OAuth, no callback route. Demo mode (`CODERUNNER_DEMO_MODE=1`) still runs
+no OAuth, no callback route. Demo mode (`FABRICA_DEMO_MODE=1`) still runs
 fully standalone with zero Legion config. Admin access is the
 `coderunner-admin` Legion group, recomputed live on every request — there is
 no local promote/demote or allowlist anymore. See
@@ -77,13 +77,13 @@ no local promote/demote or allowlist anymore. See
 **Containerized control plane (post-V2):** the control plane ships as a Docker
 image (`containers/control/Dockerfile` → `ghcr.io/mathewdunne/coderunner-control`)
 and is deployed with docker compose (`docker-compose.yml` base +
-`docker-compose.prod.yml` for Caddy/Alloy; demo mode is `CODERUNNER_DEMO_MODE=1
+`docker-compose.prod.yml` for Caddy/Alloy; demo mode is `FABRICA_DEMO_MODE=1
 docker compose up`, an env passthrough rather than an override file). It runs
 the host Docker daemon over the bind-mounted socket and manages workspace
 containers as siblings. The control container runs **non-root** as the data-dir
 owner (image default `USER bun`; compose overrides via
-`user: ${CODERUNNER_UID}:${CODERUNNER_GID}` with `group_add:
-${CODERUNNER_DOCKER_GID}` for socket access), so `./data` stays host-owned, not
+`user: ${FABRICA_UID}:${FABRICA_GID}` with `group_add:
+${FABRICA_DOCKER_GID}` for socket access), so `./data` stays host-owned, not
 root-owned. Two modes via env: **port mode** (default;
 `FRC_CONTAINER_NETWORK` unset) publishes loopback ports and is what
 `bun run dev:control` uses; **network mode** (`FRC_CONTAINER_NETWORK=coderunner`)
@@ -154,7 +154,7 @@ arch-independent). See `docs/decisions/035-multi-arch-images-and-workflow-split.
 - Start control plane (dev, `--watch`): `bun run dev:control`
 - Start web shell with HMR: `bun run dev:web`
 - Start prod from source (migrates then serves): `bun run start`
-- Run the containerized demo stack: `bun run demo:docker` (or `CODERUNNER_DEMO_MODE=1 docker compose up`)
+- Run the containerized demo stack: `bun run demo:docker` (or `FABRICA_DEMO_MODE=1 docker compose up`)
 - Containerized ops (compose deployments): `docker compose exec control coderunner <subcommand>` (or `docker compose run --rm control <subcommand>` while the plane is stopped) — see `docs/reference/cli-reference.md`
 - Prod build (web + ascope + image pull): `bun run build`
 - Backup projects: `bun run backup`

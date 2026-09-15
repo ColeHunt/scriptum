@@ -1,9 +1,6 @@
 import { mkdir, rm, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import type {
-	AdminActionResponse,
-	WorkspaceId,
-} from "@frc-coderunner/contracts";
+import type { AdminActionResponse, WorkspaceId } from "@frc-fabrica/contracts";
 import { queryAuditLog, recordAuditEvent } from "../audit";
 import { requireAdmin } from "../auth/middleware";
 import type { CatalogSource } from "../catalog";

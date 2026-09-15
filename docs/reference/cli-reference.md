@@ -13,7 +13,7 @@ All scripts are run from the repo root with `bun run NAME` and require Bun 1.3.1
 |--------|-------------|
 | `start` | Applies pending database migrations, then starts the control plane. The normal way to run CodeRunner from source. |
 | `demo` | Applies migrations, then starts the control plane in demo mode (`--demo`), from source. Auth is bypassed and every visitor shares one admin workspace — for local evaluation only. See [Quick Start (Installation)](../quick-start.md). |
-| `demo:docker` | Runs the containerized demo stack: `CODERUNNER_DEMO_MODE=1 docker compose up`. The containerized equivalent of `demo`. |
+| `demo:docker` | Runs the containerized demo stack: `FABRICA_DEMO_MODE=1 docker compose up`. The containerized equivalent of `demo`. |
 | `dev:control` | Starts the control plane with `--watch` so it restarts automatically when source files change. Use during backend development. Always runs in port mode, regardless of `FRC_CONTAINER_NETWORK`. |
 | `dev:web` | Starts the Vite dev server for the React web shell with HMR. Use alongside `dev:control` during frontend development. |
 
@@ -89,7 +89,7 @@ membership, granted entirely in Legion's own `/admin/groups`; see
 
 | Script | What it does |
 |--------|-------------|
-| `docker:pull:workspace` | Pulls the workspace image (`${CODERUNNER_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${CODERUNNER_TAG:-latest}`) from the registry. Called automatically by `build`. |
+| `docker:pull:workspace` | Pulls the workspace image (`${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${FABRICA_TAG:-latest}`) from the registry. Called automatically by `build`. |
 | `docker:build:workspace` | Builds the workspace image locally from `containers/code/Dockerfile`, tagged with the same canonical name the pull uses — so a rebuild is picked up directly by `docker compose up`. Use when iterating on the container itself; normal deployments pull the prebuilt image instead. |
 | `docker:build:control` | Builds the control-plane image locally: web shell, AdvantageScope Lite (compiled in-image via emsdk), and Choreo's web frontend (cloned and built in-image) all come from source; Elastic Dashboard must already be built at `dist/elastic` (via `build:elastic` or `fetch:dist`) before running this, since the image has no Flutter toolchain. Choreo's repo/commit pin is passed explicitly from `vendor/tools.json`. Normal deployments pull the published image instead. |
 | `docker:cleanup` | Removes all stopped managed containers (those with the `frc-sim.managed=true` label). Safe to run while the control plane is up. Accepts `--dry-run` to preview what would be removed. |

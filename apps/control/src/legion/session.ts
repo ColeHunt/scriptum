@@ -22,7 +22,7 @@ import { verifyLegionToken } from "./sso";
 const log = getLogger("legion");
 
 export const MW_SSO_COOKIE = "mw_sso";
-export const CODERUNNER_ADMIN_GROUP = "coderunner-admin";
+export const FABRICA_ADMIN_GROUP = "coderunner-admin";
 
 export type LegionSession = {
 	user: {
@@ -102,7 +102,7 @@ export async function getLegionSessionFromRequest(
 	const claims = result.claims;
 	const viaLink = claims.via === "link";
 	const role =
-		!viaLink && claims.groups.includes(CODERUNNER_ADMIN_GROUP)
+		!viaLink && claims.groups.includes(FABRICA_ADMIN_GROUP)
 			? "admin"
 			: "student";
 	const slug = slugFromUsername(claims.username);

@@ -2,7 +2,7 @@ import { expect } from "bun:test";
 import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { WorkspaceId } from "@frc-coderunner/contracts";
+import type { WorkspaceId } from "@frc-fabrica/contracts";
 import { type ControlApp, type ControlAppOptions, createApp } from "../app";
 import { getSessionFromRequest } from "../auth/middleware";
 import type { DockerCommandResult, DockerRunner } from "../containers";
@@ -304,7 +304,7 @@ export async function withApp<T>(
 		idleStopMinutes: 30,
 		containerAutoStart: false,
 		// Explicit false (not nullish, so `??` can't fall through to
-		// Bun.env.CODERUNNER_DEMO_MODE) - same class of bug as catalogRepo
+		// Bun.env.FABRICA_DEMO_MODE) - same class of bug as catalogRepo
 		// above: a developer's real .env with demo mode on for local testing
 		// would otherwise silently flip every test into demo mode. Tests that
 		// actually want demo mode still override it via `options`, spread below.

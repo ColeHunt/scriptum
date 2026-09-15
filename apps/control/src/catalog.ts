@@ -1,9 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import {
-	type LessonModule,
-	lessonCatalogSchema,
-} from "@frc-coderunner/contracts";
+import { type LessonModule, lessonCatalogSchema } from "@frc-fabrica/contracts";
 import type { ControlConfig } from "./config";
 import { ImportError } from "./imports";
 import { getLogger } from "./logging";

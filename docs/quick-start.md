@@ -39,30 +39,30 @@ Then start the demo for your platform:
 <TabItem value="linux" label="Linux / WSL2" default>
 
 ```bash
-CODERUNNER_DOCKER_GID=$(stat -c '%g' /var/run/docker.sock) CODERUNNER_DEMO_MODE=1 docker compose up
+FABRICA_DOCKER_GID=$(stat -c '%g' /var/run/docker.sock) FABRICA_DEMO_MODE=1 docker compose up
 ```
 
-`CODERUNNER_DOCKER_GID` is required on Linux and WSL2 so the control plane can access the Docker socket.
+`FABRICA_DOCKER_GID` is required on Linux and WSL2 so the control plane can access the Docker socket.
 
 </TabItem>
 <TabItem value="macos" label="macOS">
 
 ```bash
-CODERUNNER_DEMO_MODE=1 docker compose up
+FABRICA_DEMO_MODE=1 docker compose up
 ```
 
 </TabItem>
 <TabItem value="powershell" label="Windows (PowerShell)">
 
 ```powershell
-$env:CODERUNNER_DEMO_MODE = "1"; docker compose up
+$env:FABRICA_DEMO_MODE = "1"; docker compose up
 ```
 
 </TabItem>
 <TabItem value="cmd" label="Windows (cmd)">
 
 ```bat
-set "CODERUNNER_DEMO_MODE=1" && docker compose up
+set "FABRICA_DEMO_MODE=1" && docker compose up
 ```
 
 </TabItem>

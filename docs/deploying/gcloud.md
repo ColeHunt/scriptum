@@ -217,14 +217,14 @@ gh workflow run "Deploy" --ref main -f tag=v2.0.0
 
 ### 10. Become the first admin
 
-The easiest path is to set `CODERUNNER_ADMIN_EMAIL` in `/opt/coderunner/.env`
+The easiest path is to set `FABRICA_ADMIN_EMAIL` in `/opt/coderunner/.env`
 (comma-separated for multiple coaches) before you first sign in. On startup the
 control plane allowlists each listed email and grants it the admin role at first
 OAuth sign-in — no exec steps. Add the line and restart the stack:
 
 ```bash
 gcloud compute ssh coderunner --zone=us-central1-a --tunnel-through-iap \
-  --command='cd /opt/coderunner && echo "CODERUNNER_ADMIN_EMAIL=<your-email>" | sudo tee -a .env && sudo docker compose up -d'
+  --command='cd /opt/coderunner && echo "FABRICA_ADMIN_EMAIL=<your-email>" | sudo tee -a .env && sudo docker compose up -d'
 ```
 
 Otherwise, promote yourself by hand after signing in once, via IAP SSH:
@@ -262,10 +262,10 @@ runs a docker compose stack (`/opt/coderunner`, with
 
 `render-env.sh` runs on every boot (via `metadata_startup_script`) to
 re-materialize `/opt/coderunner/.env` from Secret Manager (preserving the
-deployed `CODERUNNER_TAG`) and then `docker compose up -d`. Hand-edits to `.env`
+deployed `FABRICA_TAG`) and then `docker compose up -d`. Hand-edits to `.env`
 on the VM do not survive a reboot.
 
-It also derives `CODERUNNER_IMAGE_NS` from the Terraform `github_repo`
+It also derives `FABRICA_IMAGE_NS` from the Terraform `github_repo`
 variable, so a fork's VM automatically pulls the fork's own GHCR images — no
 extra configuration step.
 
@@ -314,7 +314,7 @@ gh workflow run "Deploy" --ref main -f tag=v2.4.0
 The **Deploy** workflow (`.github/workflows/deploy.yml`):
 
 1. Checks the GitHub release exists and both images are published for the tag
-2. `scp`s the compose files to the VM, pins `CODERUNNER_TAG=<tag>` in
+2. `scp`s the compose files to the VM, pins `FABRICA_TAG=<tag>` in
    `/opt/coderunner/.env`, runs `docker compose pull` + `up -d`, then recycles
    managed workspace containers (student data is preserved; only containers are
    removed) via `docker compose exec control coderunner rebuild-workspaces`

@@ -12,7 +12,7 @@ import { describe, expect, test } from "bun:test";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { WorkspaceId } from "@frc-coderunner/contracts";
+import type { WorkspaceId } from "@frc-fabrica/contracts";
 import { ImportError, ImportManager, parseGitHubUrl } from "../../imports";
 import type { WorkspaceRow } from "../../storage";
 import { login, MockWorkspaceRuntimeProvider, withApp } from "../helpers";

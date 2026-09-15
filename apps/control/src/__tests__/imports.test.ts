@@ -1,8 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type {
-	ImportServerMessage,
-	WorkspaceId,
-} from "@frc-coderunner/contracts";
+import type { ImportServerMessage, WorkspaceId } from "@frc-fabrica/contracts";
 import {
 	type CatalogLoadContext,
 	type GithubImportContext,

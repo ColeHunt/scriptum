@@ -1,5 +1,5 @@
 // Build or pull the CodeRunner Docker images under their canonical names:
-//   ${CODERUNNER_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-<kind>:${CODERUNNER_TAG:-latest}
+//   ${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-<kind>:${FABRICA_TAG:-latest}
 //
 // Usage: bun scripts/image.ts <build|pull> <workspace|control>
 //
@@ -19,8 +19,8 @@ type Kind = keyof typeof dockerfiles;
 
 function imageName(kind: Kind): string {
 	if (kind === "workspace" && Bun.env.CODE_IMAGE) return Bun.env.CODE_IMAGE;
-	const ns = Bun.env.CODERUNNER_IMAGE_NS ?? "ghcr.io/mathewdunne";
-	const tag = Bun.env.CODERUNNER_TAG ?? "latest";
+	const ns = Bun.env.FABRICA_IMAGE_NS ?? "ghcr.io/mathewdunne";
+	const tag = Bun.env.FABRICA_TAG ?? "latest";
 	return `${ns}/coderunner-${kind}:${tag}`;
 }
 

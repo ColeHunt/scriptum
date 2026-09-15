@@ -5,7 +5,7 @@ import type {
 	ContainersStatusResponse,
 	SimRunStatus,
 	SimStatusResponse,
-} from "@frc-coderunner/contracts";
+} from "@frc-fabrica/contracts";
 import type { AuditActor } from "../audit";
 import { CapacityExceededError } from "../containers";
 import type { GamepadSessions } from "../gamepad";

@@ -40,7 +40,7 @@ CodeRunner reads these from environment variables (see
 | `SSO_SECRET` | Shared secret for verifying Legion's `mw_sso` cookie. **Must be the exact same value as Legion's own `SSO_SECRET`.** Required for any non-demo deployment. |
 | `SSO_SESSION_TTL` | How long (seconds) a verified session is trusted. **Must match Legion's own `SSO_SESSION_TTL`** (Legion's default is 43200 — 12 hours). |
 | `LEGION_BASE_URL` | Legion's own origin, e.g. `https://legion.yourteam.org`. Used to build the "Sign in via Legion" and admin step-up redirects. |
-| `CODERUNNER_BASE_URL` | This deployment's own public base URL. Defaults to `http://localhost:4000`. |
+| `FABRICA_BASE_URL` | This deployment's own public base URL. Defaults to `http://localhost:4000`. |
 
 Where these values live depends on the deployment:
 

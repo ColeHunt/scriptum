@@ -25,7 +25,7 @@ export type {
 	SimRunStatus,
 	SimStatusResponse,
 	TopLevelSessionResponse,
-} from "@frc-coderunner/contracts";
+} from "@frc-fabrica/contracts";
 
 export {
 	autoChoosersResponseSchema,
@@ -40,4 +40,4 @@ export {
 	runServerMessageSchema,
 	simStatusResponseSchema,
 	topLevelSessionResponseSchema,
-} from "@frc-coderunner/contracts";
+} from "@frc-fabrica/contracts";
