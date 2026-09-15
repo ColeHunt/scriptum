@@ -37,6 +37,7 @@ const BASE_OPTIONS = {
 	imageId: "golden-snapshot-123",
 	vpcUuid: "vpc-abc",
 	sshKeyIds: ["key-1"],
+	userData: "#cloud-config\nruncmd: [echo test]\n",
 	apiBaseUrl: "https://api.digitalocean.test",
 	sleepImpl: async () => {}, // no real waiting in tests
 	pollIntervalMs: 0,
@@ -93,6 +94,7 @@ describe("DigitalOceanFleetProvisioner.createWorker", () => {
 			image: "golden-snapshot-123",
 			ssh_keys: ["key-1"],
 			vpc_uuid: "vpc-abc",
+			user_data: BASE_OPTIONS.userData,
 			tags: ["coderunner-worker"],
 		});
 		expect(calls[1]?.method).toBe("GET");

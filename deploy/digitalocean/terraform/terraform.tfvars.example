@@ -1,0 +1,8 @@
+# do_token is intentionally NOT set here - pass it via TF_VAR_do_token so it
+# never lands in a file, checked in or not.
+region                = "nyc3"                # Match the shared MARS/WARS droplet's region.
+ssh_key_fingerprints  = ["aa:bb:cc:dd:..."]   # `doctl compute ssh-key list`, or the DO control panel.
+head_public_ip_cidr   = "104.248.113.170/32"  # The shared droplet's public IP - the only source firewalled in for worker SSH and storage NFS/SSH.
+storage_node_size     = "s-1vcpu-2gb"
+storage_volume_size_gb = 100
+worker_subnet_cidr    = "10.10.0.0/20"

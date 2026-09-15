@@ -43,6 +43,12 @@ export type DigitalOceanFleetProvisionerOptions = {
 	/** DO-assigned SSH key ids/fingerprints to install on every new droplet,
 	 * so the head can reach it without a manual key-copy step. */
 	sshKeyIds: Array<string | number>;
+	/** Rendered cloud-init user-data every new worker boots with - see
+	 * deploy/digitalocean/worker-user-data.yaml.tmpl. Mounting the shared NFS
+	 * storage is the only thing it needs to do (decision 048, design point
+	 * #9: keep the per-boot path minimal, since the golden snapshot already
+	 * has Docker installed and the workspace image pre-pulled). */
+	userData: string;
 	tags?: string[] | undefined;
 	/** Override for tests (points at a fake server instead of the real API). */
 	apiBaseUrl?: string | undefined;
@@ -86,6 +92,7 @@ export class DigitalOceanFleetProvisioner implements FleetProvisioner {
 				image: this.options.imageId,
 				ssh_keys: this.options.sshKeyIds,
 				vpc_uuid: this.options.vpcUuid,
+				user_data: this.options.userData,
 				backups: false,
 				ipv6: false,
 				monitoring: true,
