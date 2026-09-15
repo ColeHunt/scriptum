@@ -1,3 +1,12 @@
+import {
+	BookOpen,
+	Container,
+	FolderOpen,
+	Gauge,
+	type LucideIcon,
+	ScrollText,
+	Users,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -9,13 +18,13 @@ type Tab =
 	| "lessons"
 	| "audit-log";
 
-const tabs: Array<{ id: Tab; label: string }> = [
-	{ id: "dashboard", label: "Dashboard" },
-	{ id: "containers", label: "Containers" },
-	{ id: "workspaces", label: "Workspaces" },
-	{ id: "users", label: "Users" },
-	{ id: "lessons", label: "Lessons" },
-	{ id: "audit-log", label: "Audit Log" },
+const tabs: Array<{ id: Tab; label: string; icon: LucideIcon }> = [
+	{ id: "dashboard", label: "Dashboard", icon: Gauge },
+	{ id: "containers", label: "Containers", icon: Container },
+	{ id: "workspaces", label: "Workspaces", icon: FolderOpen },
+	{ id: "users", label: "Users", icon: Users },
+	{ id: "lessons", label: "Lessons", icon: BookOpen },
+	{ id: "audit-log", label: "Audit Log", icon: ScrollText },
 ];
 
 export function AdminLayout({
@@ -30,15 +39,25 @@ export function AdminLayout({
 	return (
 		<div className="flex min-h-screen bg-background text-foreground">
 			<nav className="w-48 shrink-0 border-r border-border p-4">
-				<h1 className="mb-6 text-lg font-bold text-primary">Admin</h1>
+				<a
+					href="/"
+					className="mb-6 block text-lg font-bold text-primary italic"
+				>
+					Scriptum
+				</a>
 				<ul className="space-y-1">
 					{tabs.map((tab) => (
 						<li key={tab.id}>
 							<Button
-								variant={activeTab === tab.id ? "secondary" : "ghost"}
-								className="w-full justify-start"
+								variant="ghost"
+								className={
+									activeTab === tab.id
+										? "w-full justify-start gap-2 bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent"
+										: "w-full justify-start gap-2"
+								}
 								onClick={() => onTabChange(tab.id)}
 							>
+								<tab.icon className="size-4 text-muted-foreground" />
 								{tab.label}
 							</Button>
 						</li>

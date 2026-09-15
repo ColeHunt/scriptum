@@ -1,4 +1,4 @@
-import type { BridgeConnection } from "@frc-coderunner/contracts";
+import type { BridgeConnection } from "@frc-scriptum/contracts";
 
 /**
  * Fields every per-workspace bridge entry shares. Subclasses extend this with

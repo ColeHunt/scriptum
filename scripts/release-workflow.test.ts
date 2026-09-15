@@ -54,7 +54,7 @@ describe("release workflow", () => {
 		["v0.6.1+metadata", "0", 1, ""],
 		["not-a-version", "0", 1, ""],
 	])("validates %s with ancestry status %s", async (tag, ancestry, code, prerelease) => {
-		const temp = await mkdtemp(join(tmpdir(), "coderunner-tag-test-"));
+		const temp = await mkdtemp(join(tmpdir(), "scriptum-tag-test-"));
 		try {
 			const output = join(temp, "output");
 			const result = await run(
@@ -79,7 +79,7 @@ describe("release workflow", () => {
 		["v0.6.1", "true"],
 		["v0.6.1-selinux-fix", "true"],
 	])("publishes appropriate image and release tags for %s (prerelease=%s)", async (tag, prerelease) => {
-		const temp = await mkdtemp(join(tmpdir(), "coderunner-release-test-"));
+		const temp = await mkdtemp(join(tmpdir(), "scriptum-release-test-"));
 		try {
 			for (const image of ["workspace", "control"]) {
 				await mkdir(join(temp, "digests", image), { recursive: true });

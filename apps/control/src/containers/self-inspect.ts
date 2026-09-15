@@ -273,7 +273,7 @@ function inspectFailureMessage(id: string, error?: unknown): string {
 			`Failed to inspect this control-plane container ("${id}")${detail}. The ` +
 			`control plane runs as a non-root user and reaches the Docker socket via ` +
 			`its supplementary groups, none of which own /var/run/docker.sock. Set ` +
-			`CODERUNNER_DOCKER_GID in .env to the owning group — find it with ` +
+			`SCRIPTUM_DOCKER_GID in .env to the owning group — find it with ` +
 			`stat -c '%g' /var/run/docker.sock — then recreate the container with ` +
 			`docker compose up -d control.`
 		);

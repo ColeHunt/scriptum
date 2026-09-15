@@ -43,7 +43,7 @@ describe("Code container VS Code defaults", () => {
 		const settings = JSON.parse(await readFile(robotSettings, "utf8"));
 
 		expect(contents).toContain(
-			"org.gradle.jvmargs=$" + "{CODERUNNER_GRADLE_JVMARGS}",
+			"org.gradle.jvmargs=$" + "{SCRIPTUM_GRADLE_JVMARGS}",
 		);
 		expect(contents).toContain('then del(."java.import.gradle.jvmArguments")');
 		expect(contents).not.toContain(

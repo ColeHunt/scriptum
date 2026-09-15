@@ -8,7 +8,7 @@ const repoRoot = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
 const dockerPath = process.env.FRC_DOCKER_PATH ?? "docker";
 const image =
 	process.env.CODE_IMAGE ??
-	`${process.env.CODERUNNER_IMAGE_NS ?? "ghcr.io/mathewdunne"}/coderunner-workspace:${process.env.CODERUNNER_TAG ?? "latest"}`;
+	`${process.env.SCRIPTUM_IMAGE_NS ?? "ghcr.io/mathewdunne"}/coderunner-workspace:${process.env.SCRIPTUM_TAG ?? "latest"}`;
 const javaReadyTimeout = 180_000;
 
 interface DockerResult {
@@ -247,7 +247,7 @@ async function wpilibBuildEvidence(name: string): Promise<string> {
 				name,
 				"bash",
 				"-lc",
-				"cat /config/wpilib/2026/logs/wpilibtoollog.txt 2>/dev/null || true; find /config/.gradle/daemon -type f -name '*.out.log' -exec cat {} + 2>/dev/null || true; test -f /workspace/project/build/classes/java/main/frc/robot/Main.class && echo CODERUNNER_ROBOT_CLASS_PRESENT || true; pgrep -af '[o]rg.gradle.wrapper.GradleWrapperMain build' >/dev/null || echo CODERUNNER_WPILIB_BUILD_IDLE",
+				"cat /config/wpilib/2026/logs/wpilibtoollog.txt 2>/dev/null || true; find /config/.gradle/daemon -type f -name '*.out.log' -exec cat {} + 2>/dev/null || true; test -f /workspace/project/build/classes/java/main/frc/robot/Main.class && echo SCRIPTUM_ROBOT_CLASS_PRESENT || true; pgrep -af '[o]rg.gradle.wrapper.GradleWrapperMain build' >/dev/null || echo SCRIPTUM_WPILIB_BUILD_IDLE",
 			],
 			{ allowFailure: true },
 		)
@@ -264,8 +264,8 @@ async function waitForWpilibEditorBuild(name: string): Promise<string> {
 			) &&
 			/javaHome=\/usr\/lib\/jvm\/jdk-17[^,]*/.test(evidence) &&
 			evidence.includes("BUILD SUCCESSFUL") &&
-			evidence.includes("CODERUNNER_ROBOT_CLASS_PRESENT") &&
-			evidence.includes("CODERUNNER_WPILIB_BUILD_IDLE"),
+			evidence.includes("SCRIPTUM_ROBOT_CLASS_PRESENT") &&
+			evidence.includes("SCRIPTUM_WPILIB_BUILD_IDLE"),
 		240_000,
 	);
 }

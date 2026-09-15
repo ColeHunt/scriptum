@@ -1,4 +1,4 @@
-import { Code, Gamepad2 } from "lucide-react";
+import { Gamepad2 } from "lucide-react";
 import type { ReactNode } from "react";
 import {
 	createContext,
@@ -10,6 +10,7 @@ import {
 import advantagescopeLogo from "@/assets/advantagescope-logo.png";
 import choreoLogo from "@/assets/choreo-logo.png";
 import elasticLogo from "@/assets/elastic-logo.png";
+import vscodeLogo from "@/assets/vscode-logo.svg";
 import { cn } from "@/lib/utils";
 
 export type PaneKey =
@@ -42,7 +43,7 @@ const WORKBENCH_PANE_KEYS: readonly PaneKey[] = [
 
 export type PaneVisibility = Record<PaneKey, boolean>;
 
-const STORAGE_KEY = "coderunner:pane-visibility";
+const STORAGE_KEY = "scriptum:pane-visibility";
 const DEFAULT_VISIBILITY: PaneVisibility = {
 	editor: true,
 	scope: true,
@@ -175,7 +176,7 @@ export function PaneToggleRow() {
 		<div className="relative flex h-8 items-center gap-[3px] rounded-full border border-border bg-background p-[3px]">
 			<PaneToggleButton
 				paneKey="editor"
-				icon={<Code className="size-4 shrink-0" />}
+				icon={<img src={vscodeLogo} alt="" className="size-4 shrink-0" />}
 			/>
 			<PaneToggleButton
 				paneKey="scope"

@@ -36,7 +36,7 @@ describe("magic-link (via:link) sessions", () => {
 			async (app) => {
 				const secret = app.storage.config.ssoSecret;
 				if (!secret) throw new Error("test app has no ssoSecret");
-				// Groups carries coderunner-admin, but via:"link" must still win -
+				// Groups carries scriptum-admin, but via:"link" must still win -
 				// a leaked magic link can never reach /admin, per every sibling app's
 				// convention.
 				const token = signLegionToken(
@@ -46,7 +46,7 @@ describe("magic-link (via:link) sessions", () => {
 						name: "Coach",
 						role: "mentor",
 						team_number: null,
-						groups: ["coderunner-admin"],
+						groups: ["scriptum-admin"],
 						slack_user_id: null,
 						via: "link",
 					},
@@ -63,7 +63,7 @@ describe("magic-link (via:link) sessions", () => {
 				expect(response.status).toBe(303);
 				const location = response.headers.get("location") ?? "";
 				expect(location).toContain("https://legion.example.test/sso/stepup");
-				expect(location).toContain("app=coderunner");
+				expect(location).toContain("app=scriptum");
 			},
 			{ legionBaseUrl: "https://legion.example.test" },
 		);
@@ -80,7 +80,7 @@ describe("magic-link (via:link) sessions", () => {
 					name: "Coach",
 					role: "mentor",
 					team_number: null,
-					groups: ["coderunner-admin"],
+					groups: ["scriptum-admin"],
 					slack_user_id: null,
 					via: "link",
 				},

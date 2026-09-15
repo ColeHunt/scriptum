@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { AdminTableHead, AdminTh } from "../components/AdminTableHead";
 import { useAdminPoll } from "../hooks/useAdminPoll";
 
 type AuditEntry = {
@@ -20,24 +21,18 @@ type AuditLogResponse = {
 };
 
 export function AuditLog() {
-	const [actorFilter, setActorFilter] = useState("");
-	const [actionFilter, setActionFilter] = useState("");
-	const [daysFilter, setDaysFilter] = useState("");
 	const [beforeId, setBeforeId] = useState<number | undefined>(undefined);
 
 	const fetcher = useCallback(async (): Promise<AuditLogResponse> => {
 		const params = new URLSearchParams();
 		params.set("limit", "50");
 		if (beforeId !== undefined) params.set("before", String(beforeId));
-		if (actorFilter.trim()) params.set("actor", actorFilter.trim());
-		if (actionFilter.trim()) params.set("action", actionFilter.trim());
-		if (daysFilter.trim()) params.set("days", daysFilter.trim());
 		const res = await fetch(`/admin/audit-log?${params}`, {
 			credentials: "same-origin",
 		});
 		if (!res.ok) throw new Error(`${res.status}`);
 		return res.json();
-	}, [beforeId, actorFilter, actionFilter, daysFilter]);
+	}, [beforeId]);
 
 	const { data, loading, error } = useAdminPoll(fetcher, 10_000);
 
@@ -47,38 +42,16 @@ export function AuditLog() {
 
 	return (
 		<div className="space-y-6">
-			<h2 className="text-xl font-semibold">Audit Log</h2>
-
-			<div className="flex flex-wrap gap-3 text-sm">
-				<input
-					placeholder="Filter actor email…"
-					className="rounded border border-border bg-muted px-3 py-1.5"
-					value={actorFilter}
-					onChange={(e) => {
-						setActorFilter(e.target.value);
-						setBeforeId(undefined);
-					}}
-				/>
-				<input
-					placeholder="Action prefix…"
-					className="rounded border border-border bg-muted px-3 py-1.5"
-					value={actionFilter}
-					onChange={(e) => {
-						setActionFilter(e.target.value);
-						setBeforeId(undefined);
-					}}
-				/>
-				<input
-					placeholder="Last N days…"
-					type="number"
-					min={1}
-					className="w-28 rounded border border-border bg-muted px-3 py-1.5"
-					value={daysFilter}
-					onChange={(e) => {
-						setDaysFilter(e.target.value);
-						setBeforeId(undefined);
-					}}
-				/>
+			<div className="flex flex-wrap items-baseline justify-between gap-2">
+				<h2 className="text-xl font-semibold">
+					Audit Log
+					{data && (
+						<span className="ml-2 text-sm font-normal text-muted-foreground">
+							({entries.length} entr{entries.length === 1 ? "y" : "ies"}
+							{beforeId !== undefined ? ", older" : ""})
+						</span>
+					)}
+				</h2>
 				{beforeId !== undefined && (
 					<Button
 						variant="ghost"
@@ -94,46 +67,42 @@ export function AuditLog() {
 			{error && <p className="text-destructive">Error: {error}</p>}
 
 			{data && (
-				<Card>
-					<CardHeader>
-						<CardTitle>Events</CardTitle>
-					</CardHeader>
-					<CardContent>
+				<Card className="py-0">
+					<CardContent className="p-0">
 						{entries.length === 0 ? (
-							<p className="text-muted-foreground">No audit events found.</p>
+							<p className="text-muted-foreground p-4">
+								No audit events found.
+							</p>
 						) : (
-							<>
-								<table className="w-full text-sm">
-									<thead>
-										<tr className="border-b text-left text-muted-foreground">
-											<th className="pb-2">Time</th>
-											<th className="pb-2">Actor</th>
-											<th className="pb-2">Action</th>
-											<th className="pb-2">Target</th>
-											<th className="pb-2">Details</th>
-										</tr>
-									</thead>
-									<tbody>
-										{entries.map((entry) => (
-											<AuditRow key={entry.id} entry={entry} />
-										))}
-									</tbody>
-								</table>
-								{entries.length >= 50 && lastId !== undefined && (
-									<div className="mt-4 text-center">
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={() => setBeforeId(lastId)}
-										>
-											Load older →
-										</Button>
-									</div>
-								)}
-							</>
+							<table className="w-full text-sm">
+								<AdminTableHead>
+									<AdminTh>Time</AdminTh>
+									<AdminTh>Actor</AdminTh>
+									<AdminTh>Action</AdminTh>
+									<AdminTh>Target</AdminTh>
+									<AdminTh>Details</AdminTh>
+								</AdminTableHead>
+								<tbody>
+									{entries.map((entry) => (
+										<AuditRow key={entry.id} entry={entry} />
+									))}
+								</tbody>
+							</table>
 						)}
 					</CardContent>
 				</Card>
+			)}
+
+			{data && entries.length >= 50 && lastId !== undefined && (
+				<div className="text-center">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setBeforeId(lastId)}
+					>
+						Load older →
+					</Button>
+				</div>
 			)}
 		</div>
 	);
@@ -152,11 +121,11 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
 				className="cursor-pointer border-b last:border-0 hover:bg-muted/50"
 				onClick={() => setExpanded(!expanded)}
 			>
-				<td className="py-2 text-xs text-muted-foreground">{time}</td>
-				<td className="py-2">{entry.actor_email}</td>
-				<td className="py-2 font-mono text-xs">{entry.action}</td>
-				<td className="py-2 text-xs">{targetSummary}</td>
-				<td className="py-2 text-xs text-muted-foreground">
+				<td className="px-2 py-2 text-xs text-muted-foreground">{time}</td>
+				<td className="px-2 py-2">{entry.actor_email}</td>
+				<td className="px-2 py-2 font-mono text-xs">{entry.action}</td>
+				<td className="px-2 py-2 text-xs">{targetSummary}</td>
+				<td className="px-2 py-2 text-xs text-muted-foreground">
 					{entry.metadata_json ? "▸" : ""}
 				</td>
 			</tr>

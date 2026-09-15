@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { AdminTableHead, AdminTh } from "../components/AdminTableHead";
 import { useAdminPoll } from "../hooks/useAdminPoll";
 
 type WorkspaceStatus = {
@@ -75,49 +76,47 @@ export function Workspaces() {
 	return (
 		<div className="space-y-6">
 			<h2 className="text-xl font-semibold">Workspaces</h2>
-			<Card>
-				<CardContent className="pt-6">
+			<Card className="py-0">
+				<CardContent className="p-0">
 					{!data || data.workspaces.length === 0 ? (
-						<p className="text-muted-foreground">No workspaces yet.</p>
+						<p className="text-muted-foreground p-4">No workspaces yet.</p>
 					) : (
 						<table className="w-full text-sm">
-							<thead>
-								<tr className="border-b text-left text-muted-foreground">
-									<th className="pb-2">Slug</th>
-									<th className="pb-2">Owner</th>
-									<th className="pb-2">Last seen</th>
-									<th className="pb-2">Disk</th>
-									<th className="pb-2">State</th>
-									<th className="pb-2">Actions</th>
-								</tr>
-							</thead>
+							<AdminTableHead>
+								<AdminTh>Slug</AdminTh>
+								<AdminTh>Owner</AdminTh>
+								<AdminTh>Last seen</AdminTh>
+								<AdminTh>Disk</AdminTh>
+								<AdminTh>State</AdminTh>
+								<AdminTh>Actions</AdminTh>
+							</AdminTableHead>
 							<tbody>
 								{data.workspaces.map((workspace) => (
 									<tr
 										key={workspace.workspace.id}
 										className="border-b last:border-0"
 									>
-										<td className="py-2 font-mono">
+										<td className="px-2 py-2 font-mono">
 											{workspace.workspace.slug}
 										</td>
-										<td className="py-2">
+										<td className="px-2 py-2">
 											{workspace.user.displayName}
 											<div className="text-xs text-muted-foreground">
 												{workspace.user.email}
 											</div>
 										</td>
-										<td className="py-2">
+										<td className="px-2 py-2">
 											{new Date(
 												workspace.workspace.lastAccessedAt,
 											).toLocaleString()}
 										</td>
-										<td className="py-2">
+										<td className="px-2 py-2">
 											{formatBytes(
 												usageByWorkspace.get(workspace.workspace.id) ?? 0,
 											)}
 										</td>
-										<td className="py-2">{workspace.code.state}</td>
-										<td className="flex gap-2 py-2">
+										<td className="px-2 py-2">{workspace.code.state}</td>
+										<td className="flex gap-2 px-2 py-2">
 											<a
 												className="inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] hover:bg-muted"
 												href={`/u/${workspace.workspace.slug}/`}

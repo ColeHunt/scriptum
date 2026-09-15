@@ -38,7 +38,7 @@ docker compose run --rm control restore <backup-dir>
 
 `run --rm` works even while the control plane is stopped, which is normal
 before a `restore`. Backups land in `/data/backups/...` — i.e. under your
-`CODERUNNER_HOST_DATA_DIR` on the host. A `<backup-dir>` passed to `restore`
+`SCRIPTUM_HOST_DATA_DIR` on the host. A `<backup-dir>` passed to `restore`
 must be a path **inside** `/data` (the container can't see arbitrary host
 paths). On the VM, prefix with `cd /opt/coderunner && sudo`. The `bun run
 backup` / `bun run restore` forms below apply to a from-source host checkout;

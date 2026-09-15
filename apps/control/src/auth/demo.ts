@@ -1,7 +1,7 @@
 /**
  * Demo mode helpers — single seeded admin user + synthetic session.
  *
- * Used by `bun run start -- --demo` (or CODERUNNER_DEMO_MODE=1) to let
+ * Used by `bun run start -- --demo` (or SCRIPTUM_DEMO_MODE=1) to let
  * someone evaluate CodeRunner without configuring Legion.
  *
  * Not safe to expose publicly: every request resolves to the same user,

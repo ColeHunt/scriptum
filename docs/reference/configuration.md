@@ -9,7 +9,7 @@ CodeRunner is configured entirely through environment variables. Copy `.env.exam
 
 :::note[Docker Compose deployments]
 
-With the containerized control plane (the default deployment — see [decision 031](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/031-containerized-control-plane.md)) the same `.env` is read twice: Compose interpolates the `CODERUNNER_*` values (see [Docker Compose deployment](#docker-compose-deployment) below) into `docker-compose*.yml`, and the whole file is passed into the control container. The image **fixes the in-container paths** (`/data`, `/app/...`), so the **Paths** section below and the `bun run build:*` notes apply only to a from-source host run — leave them unset for a compose deployment. The control plane also auto-detects `FRC_CONTAINER_NETWORK`, `FRC_HOST_DATA_DIR`, and `FRC_CONTAINER_USER` by inspecting its own container at startup (see **Docker and Containers** below), so those need no manual setting either.
+With the containerized control plane (the default deployment — see [decision 031](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/031-containerized-control-plane.md)) the same `.env` is read twice: Compose interpolates the `SCRIPTUM_*` values (see [Docker Compose deployment](#docker-compose-deployment) below) into `docker-compose*.yml`, and the whole file is passed into the control container. The image **fixes the in-container paths** (`/data`, `/app/...`), so the **Paths** section below and the `bun run build:*` notes apply only to a from-source host run — leave them unset for a compose deployment. The control plane also auto-detects `FRC_CONTAINER_NETWORK`, `FRC_HOST_DATA_DIR`, and `FRC_CONTAINER_USER` by inspecting its own container at startup (see **Docker and Containers** below), so those need no manual setting either.
 
 :::
 
@@ -67,8 +67,8 @@ prerequisites (shared parent domain) and how to grant admin access.
 | `SSO_SECRET` | none (required outside demo mode) | Shared secret for verifying Legion's `mw_sso` cookie. Must be the exact same value as Legion's own `SSO_SECRET`. |
 | `SSO_SESSION_TTL` | `43200` (12h) | Seconds a verified `mw_sso` cookie is trusted. Must match Legion's own `SSO_SESSION_TTL`. |
 | `LEGION_BASE_URL` | none | Legion's own origin, e.g. `https://legion.yourteam.org`. Used to build the "Sign in via Legion" and admin step-up redirects. |
-| `CODERUNNER_BASE_URL` | `http://localhost:{PORT}` | Public base URL of this app. |
-| `CODERUNNER_DEMO_MODE` | `false` | When `1` or `true`, bypasses authentication entirely and does not require `SSO_SECRET`. All visitors share one admin session. Never expose a demo instance publicly. Also enabled with the `--demo` CLI flag on startup. |
+| `SCRIPTUM_BASE_URL` | `http://localhost:{PORT}` | Public base URL of this app. |
+| `SCRIPTUM_DEMO_MODE` | `false` | When `1` or `true`, bypasses authentication entirely and does not require `SSO_SECRET`. All visitors share one admin session. Never expose a demo instance publicly. Also enabled with the `--demo` CLI flag on startup. |
 | `LEGION_API_KEY` | none | Optional — only `scripts/migrate-legion-identity.ts` (a one-off ops script, not runtime) uses this, to pull the Legion roster for matching pre-existing local accounts. |
 
 ## Docker and Containers
@@ -76,7 +76,7 @@ prerequisites (shared parent domain) and how to grant admin access.
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `FRC_DOCKER_PATH` | `docker` | Path to the Docker CLI binary. Override if Docker is not on `PATH`. |
-| `CODE_IMAGE` | `${CODERUNNER_IMAGE_NS}/coderunner-workspace:${CODERUNNER_TAG}` | Docker image name for student workspace containers. Set it to override the canonical name entirely. |
+| `CODE_IMAGE` | `${SCRIPTUM_IMAGE_NS}/coderunner-workspace:${SCRIPTUM_TAG}` | Docker image name for student workspace containers. Set it to override the canonical name entirely. |
 | `CODE_MEMORY_LIMIT` | `4096m` | Memory cap applied to each workspace container via Docker `--memory`. A cold Gradle build plus the Java language server needs most of this; setting it too low causes cgroup page-cache thrashing (the container re-reads its jars from disk in a loop) that can saturate host disk throughput. Lower with care on RAM-constrained hosts. |
 | `CODE_DISK_READ_LIMIT` | `64mb` | Per-device disk read cap applied to each workspace container via Docker `--device-read-bps`, so one thrashing or scan-heavy container cannot monopolize host disk throughput and stall the VM. Devices are auto-detected from `/sys/block` when the control plane runs containerized; host/dev runs apply no limit (a VM-backed Docker daemon such as Docker Desktop has different devices than the host). Set to `0` or `off` to disable. See [decision 033](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/033-workspace-disk-read-limit.md). |
 | `SIM_PORT_RANGE` | `25810-25899` | Loopback port range allocated for HALSim NT4 connections. Format: `start-end`. |
@@ -87,7 +87,7 @@ prerequisites (shared parent domain) and how to grant admin access.
 | `FRC_CONTAINER_NETWORK` | none | Docker network that workspace containers join instead of publishing loopback host ports. Inside a container, auto-detected from the control plane's own network attachment; leave **unset** for a host/dev run (`bun run dev:control`) — a host process can't resolve container DNS names. Set this only to override detection (for example, if the container is attached to more than one user-defined network). |
 | `FRC_HOST_DATA_DIR` | none | Host-side absolute path of `FRC_DATA_DIR`, used to translate workspace bind-mount sources when the control plane itself runs in a container (the Docker daemon resolves mounts against the host). Inside a container, auto-detected from the container's own bind mounts (`docker inspect`); leave unset on the host. Set this only to override detection. |
 
-In a containerized network-mode deployment the control plane needs a way to resolve the workspace user, or it refuses to start to avoid root-owning student files on the host. A non-root `stat()` of the data directory satisfies this automatically; set `FRC_CONTAINER_USER` explicitly only if the data directory's owner isn't the uid:gid workspace containers should run as. The control container itself also runs as a non-root uid:gid (the data-dir owner) — see `CODERUNNER_UID` / `CODERUNNER_GID` / `CODERUNNER_DOCKER_GID` under [Docker Compose deployment](#docker-compose-deployment) below.
+In a containerized network-mode deployment the control plane needs a way to resolve the workspace user, or it refuses to start to avoid root-owning student files on the host. A non-root `stat()` of the data directory satisfies this automatically; set `FRC_CONTAINER_USER` explicitly only if the data directory's owner isn't the uid:gid workspace containers should run as. The control container itself also runs as a non-root uid:gid (the data-dir owner) — see `SCRIPTUM_UID` / `SCRIPTUM_GID` / `SCRIPTUM_DOCKER_GID` under [Docker Compose deployment](#docker-compose-deployment) below.
 
 Each active student workspace uses approximately 2.5 GB of RAM at the default memory cap. See [Capacity planning](../operating/capacity.md) for host sizing guidance.
 
@@ -97,12 +97,12 @@ These variables are consumed by `docker compose` itself (interpolated into `dock
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `CODERUNNER_TAG` | `latest` | Image tag to run for both the control and workspace images (a release tag like `v2.5.0`, or `latest`). |
-| `CODERUNNER_IMAGE_NS` | `ghcr.io/mathewdunne` | Registry + owner for both coderunner images. Forks publishing their own images set this once. Unlike the other variables in this table it is also read by the control plane and the image build/pull script, so the same `.env` line covers every consumer. |
-| `CODERUNNER_HOST_DATA_DIR` | `./data` (in the checkout) | Host path of the data directory, bind-mounted into the control container at `/data`. Compose resolves `./data` against the project directory. Set this to relocate the data directory (for example, onto a mounted disk); the control plane derives the matching `FRC_HOST_DATA_DIR` itself by inspecting its own container, so this variable does not need to be passed through by hand. |
-| `CODERUNNER_UID` | `1000` | uid the **control container** runs as (compose `user:`). Should own `CODERUNNER_HOST_DATA_DIR` so `./data` stays host-owned rather than root-owned. The `1000` default is correct for the first user on most single-user hosts. Distinct from `FRC_CONTAINER_USER`, which governs the workspace siblings. |
-| `CODERUNNER_GID` | `1000` | gid the control container runs as (paired with `CODERUNNER_UID` in compose `user:`). |
-| `CODERUNNER_DOCKER_GID` | `0` | Gid owning the bind-mounted Docker socket, added to the non-root control process as a supplementary group (compose `group_add:`) so it can reach it. The `0` default matches Docker Desktop on macOS and native Windows, whose socket is root-owned, so neither needs a setting here. **Linux and WSL2** own the socket by the `docker` group instead and must set this — that includes Docker Desktop's WSL2 integration, which behaves like a native Linux host. Find it with `stat -c '%g' /var/run/docker.sock` (stock Debian/Ubuntu installs often use `999`/`998`). |
+| `SCRIPTUM_TAG` | `latest` | Image tag to run for both the control and workspace images (a release tag like `v2.5.0`, or `latest`). |
+| `SCRIPTUM_IMAGE_NS` | `ghcr.io/mathewdunne` | Registry + owner for both coderunner images. Forks publishing their own images set this once. Unlike the other variables in this table it is also read by the control plane and the image build/pull script, so the same `.env` line covers every consumer. |
+| `SCRIPTUM_HOST_DATA_DIR` | `./data` (in the checkout) | Host path of the data directory, bind-mounted into the control container at `/data`. Compose resolves `./data` against the project directory. Set this to relocate the data directory (for example, onto a mounted disk); the control plane derives the matching `FRC_HOST_DATA_DIR` itself by inspecting its own container, so this variable does not need to be passed through by hand. |
+| `SCRIPTUM_UID` | `1000` | uid the **control container** runs as (compose `user:`). Should own `SCRIPTUM_HOST_DATA_DIR` so `./data` stays host-owned rather than root-owned. The `1000` default is correct for the first user on most single-user hosts. Distinct from `FRC_CONTAINER_USER`, which governs the workspace siblings. |
+| `SCRIPTUM_GID` | `1000` | gid the control container runs as (paired with `SCRIPTUM_UID` in compose `user:`). |
+| `SCRIPTUM_DOCKER_GID` | `0` | Gid owning the bind-mounted Docker socket, added to the non-root control process as a supplementary group (compose `group_add:`) so it can reach it. The `0` default matches Docker Desktop on macOS and native Windows, whose socket is root-owned, so neither needs a setting here. **Linux and WSL2** own the socket by the `docker` group instead and must set this — that includes Docker Desktop's WSL2 integration, which behaves like a native Linux host. Find it with `stat -c '%g' /var/run/docker.sock` (stock Debian/Ubuntu installs often use `999`/`998`). |
 | `COMPOSE_FILE` | none | Production VM only: selects the prod stack (`docker-compose.yml:docker-compose.prod.yml`) so a plain `docker compose up -d` runs Caddy + Alloy too. |
 
 ## Run Lifecycle
@@ -144,7 +144,7 @@ See [Monitoring](../operating/monitoring.md) for the `/metrics` Prometheus endpo
 
 ## Demo mode and the `--demo` flag
 
-Demo mode (`CODERUNNER_DEMO_MODE=1`) can also be activated at startup with the command-line flag:
+Demo mode (`SCRIPTUM_DEMO_MODE=1`) can also be activated at startup with the command-line flag:
 
 ```bash
 bun run start -- --demo
@@ -164,7 +164,7 @@ On a cloud VM the `.env` file is regenerated on every boot by `render-env.sh`, s
 
 Three variables appear in `.env.example` but are not in `config.ts`'s `ControlConfig` struct because they are read outside of it:
 
-- `PORT`: read directly by `apps/control/src/main.ts` as the listen port; also feeds the `CODERUNNER_BASE_URL` default in `config.ts`.
+- `PORT`: read directly by `apps/control/src/main.ts` as the listen port; also feeds the `SCRIPTUM_BASE_URL` default in `config.ts`.
 - `LOG_FORMAT`: read directly by `apps/control/src/logging.ts`; not part of `ControlConfig`.
 - `METRICS_TOKEN`: read directly by `apps/control/src/app.ts` to gate the `/metrics` endpoint; not part of `ControlConfig`.
 

@@ -5,7 +5,7 @@ import {
 	lessonLoadRequestSchema,
 	runClientMessageSchema,
 	type WorkspaceId,
-} from "@frc-coderunner/contracts";
+} from "@frc-scriptum/contracts";
 import { type CatalogSource, RemoteCatalogSource } from "../catalog";
 import type { CheckpointManager } from "../checkpoints";
 import { upstreamEndpoints } from "../containers/converters";

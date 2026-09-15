@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { CheckpointsStateResponse } from "@frc-coderunner/contracts";
+import type { CheckpointsStateResponse } from "@frc-scriptum/contracts";
 import {
 	cookieFrom,
 	createFakeDocker,

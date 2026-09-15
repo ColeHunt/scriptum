@@ -51,7 +51,7 @@ containers ever start.
 
 **Cause.** The control container runs as a non-root user and needs the group
 that owns the socket added as a supplementary group to reach it.
-`CODERUNNER_DOCKER_GID` does not match that group. This is a Linux and WSL2
+`SCRIPTUM_DOCKER_GID` does not match that group. This is a Linux and WSL2
 problem: the `0` default matches Docker Desktop's root-owned socket on macOS and
 native Windows, but Linux and WSL2 own the socket by their `docker` group
 instead — including under Docker Desktop's WSL2 integration.
@@ -64,7 +64,7 @@ stat -c '%g' /var/run/docker.sock     # e.g. 999
 
 ```bash
 # in .env
-CODERUNNER_DOCKER_GID=999
+SCRIPTUM_DOCKER_GID=999
 ```
 
 Then recreate the container to pick up the corrected `group_add`:
@@ -82,7 +82,7 @@ with `SQLITE_READONLY: attempt to write a readonly database`, or logs an error
 about being unable to write under `/data`.
 
 **Cause.** The bind-mounted `./data` (or files inside it) is not owned by the
-`CODERUNNER_UID:CODERUNNER_GID` the control container runs as. This is typically
+`SCRIPTUM_UID:SCRIPTUM_GID` the control container runs as. This is typically
 leftover `root:root` files from a pre-non-root deployment that ran the control
 plane as root, or a `./data` that Docker recreated root-owned after the
 directory was deleted.
@@ -209,7 +209,7 @@ and is not blocked by a firewall between the student's browser and Legion.
 
 There is no local allowlist to check — if a student can sign in through
 Legion at all, CodeRunner lets them in. If they can't reach CodeRunner's
-`/admin`, that's a Legion `coderunner-admin` group membership question, not
+`/admin`, that's a Legion `scriptum-admin` group membership question, not
 a CodeRunner-side setting.
 
 ---

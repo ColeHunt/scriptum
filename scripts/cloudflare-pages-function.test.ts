@@ -27,15 +27,13 @@ describe("Cloudflare Pages catch-all function", () => {
 	test("serves shell routes from the Pages ASSETS binding", async () => {
 		const assetRequests: Request[] = [];
 		const response = await onRequest({
-			request: new Request("https://coderunner.example.test/u/alice"),
+			request: new Request("https://scriptum.example.test/u/alice"),
 			env: testEnv(assetRequests),
 		});
 
 		expect(await response.text()).toBe("asset");
 		expect(assetRequests).toHaveLength(1);
-		expect(assetRequests[0]?.url).toBe(
-			"https://coderunner.example.test/u/alice",
-		);
+		expect(assetRequests[0]?.url).toBe("https://scriptum.example.test/u/alice");
 	});
 
 	test("proxies backend paths to BACKEND_ORIGIN with the browser host", async () => {
@@ -47,7 +45,7 @@ describe("Cloudflare Pages catch-all function", () => {
 		}) as typeof fetch;
 
 		const response = await onRequest({
-			request: new Request("https://coderunner.example.test/healthz?ready=1"),
+			request: new Request("https://scriptum.example.test/healthz?ready=1"),
 			env: testEnv(),
 		});
 
@@ -57,7 +55,7 @@ describe("Cloudflare Pages catch-all function", () => {
 			"https://origin.example.test/healthz?ready=1",
 		);
 		expect(proxiedRequests[0]?.headers.get("X-Forwarded-Host")).toBe(
-			"coderunner.example.test",
+			"scriptum.example.test",
 		);
 	});
 
@@ -70,7 +68,7 @@ describe("Cloudflare Pages catch-all function", () => {
 		}) as typeof fetch;
 
 		await onRequest({
-			request: new Request("https://coderunner.example.test/u/alice/ws/run", {
+			request: new Request("https://scriptum.example.test/u/alice/ws/run", {
 				headers: { Upgrade: "websocket" },
 			}),
 			env: testEnv(),
@@ -88,9 +86,7 @@ describe("Cloudflare Pages catch-all function", () => {
 		}) as unknown as typeof fetch;
 
 		const response = await onRequest({
-			request: new Request(
-				"https://coderunner.example.test/api/auth/providers",
-			),
+			request: new Request("https://scriptum.example.test/api/auth/providers"),
 			env: testEnv(),
 		});
 

@@ -1,4 +1,4 @@
-import type { TopLevelSessionResponse } from "@frc-coderunner/contracts";
+import type { TopLevelSessionResponse } from "@frc-scriptum/contracts";
 import { handleAdminRoute } from "./app/admin-routes";
 import {
 	choreoWebAssetResponse,
@@ -241,7 +241,7 @@ export async function createApp(
 			url.pathname.startsWith("/choreo/") ||
 			url.pathname.startsWith("/elastic/") ||
 			url.pathname.startsWith("/assets/") ||
-			url.pathname === "/coderunner-icon.png" ||
+			url.pathname === "/scriptum-icon.png" ||
 			url.pathname === "/favicon.ico" ||
 			NOISY_WORKSPACE_PATH.test(url.pathname);
 		const fields = {
@@ -362,7 +362,7 @@ export async function createApp(
 			}
 			const returnTo = url.searchParams.get("return_to") || "/";
 			return redirect(
-				`${storage.config.legionBaseUrl}/sso/authorize?app=coderunner&return_to=${encodeURIComponent(returnTo)}`,
+				`${storage.config.legionBaseUrl}/sso/authorize?app=scriptum&return_to=${encodeURIComponent(returnTo)}`,
 			);
 		}
 
@@ -378,11 +378,11 @@ export async function createApp(
 		// Serve the favicon from the site root for pages outside the /u/:slug/ scope
 		// and for browsers that fall back to requesting /favicon.ico automatically.
 		if (
-			(url.pathname === "/coderunner-icon.png" ||
+			(url.pathname === "/scriptum-icon.png" ||
 				url.pathname === "/favicon.ico") &&
 			request.method === "GET"
 		) {
-			return webAssetResponse(storage, "coderunner-icon.png");
+			return webAssetResponse(storage, "scriptum-icon.png");
 		}
 
 		// Serve Vite-processed assets for pages outside /u/:slug/ (e.g. /login)
@@ -392,7 +392,7 @@ export async function createApp(
 
 		// --- Default-deny: everything below requires a session (or admin token). ---
 		// Public routes (healthz, scope, /choreo, /elastic, /api/session, /, /login,
-		// /login/legion, /logout, /coderunner-icon.png, /assets/*) are handled above.
+		// /login/legion, /logout, /scriptum-icon.png, /assets/*) are handled above.
 		// If we reach here without matching a gated route, we return 404.
 
 		// --- Admin / operator routes ---

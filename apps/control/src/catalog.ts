@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import {
 	type LessonModule,
 	lessonCatalogSchema,
-} from "@frc-coderunner/contracts";
+} from "@frc-scriptum/contracts";
 import type { ControlConfig } from "./config";
 import { ImportError } from "./imports";
 import { getLogger } from "./logging";

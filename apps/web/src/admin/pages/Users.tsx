@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { AdminTableHead, AdminTh } from "../components/AdminTableHead";
+import { StatusBadge } from "../components/StatusBadge";
 import { useAdminPoll } from "../hooks/useAdminPoll";
 
 type UserRow = {
@@ -61,49 +63,43 @@ export function Users() {
 				<h2 className="text-xl font-semibold">Users</h2>
 				<p className="text-muted-foreground text-sm">
 					Roles come from Legion group membership and can't be changed here —
-					grant or revoke <code className="font-mono">coderunner-admin</code> in
+					grant or revoke <code className="font-mono">scriptum-admin</code> in
 					Legion's own <code className="font-mono">/admin/groups</code>.
 				</p>
 			</div>
-			<Card>
-				<CardContent className="pt-6">
+			<Card className="py-0">
+				<CardContent className="p-0">
 					{!users || users.length === 0 ? (
-						<p className="text-muted-foreground">No users yet.</p>
+						<p className="text-muted-foreground p-4">No users yet.</p>
 					) : (
 						<table className="w-full text-sm">
-							<thead>
-								<tr className="border-b text-left text-muted-foreground">
-									<th className="pb-2">Username</th>
-									<th className="pb-2">Name</th>
-									<th className="pb-2">Role</th>
-									<th className="pb-2">Slug</th>
-									<th className="pb-2">Last seen</th>
-									<th className="pb-2">Actions</th>
-								</tr>
-							</thead>
+							<AdminTableHead>
+								<AdminTh>Username</AdminTh>
+								<AdminTh>Name</AdminTh>
+								<AdminTh>Role</AdminTh>
+								<AdminTh>Slug</AdminTh>
+								<AdminTh>Last seen</AdminTh>
+								<AdminTh>Actions</AdminTh>
+							</AdminTableHead>
 							<tbody>
 								{users.map((u) => (
 									<tr key={u.id} className="border-b last:border-0">
-										<td className="py-2">{u.email}</td>
-										<td className="py-2">{u.name}</td>
-										<td className="py-2">
-											<span
-												className={`inline-block rounded px-2 py-0.5 text-xs ${
-													u.role === "admin"
-														? "bg-primary/20 text-primary"
-														: "bg-muted text-muted-foreground"
-												}`}
+										<td className="px-2 py-2">{u.email}</td>
+										<td className="px-2 py-2">{u.name}</td>
+										<td className="px-2 py-2">
+											<StatusBadge
+												tone={u.role === "admin" ? "accent" : "neutral"}
 											>
 												{u.role ?? "student"}
-											</span>
+											</StatusBadge>
 										</td>
-										<td className="py-2 font-mono">{u.slug ?? "—"}</td>
-										<td className="py-2">
+										<td className="px-2 py-2 font-mono">{u.slug ?? "—"}</td>
+										<td className="px-2 py-2">
 											{u.lastSeenAt
 												? new Date(u.lastSeenAt).toLocaleString()
 												: "—"}
 										</td>
-										<td className="py-2">
+										<td className="px-2 py-2">
 											<Button
 												variant="destructive"
 												size="sm"

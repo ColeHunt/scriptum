@@ -1,6 +1,5 @@
 import { LogIn } from "lucide-react";
 import { useSearchParams } from "react-router";
-import coderunnerMascotImg from "@/assets/coderunner-mascot.png";
 
 export function LoginPage() {
 	const [searchParams] = useSearchParams();
@@ -8,56 +7,24 @@ export function LoginPage() {
 	const legionSignInUrl = `/login/legion?return_to=${encodeURIComponent(returnTo)}`;
 
 	return (
-		<div className="flex h-screen w-full overflow-hidden bg-background">
-			{/* Left panel — mascot */}
-			<div
-				className="relative hidden flex-col items-center justify-center lg:flex"
-				style={{ width: "55%" }}
-			>
-				<div
-					className="absolute inset-0 bg-card"
-					style={{
-						background:
-							"radial-gradient(ellipse at 50% 60%, oklch(0.24 0 0) 0%, oklch(0.145 0 0) 75%)",
-					}}
-				/>
-				<img
-					src={coderunnerMascotImg}
-					alt="CodeRunner mascot"
-					className="relative z-10 w-150 select-none drop-shadow-2xl"
-					draggable={false}
-				/>
-			</div>
+		<div className="flex min-h-screen w-full items-center justify-center bg-background px-6">
+			<div className="w-full max-w-[380px] rounded-lg border border-border bg-card p-8 text-center">
+				<h1 className="text-2xl font-bold text-primary italic">Scriptum</h1>
+				<p className="mt-2 text-sm text-muted-foreground">
+					Sign in with your Legion account.
+				</p>
 
-			{/* Divider */}
-			<div className="hidden w-px shrink-0 bg-border lg:block" />
+				<a
+					href={legionSignInUrl}
+					className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+				>
+					<LogIn className="size-[18px] shrink-0" />
+					Sign in via Legion
+				</a>
 
-			{/* Right panel — sign in */}
-			<div className="flex flex-1 flex-col items-center justify-center px-8">
-				<div className="w-full max-w-[320px]">
-					{/* DS-style section label */}
-					<p className="mb-6 text-[9.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-						Sign in to continue
-					</p>
-
-					<div className="rounded-lg border border-border bg-card p-2">
-						<a
-							href={legionSignInUrl}
-							className="flex h-11 w-full items-center justify-center gap-3 rounded-md border border-border bg-white/[0.06] px-4 text-[13px] font-semibold tracking-wide text-foreground transition-all hover:bg-white/[0.11] hover:shadow-[0_0_18px_rgba(34,197,94,0.12)]"
-						>
-							<LogIn className="size-[18px] shrink-0" />
-							Sign in via Legion
-						</a>
-					</div>
-
-					{/* Fine print */}
-					<p className="mt-6 text-[10.5px] leading-relaxed text-muted-foreground">
-						Not on the roster?{" "}
-						<span className="text-foreground/60">
-							Ask your coach to add you in Legion.
-						</span>
-					</p>
-				</div>
+				<p className="mt-6 text-xs text-muted-foreground">
+					Not on the roster? Ask your coach to add you in Legion.
+				</p>
 			</div>
 		</div>
 	);

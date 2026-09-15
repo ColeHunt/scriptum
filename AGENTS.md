@@ -1,4 +1,4 @@
-# CodeRunner — Repo Notes for Codex
+# Scriptum — Repo Notes for Codex
 
 ## What This Is
 
@@ -25,7 +25,7 @@ apps/control/src/metrics-collector.ts  15s Docker stats poller that writes per-c
 apps/web/                      React + Vite browser IDE shell
 packages/contracts/            Shared API schemas, message types, and path rules
 containers/code/               V2 merged VSCodium + sim container
-containers/control/            Control-plane image: multi-stage build burying the emsdk/AdvantageScope compile, the coderunner dispatching entrypoint
+containers/control/            Control-plane image: multi-stage build burying the emsdk/AdvantageScope compile, the scriptum dispatching entrypoint
 catalog/                       Bundled (zero-config) lesson catalog: modules.json + modules/<id>/, baked into the code image
 lessons-repo-root/             Staging for the standalone remote lessons repo (will move out of this repo); not used by the app build
 scripts/                       TypeScript utility scripts run by Bun
@@ -50,7 +50,7 @@ data/                          Runtime data, gitignored
 - [x] V2-6: lifecycle, labels, and reconciliation
 - [x] V2-7: acceptance pass
 
-V2 is complete. The system uses per-student merged containers (`coderunner-workspace`) running VSCodium with bundled Java and WPILib extensions. The control plane proxies editor, run, and telemetry traffic through authenticated routes.
+V2 is complete. The system uses per-student merged containers (`scriptum-workspace-<id>`) running VSCodium with bundled Java and WPILib extensions. The control plane proxies editor, run, and telemetry traffic through authenticated routes.
 
 **Lessons & Modules (post-V2):** first-login template seeding is removed —
 workspaces start empty and the student fills them via the topbar **Switch
@@ -68,33 +68,33 @@ portal's Lessons tab — unassigned modules stay visible to everyone; see
 **Auth (post-V2):** sign-in is delegated entirely to Legion
 (`/prj/frc/apps/legion`), the same Slack-native SSO the sibling MARS/WARS apps
 use — verified locally from the `mw_sso` cookie (`apps/control/src/legion/`),
-no OAuth, no callback route. Demo mode (`CODERUNNER_DEMO_MODE=1`) still runs
+no OAuth, no callback route. Demo mode (`SCRIPTUM_DEMO_MODE=1`) still runs
 fully standalone with zero Legion config. Admin access is the
-`coderunner-admin` Legion group, recomputed live on every request — there is
+`scriptum-admin` Legion group, recomputed live on every request — there is
 no local promote/demote or allowlist anymore. See
 `docs/decisions/046-legion-auth-integration.md`.
 
 **Containerized control plane (post-V2):** the control plane ships as a Docker
 image (`containers/control/Dockerfile` → `ghcr.io/mathewdunne/coderunner-control`)
 and is deployed with docker compose (`docker-compose.yml` base +
-`docker-compose.prod.yml` for Caddy/Alloy; demo mode is `CODERUNNER_DEMO_MODE=1
+`docker-compose.prod.yml` for Caddy/Alloy; demo mode is `SCRIPTUM_DEMO_MODE=1
 docker compose up`, an env passthrough rather than an override file). It runs
 the host Docker daemon over the bind-mounted socket and manages workspace
 containers as siblings. The control container runs **non-root** as the data-dir
 owner (image default `USER bun`; compose overrides via
-`user: ${CODERUNNER_UID}:${CODERUNNER_GID}` with `group_add:
-${CODERUNNER_DOCKER_GID}` for socket access), so `./data` stays host-owned, not
+`user: ${SCRIPTUM_UID}:${SCRIPTUM_GID}` with `group_add:
+${SCRIPTUM_DOCKER_GID}` for socket access), so `./data` stays host-owned, not
 root-owned. Two modes via env: **port mode** (default;
 `FRC_CONTAINER_NETWORK` unset) publishes loopback ports and is what
-`bun run dev:control` uses; **network mode** (`FRC_CONTAINER_NETWORK=coderunner`)
+`bun run dev:control` uses; **network mode** (`FRC_CONTAINER_NETWORK=scriptum`)
 joins a shared Docker network with no published ports and needs
 `FRC_HOST_DATA_DIR` to translate bind-mount paths. Inside a container the
 control plane self-inspects (`docker inspect` on itself) to auto-detect the
 network, host data path, and workspace uid:gid, so those two env vars —
 plus `FRC_CONTAINER_USER` — are optional overrides rather than required
 plumbing; admin access is granted entirely through Legion group membership
-(the `coderunner-admin` group — see `docs/decisions/046-legion-auth-integration.md`),
-with zero exec steps on this side; ops commands run as `coderunner <subcommand>`
+(the `scriptum-admin` group — see `docs/decisions/046-legion-auth-integration.md`),
+with zero exec steps on this side; ops commands run as `scriptum <subcommand>`
 (a dispatching CLI baked into the image) instead of `bun scripts/<name>.ts`. The
 image build runs the emsdk/AdvantageScope compile in a build stage. See
 `docs/decisions/031-containerized-control-plane.md`.
@@ -154,8 +154,8 @@ arch-independent). See `docs/decisions/035-multi-arch-images-and-workflow-split.
 - Start control plane (dev, `--watch`): `bun run dev:control`
 - Start web shell with HMR: `bun run dev:web`
 - Start prod from source (migrates then serves): `bun run start`
-- Run the containerized demo stack: `bun run demo:docker` (or `CODERUNNER_DEMO_MODE=1 docker compose up`)
-- Containerized ops (compose deployments): `docker compose exec control coderunner <subcommand>` (or `docker compose run --rm control <subcommand>` while the plane is stopped) — see `docs/reference/cli-reference.md`
+- Run the containerized demo stack: `bun run demo:docker` (or `SCRIPTUM_DEMO_MODE=1 docker compose up`)
+- Containerized ops (compose deployments): `docker compose exec control scriptum <subcommand>` (or `docker compose run --rm control <subcommand>` while the plane is stopped) — see `docs/reference/cli-reference.md`
 - Prod build (web + ascope + image pull): `bun run build`
 - Backup projects: `bun run backup`
 - Restore projects: `bun run restore -- <backup-dir>`

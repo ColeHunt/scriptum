@@ -1,4 +1,4 @@
-import type { ContainersStatusResponse } from "@frc-coderunner/contracts";
+import type { ContainersStatusResponse } from "@frc-scriptum/contracts";
 import type { ExecResult } from "../runtime";
 
 export type DockerCommandResult = ExecResult;
@@ -65,7 +65,7 @@ export const VSCODE_CONTAINER_PORT = 3000;
 // three services, it is not yet leased a loopback port in port mode - see
 // docs/decisions/042-choreo-integration.md.
 export const CHOREO_CONTAINER_PORT = 5900;
-export const CODE_NAME_PREFIX = "coderunner-workspace-";
+export const CODE_NAME_PREFIX = "scriptum-workspace-";
 /** Bind-mount target for a workspace's captured AdvantageScope layout
  * snapshot - see `workspaceScopeStatePath` in ./metadata.ts. */
 export const SCOPE_STATE_CONTAINER_DIR = "/workspace/.scope-state";

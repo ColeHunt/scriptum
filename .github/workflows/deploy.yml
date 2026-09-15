@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  WORKSPACE_IMAGE: ghcr.io/${{ github.repository_owner }}/coderunner-workspace
-  CONTROL_IMAGE: ghcr.io/${{ github.repository_owner }}/coderunner-control
+  WORKSPACE_IMAGE: ghcr.io/${{ github.repository_owner }}/scriptum-workspace
+  CONTROL_IMAGE: ghcr.io/${{ github.repository_owner }}/scriptum-control
 
 jobs:
   preflight:
@@ -100,7 +100,7 @@ jobs:
           accountId: ${{ vars.CF_ACCOUNT_ID }}
           workingDirectory: deploy/cloudflare
           packageManager: bun
-          command: pages deploy --commit-dirty=true --branch main --project-name=coderunner
+          command: pages deploy --commit-dirty=true --branch main --project-name=scriptum
 
   deploy:
     needs: preflight
@@ -114,7 +114,7 @@ jobs:
       # GCP_WIF_PROVIDER. Optional: GCP_ZONE, GCP_VM_NAME.
       GCP_PROJECT: ${{ vars.GCP_PROJECT }}
       GCP_ZONE: ${{ vars.GCP_ZONE || 'us-central1-a' }}
-      VM_NAME: ${{ vars.GCP_VM_NAME || 'coderunner' }}
+      VM_NAME: ${{ vars.GCP_VM_NAME || 'scriptum' }}
       DEPLOY_SA: ${{ vars.GCP_DEPLOY_SA }}
       WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
       TAG: ${{ needs.preflight.outputs.tag }}
@@ -168,28 +168,28 @@ jobs:
 
           # Wait for first-boot provisioning to finish (compose files, .env).
           for _ in \$(seq 1 60); do
-            test -f /var/log/coderunner-bootstrap-done && break
+            test -f /var/log/scriptum-bootstrap-done && break
             sleep 2
           done
-          test -f /var/log/coderunner-bootstrap-done
+          test -f /var/log/scriptum-bootstrap-done
 
-          sudo install -o root -g root -m 644 /tmp/docker-compose.yml /opt/coderunner/docker-compose.yml
-          sudo install -o root -g root -m 644 /tmp/docker-compose.prod.yml /opt/coderunner/docker-compose.prod.yml
+          sudo install -o root -g root -m 644 /tmp/docker-compose.yml /opt/scriptum/docker-compose.yml
+          sudo install -o root -g root -m 644 /tmp/docker-compose.prod.yml /opt/scriptum/docker-compose.prod.yml
           rm -f /tmp/docker-compose.yml /tmp/docker-compose.prod.yml
 
-          # Pin the deployed tag. render-env.sh preserves CODERUNNER_TAG across
+          # Pin the deployed tag. render-env.sh preserves SCRIPTUM_TAG across
           # reboots; compose interpolates it into the control + workspace images.
-          sudo sed -i '/^CODERUNNER_TAG=/d' /opt/coderunner/.env
-          echo "CODERUNNER_TAG=$TAG" | sudo tee -a /opt/coderunner/.env >/dev/null
+          sudo sed -i '/^SCRIPTUM_TAG=/d' /opt/scriptum/.env
+          echo "SCRIPTUM_TAG=$TAG" | sudo tee -a /opt/scriptum/.env >/dev/null
 
-          cd /opt/coderunner
+          cd /opt/scriptum
           sudo docker compose pull
           sudo docker compose up -d --remove-orphans
 
           # New workspace image: recycle student containers so the next access
           # recreates them on the new image. Projects/homes are bind-mounted, so
           # only disposable containers are removed.
-          sudo docker compose exec -T control coderunner rebuild-workspaces
+          sudo docker compose exec -T control scriptum rebuild-workspaces
 
           for _ in \$(seq 1 60); do
             if curl -sf http://localhost:4000/healthz >/dev/null; then

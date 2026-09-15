@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminTableHead, AdminTh } from "../components/AdminTableHead";
+import { StatusBadge } from "../components/StatusBadge";
 import { useAdminPoll } from "../hooks/useAdminPoll";
 
 type AdminStatus = {
@@ -170,39 +172,37 @@ export function Dashboard() {
 				</Card>
 			</div>
 
-			<Card>
+			<Card className="pb-0">
 				<CardHeader>
 					<CardTitle>Workspaces</CardTitle>
 				</CardHeader>
-				<CardContent>
+				<CardContent className="p-0">
 					{data.workspaces.length === 0 ? (
-						<p className="text-muted-foreground">No workspaces yet.</p>
+						<p className="text-muted-foreground p-4 pt-0">No workspaces yet.</p>
 					) : (
 						<table className="w-full text-sm">
-							<thead>
-								<tr className="border-b text-left text-muted-foreground">
-									<th className="pb-2">Slug</th>
-									<th className="pb-2">User</th>
-									<th className="pb-2">Status</th>
-								</tr>
-							</thead>
+							<AdminTableHead>
+								<AdminTh>Slug</AdminTh>
+								<AdminTh>User</AdminTh>
+								<AdminTh>Status</AdminTh>
+							</AdminTableHead>
 							<tbody>
 								{data.workspaces.map((w) => (
 									<tr key={w.workspace.id} className="border-b last:border-0">
-										<td className="py-2 font-mono">{w.workspace.slug}</td>
-										<td className="py-2">{w.user.displayName}</td>
-										<td className="py-2">
-											<span
-												className={`inline-block rounded px-2 py-0.5 text-xs ${
+										<td className="px-2 py-2 font-mono">{w.workspace.slug}</td>
+										<td className="px-2 py-2">{w.user.displayName}</td>
+										<td className="px-2 py-2">
+											<StatusBadge
+												tone={
 													w.code.state === "running"
-														? "bg-green-900 text-green-300"
+														? "success"
 														: w.code.state === "starting"
-															? "bg-yellow-900 text-yellow-300"
-															: "bg-muted text-muted-foreground"
-												}`}
+															? "warning"
+															: "neutral"
+												}
 											>
 												{w.code.state}
-											</span>
+											</StatusBadge>
 										</td>
 									</tr>
 								))}

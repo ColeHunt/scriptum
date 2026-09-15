@@ -1,12 +1,12 @@
 #!/bin/sh
-# coderunner — dispatching CLI entrypoint for the control-plane image.
+# scriptum — dispatching CLI entrypoint for the control-plane image.
 #
-# Installed at /usr/local/bin/coderunner by the Dockerfile. Reached two ways:
+# Installed at /usr/local/bin/scriptum by the Dockerfile. Reached two ways:
 #   1. As the image ENTRYPOINT: `docker compose run --rm control <subcommand>`
 #      (CMD defaults to "serve", so a bare `docker compose up`/`run` boots the
 #      server; `run --rm control backup` etc. replace CMD with a subcommand).
 #   2. Directly on PATH inside a running container: `docker compose exec
-#      control coderunner <subcommand>` — `exec` bypasses the image
+#      control scriptum <subcommand>` — `exec` bypasses the image
 #      ENTRYPOINT entirely, so this form only works because the script is
 #      also installed as a normal executable on PATH, not because it's the
 #      ENTRYPOINT.
@@ -20,7 +20,7 @@ cd /app
 
 usage() {
 	cat <<'EOF'
-Usage: coderunner <subcommand> [args...]
+Usage: scriptum <subcommand> [args...]
 
 Subcommands:
   serve                    Run pending DB migrations, then start the control plane (default).
@@ -33,7 +33,7 @@ Subcommands:
   migrate [apply|status]   Run or check the status of database migrations.
   help                     Show this message.
 
-Anything else is exec'd as-is, e.g. `coderunner bash` for a shell.
+Anything else is exec'd as-is, e.g. `scriptum bash` for a shell.
 EOF
 }
 

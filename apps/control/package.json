@@ -1,5 +1,5 @@
 {
-	"name": "@frc-coderunner/control",
+	"name": "@frc-scriptum/control",
 	"private": true,
 	"version": "0.0.0",
 	"license": "MIT",
@@ -11,7 +11,7 @@
 		"typecheck": "tsc -b"
 	},
 	"dependencies": {
-		"@frc-coderunner/contracts": "workspace:*",
+		"@frc-scriptum/contracts": "workspace:*",
 		"@logtape/logtape": "^2.0.7",
 		"prom-client": "^15.1.3"
 	}

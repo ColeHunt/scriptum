@@ -7,7 +7,7 @@
  * cosmetic `track` grouping), it becomes visible only to the users/groups
  * assigned to it.
  */
-import type { LessonModule } from "@frc-coderunner/contracts";
+import type { LessonModule } from "@frc-scriptum/contracts";
 import type { LessonAssignmentRow } from "./storage";
 
 /** Filters `modules` down to what `viewer` is allowed to see. */

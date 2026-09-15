@@ -4,7 +4,7 @@ import { z } from "zod";
  * Set on a 503 from the editor proxy when the editor is still coming up rather
  * than broken, so the shell can show "starting" instead of an error.
  */
-export const EDITOR_STATE_HEADER = "x-coderunner-editor-state";
+export const EDITOR_STATE_HEADER = "x-scriptum-editor-state";
 
 export const ROUTE_SLUG_PATTERN = /^[a-zA-Z0-9_-]{1,40}$/;
 export const WORKSPACE_ID_PATTERN = /^ws_[a-f0-9]{32}$/;

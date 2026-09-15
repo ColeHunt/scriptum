@@ -104,7 +104,7 @@ describe("PaneVisibility", () => {
 
 	test("never restores a persisted all-hidden state", () => {
 		sessionStorage.setItem(
-			"coderunner:pane-visibility",
+			"scriptum:pane-visibility",
 			JSON.stringify({ editor: false, scope: false, choreo: false }),
 		);
 
@@ -138,7 +138,7 @@ describe("PaneVisibility", () => {
 
 	test("hiding Driver Station does not exempt the workbench from its own guard", () => {
 		sessionStorage.setItem(
-			"coderunner:pane-visibility",
+			"scriptum:pane-visibility",
 			JSON.stringify({
 				editor: false,
 				scope: false,

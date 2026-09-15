@@ -7,7 +7,7 @@
  * S11 — Git clone target paths never interpolated into a shell.
  */
 import { describe, expect, test } from "bun:test";
-import type { WorkspaceId } from "@frc-coderunner/contracts";
+import type { WorkspaceId } from "@frc-scriptum/contracts";
 import { type GithubImportContext, ImportManager } from "../../imports";
 import type { WorkspaceRow } from "../../storage";
 import {

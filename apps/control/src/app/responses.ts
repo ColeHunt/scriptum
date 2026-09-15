@@ -2,7 +2,7 @@ import {
 	type HeartbeatResponse,
 	heartbeatRequestSchema,
 	type SessionResponse,
-} from "@frc-coderunner/contracts";
+} from "@frc-scriptum/contracts";
 import { CapacityExceededError, type CodeContainerStatus } from "../containers";
 import type { WorkspaceRuntime } from "../runtime";
 import type { AppStorage, AuthContext } from "../storage";

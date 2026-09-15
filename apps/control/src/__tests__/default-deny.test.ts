@@ -18,7 +18,7 @@ const PUBLIC_PATHS: Array<{ path: string; method?: "GET" | "POST" }> = [
 	{ path: "/healthz" },
 	{ path: "/api/openapi.json" },
 	{ path: "/api/session" },
-	{ path: "/coderunner-icon.png" },
+	{ path: "/scriptum-icon.png" },
 	{ path: "/favicon.ico" },
 	{ path: "/assets/app.js" },
 	{ path: "/scope/" },

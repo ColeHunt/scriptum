@@ -178,7 +178,7 @@ COPY --from=elastic-dist / dist/elastic
 # patched AdvantageScope build, and BSD-3-Clause requires the notice to
 # accompany the binary distribution. Last of the COPY layers so editing the
 # notices doesn't invalidate the install or dist layers above.
-COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/coderunner/
+COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/scriptum/
 
 # /data is the bind-mounted host data directory (SQLite DB + per-student
 # projects). The ops scripts' relative "data" fallbacks rely on these being
@@ -189,15 +189,15 @@ ENV FRC_DATA_DIR=/data \
 
 EXPOSE 4000
 
-# `coderunner` is a dispatching CLI (containers/control/entrypoint.sh) so ops
-# commands read as `coderunner <subcommand>` instead of exposing the script
+# `scriptum` is a dispatching CLI (containers/control/entrypoint.sh) so ops
+# commands read as `scriptum <subcommand>` instead of exposing the script
 # paths. With CMD=["serve"] the default `docker compose up` migrates then
 # execs the server as PID 1, so it receives docker stop's SIGTERM directly;
 # `docker compose run --rm control <subcommand>` (allowlist, backup, restore,
-# ...) reuses the same entrypoint, and `docker compose exec control coderunner
+# ...) reuses the same entrypoint, and `docker compose exec control scriptum
 # <subcommand>` reaches it directly on PATH since `exec` bypasses ENTRYPOINT.
-COPY containers/control/entrypoint.sh /usr/local/bin/coderunner
-RUN chmod +x /usr/local/bin/coderunner
+COPY containers/control/entrypoint.sh /usr/local/bin/scriptum
+RUN chmod +x /usr/local/bin/scriptum
 
 # Non-root by default; compose overrides the uid:gid to the data-dir owner.
 # HOME must be writable by whatever uid runs us (bun runtime cache, etc.), so
@@ -209,5 +209,5 @@ RUN install -d -m 0777 /home/app
 ENV HOME=/home/app
 USER bun
 
-ENTRYPOINT ["coderunner"]
+ENTRYPOINT ["scriptum"]
 CMD ["serve"]

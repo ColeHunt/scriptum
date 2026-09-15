@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { LessonModule } from "@frc-coderunner/contracts";
+import type { LessonModule } from "@frc-scriptum/contracts";
 import { filterVisibleModules } from "./lesson-assignments";
 import type { LessonAssignmentRow } from "./storage";
 

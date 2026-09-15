@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { WorkspaceId } from "@frc-coderunner/contracts";
+import type { WorkspaceId } from "@frc-scriptum/contracts";
 import { type ControlAppOptions, createApp } from "../app";
 import {
 	managedContainerStats,
@@ -333,7 +333,7 @@ describe("code container orchestration", () => {
 			catalogDir,
 			// Explicit, not omitted: Bun auto-loads .env for every process
 			// including `bun test`, so a developer's real LESSONS_CATALOG_REPO/
-			// CODERUNNER_DEMO_MODE would otherwise silently change this test's
+			// SCRIPTUM_DEMO_MODE would otherwise silently change this test's
 			// behavior. See the identical guard in helpers.ts's withApp().
 			catalogRepo: "",
 			demo: false,
@@ -510,8 +510,8 @@ describe("code container orchestration", () => {
 describe("managedContainerStats", () => {
 	test("batches docker inspect into a single call and maps fields per container", async () => {
 		const fakeDocker = createFakeDocker();
-		fakeDocker.containers.set("coderunner-workspace-alice", {
-			name: "coderunner-workspace-alice",
+		fakeDocker.containers.set("scriptum-workspace-alice", {
+			name: "scriptum-workspace-alice",
 			running: true,
 			labels: {
 				"frc-sim.managed": "true",
@@ -520,8 +520,8 @@ describe("managedContainerStats", () => {
 			},
 			ports: [],
 		});
-		fakeDocker.containers.set("coderunner-workspace-bob", {
-			name: "coderunner-workspace-bob",
+		fakeDocker.containers.set("scriptum-workspace-bob", {
+			name: "scriptum-workspace-bob",
 			running: false,
 			labels: {
 				"frc-sim.managed": "true",
@@ -534,12 +534,12 @@ describe("managedContainerStats", () => {
 		const stats = await managedContainerStats(fakeDocker.runner);
 
 		const byName = new Map(stats.map((stat) => [stat.name, stat]));
-		expect(byName.get("coderunner-workspace-alice")).toMatchObject({
+		expect(byName.get("scriptum-workspace-alice")).toMatchObject({
 			workspaceId: "alice",
 			role: "code",
 			state: "running",
 		});
-		expect(byName.get("coderunner-workspace-bob")).toMatchObject({
+		expect(byName.get("scriptum-workspace-bob")).toMatchObject({
 			workspaceId: "bob",
 			role: "code",
 			state: "stopped",
@@ -553,16 +553,16 @@ describe("managedContainerStats", () => {
 		expect(inspectCalls[0]).toEqual([
 			"container",
 			"inspect",
-			"coderunner-workspace-alice",
-			"coderunner-workspace-bob",
+			"scriptum-workspace-alice",
+			"scriptum-workspace-bob",
 		]);
 	});
 
 	test("degrades gracefully when a container disappears between ls and inspect", async () => {
 		const fakeDocker = createFakeDocker();
 		// Present in the ls output but resolvable by inspect.
-		fakeDocker.containers.set("coderunner-workspace-alice", {
-			name: "coderunner-workspace-alice",
+		fakeDocker.containers.set("scriptum-workspace-alice", {
+			name: "scriptum-workspace-alice",
 			running: true,
 			labels: {
 				"frc-sim.managed": "true",
@@ -578,7 +578,7 @@ describe("managedContainerStats", () => {
 			if (args[0] === "container" && args[1] === "ls") {
 				return {
 					...result,
-					stdout: `${result.stdout.trim()}\ncoderunner-workspace-ghost\n`,
+					stdout: `${result.stdout.trim()}\nscriptum-workspace-ghost\n`,
 				};
 			}
 			return result;
@@ -586,7 +586,7 @@ describe("managedContainerStats", () => {
 
 		const stats = await managedContainerStats(runner);
 		const ghost = stats.find(
-			(stat) => stat.name === "coderunner-workspace-ghost",
+			(stat) => stat.name === "scriptum-workspace-ghost",
 		);
 		expect(ghost).toMatchObject({
 			workspaceId: null,

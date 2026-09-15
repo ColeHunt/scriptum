@@ -3,7 +3,7 @@ import type {
 	AutoChooserPatch,
 	AutoChoosersResponse,
 	WorkspaceId,
-} from "@frc-coderunner/contracts";
+} from "@frc-scriptum/contracts";
 import { getLogger } from "./logging";
 import { type BridgeEntryBase, ReconnectingWsBridge } from "./ws-bridge";
 
