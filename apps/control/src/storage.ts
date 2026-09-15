@@ -28,6 +28,10 @@ export type WorkspaceRow = {
 	last_accessed_at: string;
 	current_module: string | null;
 	current_module_kind: LessonModuleKind | null;
+	/** Which worker droplet's Docker daemon owns this workspace's container,
+	 * if any. NULL means unplaced (never started, or idle-stopped and free to
+	 * be re-placed on next start). See docs/decisions/048. */
+	worker_id: string | null;
 };
 
 export type ContainerLeaseRow = {
@@ -39,6 +43,18 @@ export type ContainerLeaseRow = {
 	code_state: ContainerState;
 	last_used_at: string;
 	created_at: string;
+};
+
+export type WorkerStatus = "provisioning" | "ready" | "draining" | "destroying";
+
+export type WorkerRow = {
+	id: string;
+	do_droplet_id: string;
+	private_ip: string;
+	status: WorkerStatus;
+	capacity: number;
+	created_at: string;
+	last_heartbeat_at: string | null;
 };
 
 export type RunJobState = "building" | "running" | "failed" | "stopped";
@@ -564,6 +580,7 @@ export class AppStorage {
             w.last_accessed_at AS w_last_accessed_at,
             w.current_module AS w_current_module,
             w.current_module_kind AS w_current_module_kind,
+            w.worker_id AS w_worker_id,
             u.id AS u_id, u.name AS u_name, u.email AS u_email,
             u.role AS u_role, u.slug AS u_slug,
             cl.workspace_id AS cl_workspace_id, cl.nt4_port,
@@ -584,6 +601,7 @@ export class AppStorage {
 			w_last_accessed_at: string;
 			w_current_module: string | null;
 			w_current_module_kind: LessonModuleKind | null;
+			w_worker_id: string | null;
 			u_id: string | null;
 			u_name: string | null;
 			u_email: string | null;
@@ -609,6 +627,7 @@ export class AppStorage {
 				last_accessed_at: row.w_last_accessed_at,
 				current_module: row.w_current_module,
 				current_module_kind: row.w_current_module_kind,
+				worker_id: row.w_worker_id,
 			},
 			user: {
 				id: row.u_id ?? row.w_user_id,
@@ -842,6 +861,80 @@ export class AppStorage {
 			.query("DELETE FROM lesson_assignments WHERE id = ?")
 			.run(id);
 		return result.changes > 0;
+	}
+
+	// --- Worker fleet (head/worker deployment redesign - see docs/decisions/048) ---
+
+	listWorkers(): WorkerRow[] {
+		return this.db
+			.query("SELECT * FROM workers ORDER BY created_at")
+			.all() as WorkerRow[];
+	}
+
+	getWorker(id: string): WorkerRow | null {
+		return this.db
+			.query("SELECT * FROM workers WHERE id = ?")
+			.get(id) as WorkerRow | null;
+	}
+
+	createWorker(input: {
+		id: string;
+		doDropletId: string;
+		privateIp: string;
+		capacity: number;
+	}): WorkerRow {
+		const now = nowIso();
+		this.db
+			.query(
+				`INSERT INTO workers (id, do_droplet_id, private_ip, status, capacity, created_at)
+				 VALUES (?, ?, ?, 'provisioning', ?, ?)`,
+			)
+			.run(input.id, input.doDropletId, input.privateIp, input.capacity, now);
+		const row = this.getWorker(input.id);
+		if (!row) {
+			throw new Error("Failed to reload newly created worker.");
+		}
+		return row;
+	}
+
+	setWorkerStatus(id: string, status: WorkerStatus): void {
+		this.db.query("UPDATE workers SET status = ? WHERE id = ?").run(status, id);
+	}
+
+	recordWorkerHeartbeat(id: string): void {
+		this.db
+			.query("UPDATE workers SET last_heartbeat_at = ? WHERE id = ?")
+			.run(nowIso(), id);
+	}
+
+	/** Returns true if a row was deleted. Workspaces/leases pointing at this
+	 * worker fall back to NULL (unplaced) via ON DELETE SET NULL. */
+	deleteWorker(id: string): boolean {
+		const result = this.db.query("DELETE FROM workers WHERE id = ?").run(id);
+		return result.changes > 0;
+	}
+
+	/** Count of workspaces currently placed on this worker - the scheduler's
+	 * fill level. Counts from workspaces.worker_id (set as soon as placement
+	 * is decided), not container_leases, so a just-assigned workspace whose
+	 * first ensureWorkspaceRunning call hasn't happened yet still occupies its
+	 * slot - otherwise the scheduler could double-book a worker between two
+	 * placement decisions that both land before either container starts. */
+	countWorkspacesOnWorker(workerId: string): number {
+		const row = this.db
+			.query("SELECT COUNT(*) as n FROM workspaces WHERE worker_id = ?")
+			.get(workerId) as { n: number };
+		return row.n;
+	}
+
+	/** Assign (or clear, with workerId null) which worker owns a workspace's
+	 * container. The single source of truth for placement - see the
+	 * countWorkspacesOnWorker comment above for why this isn't also mirrored
+	 * onto container_leases. */
+	setWorkspaceWorker(workspaceId: WorkspaceId, workerId: string | null): void {
+		this.db
+			.query("UPDATE workspaces SET worker_id = ? WHERE id = ?")
+			.run(workerId, workspaceId);
 	}
 }
 
