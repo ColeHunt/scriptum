@@ -88,7 +88,16 @@ export default function App() {
 		const timeoutId = window.setTimeout(() => controller.abort(), 5000);
 		fetch("/healthz", { signal: controller.signal })
 			.then((res) => setHealth(res.ok ? "online" : "offline"))
-			.catch(() => setHealth("offline"))
+			.catch((err: unknown) => {
+				// StrictMode double-invokes this effect in dev, and the cleanup
+				// below aborts the first invocation's in-flight fetch - that abort
+				// rejects here too. Without this check, the first (aborted)
+				// invocation's rejection can set "offline" after the second
+				// (real) invocation already set "online", a race that leaves the
+				// app stuck showing the offline page despite a healthy backend.
+				if (err instanceof DOMException && err.name === "AbortError") return;
+				setHealth("offline");
+			})
 			.finally(() => window.clearTimeout(timeoutId));
 		return () => {
 			window.clearTimeout(timeoutId);

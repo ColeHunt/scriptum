@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminTableHead, AdminTh } from "../components/AdminTableHead";
 import { useAdminPoll } from "../hooks/useAdminPoll";
 
 type CatalogModule = {
@@ -217,18 +218,16 @@ export function Lessons() {
 						</p>
 					) : (
 						<table className="w-full text-sm">
-							<thead>
-								<tr className="border-b text-left text-muted-foreground">
-									<th className="pb-2">Target</th>
-									<th className="pb-2">Assigned to</th>
-									<th className="pb-2">Added</th>
-									<th className="pb-2">Actions</th>
-								</tr>
-							</thead>
+							<AdminTableHead>
+								<AdminTh>Target</AdminTh>
+								<AdminTh>Assigned to</AdminTh>
+								<AdminTh>Added</AdminTh>
+								<AdminTh>Actions</AdminTh>
+							</AdminTableHead>
 							<tbody>
 								{assignments.map((a) => (
 									<tr key={a.id} className="border-b last:border-0">
-										<td className="py-2">
+										<td className="px-2 py-2">
 											<span className="text-muted-foreground text-xs uppercase">
 												{a.target_type}
 											</span>{" "}
@@ -236,17 +235,17 @@ export function Lessons() {
 												? moduleTitle(a.target_id)
 												: a.target_id}
 										</td>
-										<td className="py-2 font-mono">
+										<td className="px-2 py-2 font-mono">
 											{a.assignee_type === "group" ? (
 												a.assignee_id
 											) : (
 												<span>user:{a.assignee_id}</span>
 											)}
 										</td>
-										<td className="py-2">
+										<td className="px-2 py-2">
 											{new Date(a.created_at).toLocaleString()}
 										</td>
-										<td className="py-2">
+										<td className="px-2 py-2">
 											<Button
 												variant="ghost"
 												size="sm"

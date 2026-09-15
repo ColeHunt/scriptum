@@ -28,7 +28,11 @@ export default defineConfig({
 			"/favicon.ico": controlPlane,
 			"/login/legion": controlPlane,
 			"/logout": controlPlane,
-			"^/admin/(assets|lessons|audit-log|users|containers|workspaces|config|status)(/.*)?$":
+			// (\?.*)? at the end matters: without it, a request with a query
+			// string (e.g. /admin/audit-log?limit=50, which useAdminPoll always
+			// sends) fails the $-anchored match and silently falls through to
+			// index.html instead of being proxied.
+			"^/admin/(assets|lessons|audit-log|users|containers|workspaces|config|status)(/.*)?(\\?.*)?$":
 				proxyOpts,
 			"^/u/[^/]+/(api|ws|sim|vscode|assets|scriptum-icon\\.png|favicon\\.ico)(/.*)?$":
 				proxyOpts,

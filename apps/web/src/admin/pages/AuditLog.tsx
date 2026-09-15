@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminTableHead, AdminTh } from "../components/AdminTableHead";
 import { useAdminPoll } from "../hooks/useAdminPoll";
 
 type AuditEntry = {
@@ -104,15 +105,13 @@ export function AuditLog() {
 						) : (
 							<>
 								<table className="w-full text-sm">
-									<thead>
-										<tr className="border-b text-left text-muted-foreground">
-											<th className="pb-2">Time</th>
-											<th className="pb-2">Actor</th>
-											<th className="pb-2">Action</th>
-											<th className="pb-2">Target</th>
-											<th className="pb-2">Details</th>
-										</tr>
-									</thead>
+									<AdminTableHead>
+										<AdminTh>Time</AdminTh>
+										<AdminTh>Actor</AdminTh>
+										<AdminTh>Action</AdminTh>
+										<AdminTh>Target</AdminTh>
+										<AdminTh>Details</AdminTh>
+									</AdminTableHead>
 									<tbody>
 										{entries.map((entry) => (
 											<AuditRow key={entry.id} entry={entry} />
@@ -152,11 +151,11 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
 				className="cursor-pointer border-b last:border-0 hover:bg-muted/50"
 				onClick={() => setExpanded(!expanded)}
 			>
-				<td className="py-2 text-xs text-muted-foreground">{time}</td>
-				<td className="py-2">{entry.actor_email}</td>
-				<td className="py-2 font-mono text-xs">{entry.action}</td>
-				<td className="py-2 text-xs">{targetSummary}</td>
-				<td className="py-2 text-xs text-muted-foreground">
+				<td className="px-2 py-2 text-xs text-muted-foreground">{time}</td>
+				<td className="px-2 py-2">{entry.actor_email}</td>
+				<td className="px-2 py-2 font-mono text-xs">{entry.action}</td>
+				<td className="px-2 py-2 text-xs">{targetSummary}</td>
+				<td className="px-2 py-2 text-xs text-muted-foreground">
 					{entry.metadata_json ? "▸" : ""}
 				</td>
 			</tr>
