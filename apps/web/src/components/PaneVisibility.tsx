@@ -52,6 +52,26 @@ const DEFAULT_VISIBILITY: PaneVisibility = {
 	driverStation: true,
 };
 
+// Choreo's field canvas needs more width than a 3-pane split leaves it - it
+// refuses to render below its own internal minimum and shows a "not enough
+// space" placeholder instead of the actual path editor. AdvantageScope and
+// Elastic tolerate that squeeze fine, so Choreo can't be visible alongside
+// either: whichever of the three the student just turned on wins, and the
+// other side of the conflict turns off - never a silent no-op on the button
+// they just clicked.
+function withChoreoSpace(
+	visibility: PaneVisibility,
+	justToggled?: PaneKey,
+): PaneVisibility {
+	if (!visibility.choreo || (!visibility.scope && !visibility.elastic)) {
+		return visibility;
+	}
+	if (justToggled === "scope" || justToggled === "elastic") {
+		return { ...visibility, choreo: false };
+	}
+	return { ...visibility, scope: false, elastic: false };
+}
+
 function readStoredVisibility(): PaneVisibility {
 	try {
 		const raw = sessionStorage.getItem(STORAGE_KEY);
@@ -65,7 +85,10 @@ function readStoredVisibility(): PaneVisibility {
 		}
 		// Never trust a persisted state with every workbench pane hidden - it
 		// would render a blank workbench with no way to bring anything back.
-		return WORKBENCH_PANE_KEYS.some((k) => next[k]) ? next : DEFAULT_VISIBILITY;
+		// No "just toggled" key on initial load - fall back to Choreo losing.
+		return WORKBENCH_PANE_KEYS.some((k) => next[k])
+			? withChoreoSpace(next)
+			: DEFAULT_VISIBILITY;
 	} catch {
 		return DEFAULT_VISIBILITY;
 	}
@@ -96,9 +119,11 @@ interface PaneVisibilityRootProps {
 /**
  * Shares which of the editor/AdvantageScope/Choreo panes are visible between
  * the topbar toggle row and IDELayout's resizable panels (siblings under
- * WorkspacePage). Any subset can be shown at once - toggling down to a
- * single pane makes it fill the whole workbench area, which is what gives
- * the "one app fullscreen" behavior without a separate maximize concept.
+ * WorkspacePage). Almost any subset can be shown at once - toggling down to
+ * a single pane makes it fill the whole workbench area, which is what gives
+ * the "one app fullscreen" behavior without a separate maximize concept. The
+ * one exception is Choreo, which forces AdvantageScope and Elastic off when
+ * it's turned on (see withChoreoSpace).
  */
 export function PaneVisibilityRoot({
 	className,
@@ -108,7 +133,7 @@ export function PaneVisibilityRoot({
 
 	const toggle = useCallback((key: PaneKey) => {
 		setVisible((prev) => {
-			const next = { ...prev, [key]: !prev[key] };
+			const next = withChoreoSpace({ ...prev, [key]: !prev[key] }, key);
 			// Never allow hiding every workbench pane at once - there would be
 			// nothing left to toggle it back on with. Driver Station is exempt:
 			// it's free to toggle independently (see WORKBENCH_PANE_KEYS).

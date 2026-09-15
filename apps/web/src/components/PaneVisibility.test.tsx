@@ -47,7 +47,7 @@ describe("PaneVisibility", () => {
 	test("toggling shows and hides independently, without excluding others", () => {
 		renderToggles();
 
-		fireEvent.click(screen.getByRole("button", { name: "Choreo" }));
+		fireEvent.click(screen.getByRole("button", { name: "Driver Station" }));
 
 		expect(screen.getByRole("button", { name: "Editor" })).toHaveAttribute(
 			"aria-pressed",
@@ -56,10 +56,91 @@ describe("PaneVisibility", () => {
 		expect(
 			screen.getByRole("button", { name: "AdvantageScope" }),
 		).toHaveAttribute("aria-pressed", "true");
+		expect(
+			screen.getByRole("button", { name: "Driver Station" }),
+		).toHaveAttribute("aria-pressed", "false");
+	});
+
+	test("turning Choreo on collapses AdvantageScope - its canvas doesn't fit a 3-pane split", () => {
+		renderToggles();
+
+		fireEvent.click(screen.getByRole("button", { name: "Choreo" }));
+
 		expect(screen.getByRole("button", { name: "Choreo" })).toHaveAttribute(
 			"aria-pressed",
 			"true",
 		);
+		expect(
+			screen.getByRole("button", { name: "AdvantageScope" }),
+		).toHaveAttribute("aria-pressed", "false");
+		expect(screen.getByRole("button", { name: "Editor" })).toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+	});
+
+	test("turning Choreo on collapses Elastic too", () => {
+		renderToggles();
+
+		fireEvent.click(screen.getByRole("button", { name: "Elastic" }));
+		fireEvent.click(screen.getByRole("button", { name: "Choreo" }));
+
+		expect(screen.getByRole("button", { name: "Choreo" })).toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+		expect(screen.getByRole("button", { name: "Elastic" })).toHaveAttribute(
+			"aria-pressed",
+			"false",
+		);
+	});
+
+	test("turning AdvantageScope on while Choreo is active turns Choreo off instead of no-op'ing", () => {
+		renderToggles();
+
+		fireEvent.click(screen.getByRole("button", { name: "Choreo" }));
+		fireEvent.click(screen.getByRole("button", { name: "AdvantageScope" }));
+
+		expect(
+			screen.getByRole("button", { name: "AdvantageScope" }),
+		).toHaveAttribute("aria-pressed", "true");
+		expect(screen.getByRole("button", { name: "Choreo" })).toHaveAttribute(
+			"aria-pressed",
+			"false",
+		);
+	});
+
+	test("turning Elastic on while Choreo is active turns Choreo off instead of no-op'ing", () => {
+		renderToggles();
+
+		fireEvent.click(screen.getByRole("button", { name: "Choreo" }));
+		fireEvent.click(screen.getByRole("button", { name: "Elastic" }));
+
+		expect(screen.getByRole("button", { name: "Elastic" })).toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+		expect(screen.getByRole("button", { name: "Choreo" })).toHaveAttribute(
+			"aria-pressed",
+			"false",
+		);
+	});
+
+	test("sanitizes a stale persisted state with both Choreo and AdvantageScope visible", () => {
+		sessionStorage.setItem(
+			"scriptum:pane-visibility",
+			JSON.stringify({ editor: true, scope: true, choreo: true }),
+		);
+
+		renderToggles();
+
+		expect(screen.getByRole("button", { name: "Choreo" })).toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+		expect(
+			screen.getByRole("button", { name: "AdvantageScope" }),
+		).toHaveAttribute("aria-pressed", "false");
 	});
 
 	test("toggling the same pane off hides just that one", () => {
