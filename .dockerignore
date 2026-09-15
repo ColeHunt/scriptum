@@ -1,15 +1,17 @@
 # Shared by both image builds (context = repo root):
-#   containers/code/Dockerfile    needs containers/code/, catalog/
+#   containers/code/Dockerfile    needs containers/code/, catalog/, and the
+#     Choreo submodule gitdir (choreo-builder Rust sidecar stage)
 #   containers/control/Dockerfile needs package.json, bun.lock, tsconfig*,
 #     apps/, packages/, scripts/, catalog/, vendor/, patches/, the
-#     submodule gitdir .git/modules/vendor/AdvantageScope (for the
-#     AdvantageScope patch/symlink steps), and dist/elastic (a host-prebuilt
-#     Flutter output, only for a local build — CI supplies it via
-#     --build-context instead).
+#     submodule gitdirs .git/modules/vendor/{AdvantageScope,Choreo} (for the
+#     patch/symlink steps), and dist/elastic (a host-prebuilt Flutter
+#     output, only for a local build — CI supplies it via --build-context
+#     instead).
 
-# Git metadata, except the AdvantageScope submodule gitdir.
+# Git metadata, except the AdvantageScope/Choreo submodule gitdirs.
 .git
 !.git/modules/vendor/AdvantageScope
+!.git/modules/vendor/Choreo
 
 # Dependencies and build outputs (regenerated inside the build stages) —
 # except dist/elastic, which is the one exception that's genuine build INPUT,
