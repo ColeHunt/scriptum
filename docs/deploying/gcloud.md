@@ -134,7 +134,7 @@ gcloud secrets versions add coderunner-better-auth-secret \
   --data-file=<(openssl rand -hex 32)
 gcloud secrets versions add coderunner-metrics-token \
   --data-file=<(openssl rand -hex 32)
-gcloud secrets versions add coderunner-admin-token \
+gcloud secrets versions add fabrica-admin-token \
   --data-file=<(openssl rand -hex 32)
 
 # OAuth credentials (pre-Legion infra - see the warning at the top of this page)

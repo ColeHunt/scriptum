@@ -125,7 +125,7 @@ Students can then open `http://<your-LAN-IP>:4000/`.
 Click "Sign in via Legion" and authenticate the way you always do for any
 MARS/WARS app. Anyone who can sign in through Legion can use CodeRunner —
 there is no separate local allowlist. To reach the admin panel, add yourself
-to the `coderunner-admin` group in Legion's own `/admin/groups` (see
+to the `fabrica-admin` group in Legion's own `/admin/groups` (see
 [Legion Setup](./legion-setup.md)); no CodeRunner-side command or restart is
 needed for that to take effect.
 

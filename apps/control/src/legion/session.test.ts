@@ -36,7 +36,7 @@ describe("magic-link (via:link) sessions", () => {
 			async (app) => {
 				const secret = app.storage.config.ssoSecret;
 				if (!secret) throw new Error("test app has no ssoSecret");
-				// Groups carries coderunner-admin, but via:"link" must still win -
+				// Groups carries fabrica-admin, but via:"link" must still win -
 				// a leaked magic link can never reach /admin, per every sibling app's
 				// convention.
 				const token = signLegionToken(
@@ -46,7 +46,7 @@ describe("magic-link (via:link) sessions", () => {
 						name: "Coach",
 						role: "mentor",
 						team_number: null,
-						groups: ["coderunner-admin"],
+						groups: ["fabrica-admin"],
 						slack_user_id: null,
 						via: "link",
 					},
@@ -80,7 +80,7 @@ describe("magic-link (via:link) sessions", () => {
 					name: "Coach",
 					role: "mentor",
 					team_number: null,
-					groups: ["coderunner-admin"],
+					groups: ["fabrica-admin"],
 					slack_user_id: null,
 					via: "link",
 				},

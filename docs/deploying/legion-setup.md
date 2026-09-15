@@ -53,7 +53,7 @@ Where these values live depends on the deployment:
 There is nothing to bootstrap on CodeRunner's side — admin access is entirely
 a Legion group membership, recomputed live on every request from the signed
 `mw_sso` cookie. **In Legion's own admin panel** (`/admin/groups`), create a
-group named `coderunner-admin` (if it doesn't already exist) and add whoever
+group named `fabrica-admin` (if it doesn't already exist) and add whoever
 should reach CodeRunner's `/admin` to it. That's the whole bootstrap — no
 CodeRunner-side commands, no restart required, no local allowlist to seed.
 

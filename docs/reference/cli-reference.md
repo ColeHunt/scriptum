@@ -98,7 +98,7 @@ membership, granted entirely in Legion's own `/admin/groups`; see
 ## Users and Access
 
 Role (`admin`/`student`) is not stored locally — it's recomputed on every
-request from the signed-in member's Legion `coderunner-admin` group
+request from the signed-in member's Legion `fabrica-admin` group
 membership. Grant or revoke admin access in Legion's own `/admin/groups`, not
 here.
 

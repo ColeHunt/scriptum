@@ -35,7 +35,7 @@ address; the local `user.email` field is populated with Legion's `username`.
 
 ## Admin role
 
-Admin access is a Legion **group membership** (`coderunner-admin`), not a
+Admin access is a Legion **group membership** (`fabrica-admin`), not a
 locally stored field — it's recomputed fresh from the `mw_sso` cookie's
 `groups` claim on every request, so revoking it in Legion's `/admin/groups`
 takes effect on the very next request, with no CodeRunner-side action needed.

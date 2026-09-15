@@ -19,7 +19,7 @@ const CLAIMS = {
 	name: "Jane Doe",
 	role: "student" as const,
 	team_number: 4143,
-	groups: ["coderunner-admin"],
+	groups: ["coderunner-admin"], // literally what's encoded in PYTHON_TOKEN below - not renamed with the rest of the app, see the comment above
 	slack_user_id: "U01ABC123",
 };
 // Real itsdangerous compressed this payload (it starts with "."), so this fixture

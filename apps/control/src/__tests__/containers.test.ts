@@ -510,8 +510,8 @@ describe("code container orchestration", () => {
 describe("managedContainerStats", () => {
 	test("batches docker inspect into a single call and maps fields per container", async () => {
 		const fakeDocker = createFakeDocker();
-		fakeDocker.containers.set("coderunner-workspace-alice", {
-			name: "coderunner-workspace-alice",
+		fakeDocker.containers.set("fabrica-workspace-alice", {
+			name: "fabrica-workspace-alice",
 			running: true,
 			labels: {
 				"frc-sim.managed": "true",
@@ -520,8 +520,8 @@ describe("managedContainerStats", () => {
 			},
 			ports: [],
 		});
-		fakeDocker.containers.set("coderunner-workspace-bob", {
-			name: "coderunner-workspace-bob",
+		fakeDocker.containers.set("fabrica-workspace-bob", {
+			name: "fabrica-workspace-bob",
 			running: false,
 			labels: {
 				"frc-sim.managed": "true",
@@ -534,12 +534,12 @@ describe("managedContainerStats", () => {
 		const stats = await managedContainerStats(fakeDocker.runner);
 
 		const byName = new Map(stats.map((stat) => [stat.name, stat]));
-		expect(byName.get("coderunner-workspace-alice")).toMatchObject({
+		expect(byName.get("fabrica-workspace-alice")).toMatchObject({
 			workspaceId: "alice",
 			role: "code",
 			state: "running",
 		});
-		expect(byName.get("coderunner-workspace-bob")).toMatchObject({
+		expect(byName.get("fabrica-workspace-bob")).toMatchObject({
 			workspaceId: "bob",
 			role: "code",
 			state: "stopped",
@@ -553,16 +553,16 @@ describe("managedContainerStats", () => {
 		expect(inspectCalls[0]).toEqual([
 			"container",
 			"inspect",
-			"coderunner-workspace-alice",
-			"coderunner-workspace-bob",
+			"fabrica-workspace-alice",
+			"fabrica-workspace-bob",
 		]);
 	});
 
 	test("degrades gracefully when a container disappears between ls and inspect", async () => {
 		const fakeDocker = createFakeDocker();
 		// Present in the ls output but resolvable by inspect.
-		fakeDocker.containers.set("coderunner-workspace-alice", {
-			name: "coderunner-workspace-alice",
+		fakeDocker.containers.set("fabrica-workspace-alice", {
+			name: "fabrica-workspace-alice",
 			running: true,
 			labels: {
 				"frc-sim.managed": "true",
@@ -578,16 +578,14 @@ describe("managedContainerStats", () => {
 			if (args[0] === "container" && args[1] === "ls") {
 				return {
 					...result,
-					stdout: `${result.stdout.trim()}\ncoderunner-workspace-ghost\n`,
+					stdout: `${result.stdout.trim()}\nfabrica-workspace-ghost\n`,
 				};
 			}
 			return result;
 		};
 
 		const stats = await managedContainerStats(runner);
-		const ghost = stats.find(
-			(stat) => stat.name === "coderunner-workspace-ghost",
-		);
+		const ghost = stats.find((stat) => stat.name === "fabrica-workspace-ghost");
 		expect(ghost).toMatchObject({
 			workspaceId: null,
 			role: null,

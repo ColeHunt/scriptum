@@ -1,7 +1,14 @@
-// Build or pull the CodeRunner Docker images under their canonical names:
+// Build or pull Fabrica's Docker images under their canonical names:
 //   ${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-<kind>:${FABRICA_TAG:-latest}
 //
 // Usage: bun scripts/image.ts <build|pull> <workspace|control>
+//
+// The image name itself is still literally "coderunner-<kind>", not
+// "fabrica-<kind>" — that's the currently-published GHCR artifact name
+// (upstream's own release channel, unrelated to this repo's own rename).
+// Renaming it here would just point the default at an image that doesn't
+// exist. See decision 049 for the full rename scope and this deliberate
+// exception.
 //
 // The same name resolution is used by docker-compose.yml and the control
 // plane's codeImage default, so a local build is picked up directly by

@@ -209,7 +209,7 @@ and is not blocked by a firewall between the student's browser and Legion.
 
 There is no local allowlist to check — if a student can sign in through
 Legion at all, CodeRunner lets them in. If they can't reach CodeRunner's
-`/admin`, that's a Legion `coderunner-admin` group membership question, not
+`/admin`, that's a Legion `fabrica-admin` group membership question, not
 a CodeRunner-side setting.
 
 ---

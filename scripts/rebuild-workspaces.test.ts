@@ -16,7 +16,7 @@ function ok(stdout = ""): DockerCommandResult {
 }
 
 async function tempDb(): Promise<{ db: Database; dbPath: string }> {
-	const dir = await mkdtemp(join(tmpdir(), "coderunner-rebuild-"));
+	const dir = await mkdtemp(join(tmpdir(), "fabrica-rebuild-"));
 	tempDirs.push(dir);
 	const dbPath = join(dir, "app.db");
 	const db = new Database(dbPath);
@@ -99,11 +99,11 @@ describe("rebuildWorkspaces", () => {
 	test("dry-run removes nothing and leaves leases unchanged", async () => {
 		const { db, dbPath } = await tempDb();
 		try {
-			insertLease(db, "ws_a", "running", "coderunner-workspace-a");
+			insertLease(db, "ws_a", "running", "fabrica-workspace-a");
 			const calls: string[][] = [];
 			const dockerRunner: DockerRunner = async (args) => {
 				calls.push(args);
-				return ok("coderunner-workspace-a\n");
+				return ok("fabrica-workspace-a\n");
 			};
 
 			const result = await rebuildWorkspaces({
@@ -114,7 +114,7 @@ describe("rebuildWorkspaces", () => {
 			});
 
 			expect(result).toEqual({
-				found: ["coderunner-workspace-a"],
+				found: ["fabrica-workspace-a"],
 				removed: [],
 				leasesCleared: 0,
 				dryRun: true,
@@ -126,7 +126,7 @@ describe("rebuildWorkspaces", () => {
 				code_state: "running",
 				halsim_port: 34000,
 				nt4_port: 25810,
-				vscode_container: "coderunner-workspace-a",
+				vscode_container: "fabrica-workspace-a",
 				vscode_port: 33000,
 			});
 		} finally {
@@ -137,12 +137,12 @@ describe("rebuildWorkspaces", () => {
 	test("removes only Docker containers returned by the managed V2 label query", async () => {
 		const { db, dbPath } = await tempDb();
 		try {
-			insertLease(db, "ws_a", "running", "coderunner-workspace-a");
+			insertLease(db, "ws_a", "running", "fabrica-workspace-a");
 			const calls: string[][] = [];
 			const dockerRunner: DockerRunner = async (args) => {
 				calls.push(args);
 				if (args[0] === "container") {
-					return ok("coderunner-workspace-a\ncoderunner-workspace-b\n");
+					return ok("fabrica-workspace-a\nfabrica-workspace-b\n");
 				}
 				return ok();
 			};
@@ -154,8 +154,8 @@ describe("rebuildWorkspaces", () => {
 			});
 
 			expect(result.removed).toEqual([
-				"coderunner-workspace-a",
-				"coderunner-workspace-b",
+				"fabrica-workspace-a",
+				"fabrica-workspace-b",
 			]);
 			expect(calls).toEqual([
 				[
@@ -169,8 +169,8 @@ describe("rebuildWorkspaces", () => {
 					"--format",
 					"{{.Names}}",
 				],
-				["rm", "-f", "coderunner-workspace-a"],
-				["rm", "-f", "coderunner-workspace-b"],
+				["rm", "-f", "fabrica-workspace-a"],
+				["rm", "-f", "fabrica-workspace-b"],
 			]);
 		} finally {
 			db.close();
@@ -180,11 +180,11 @@ describe("rebuildWorkspaces", () => {
 	test("clears container leases after removing managed V2 containers", async () => {
 		const { db, dbPath } = await tempDb();
 		try {
-			insertLease(db, "ws_a", "running", "coderunner-workspace-a");
-			insertLease(db, "ws_b", "stopped", "coderunner-workspace-b");
+			insertLease(db, "ws_a", "running", "fabrica-workspace-a");
+			insertLease(db, "ws_b", "stopped", "fabrica-workspace-b");
 			const dockerRunner: DockerRunner = async (args) =>
 				args[0] === "container"
-					? ok("coderunner-workspace-a\ncoderunner-workspace-b\n")
+					? ok("fabrica-workspace-a\nfabrica-workspace-b\n")
 					: ok();
 
 			const result = await rebuildWorkspaces({

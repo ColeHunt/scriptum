@@ -81,7 +81,7 @@ separate local allowlist. Both "who can sign in" and "who is an admin" are
 managed entirely in **Legion's own `/admin/groups`**, not here:
 
 - Sign-in access: whether the person exists in Legion's roster at all.
-- Admin access: whether they're in the `coderunner-admin` Legion group.
+- Admin access: whether they're in the `fabrica-admin` Legion group.
 
 Role is recomputed live from that group membership on every request — there
 is no local promote/demote step, and no restart is needed after a group

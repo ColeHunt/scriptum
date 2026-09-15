@@ -37,7 +37,7 @@ async function run(command: string, args: string[]): Promise<void> {
 export async function withScratch<T>(
 	fn: (scratch: string) => Promise<T>,
 ): Promise<T> {
-	const scratch = await mkdtemp(join(tmpdir(), "coderunner-dist-"));
+	const scratch = await mkdtemp(join(tmpdir(), "fabrica-dist-"));
 	try {
 		return await fn(scratch);
 	} finally {

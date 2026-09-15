@@ -71,7 +71,7 @@ export async function loginAs(
 		name: opts.name,
 		role: "student",
 		team_number: null,
-		groups: role === "admin" ? ["coderunner-admin"] : [],
+		groups: role === "admin" ? ["fabrica-admin"] : [],
 		slack_user_id: null,
 	};
 	const token = signLegionToken(claims, secret);

@@ -1,4 +1,4 @@
-# CodeRunner — base compose file (the minimal local/self-hosted deployment).
+# Fabrica — base compose file (the minimal local/self-hosted deployment).
 #
 #   docker compose up -d        → control plane on http://localhost:4000
 #   FABRICA_DEMO_MODE=1 docker compose up -d
@@ -7,26 +7,30 @@
 # Overrides:
 #   docker-compose.prod.yml     adds Caddy (TLS) + Grafana Alloy for the
 #                               production VM; selected there via COMPOSE_FILE
-#                               in /opt/coderunner/.env
+#                               in /opt/fabrica/.env
 #
 # Configuration lives in .env (see .env.example). The control plane drives the
 # HOST's Docker daemon through the bind-mounted socket, so per-student
 # workspace containers run as siblings of this one, joined to the shared
-# `coderunner` network below. It inspects its own container at startup to
+# `fabrica` network below. It inspects its own container at startup to
 # auto-detect the workspace network, the host-side data path, and the uid:gid
 # that owns the data dir, so those need no env plumbing here (the matching
 # FRC_* env vars remain optional overrides).
 
-name: coderunner
+name: fabrica
 
 services:
   control:
     # Pin the container name (drops compose's `-1` replica suffix) so it reads
-    # as `coderunner-control` in Portainer / `docker ps`. Does not change the
+    # as `fabrica-control` in Portainer / `docker ps`. Does not change the
     # hostname, so the control plane's self-inspection (docker inspect
     # $HOSTNAME) is unaffected; the service name still resolves on the network
     # for Caddy.
-    container_name: coderunner-control
+    container_name: fabrica-control
+    # NOTE: the image name below stays "coderunner-*" — that's the literal,
+    # currently-published GHCR artifact name (upstream's own release
+    # channel), not a local identifier. Renaming this string would just point
+    # zero-config installs at an image that doesn't exist. See decision 049.
     image: ${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-control:${FABRICA_TAG:-latest}
     restart: unless-stopped
     # Run as the host owner of the data dir (keeps ./data host-owned, drops
@@ -71,7 +75,7 @@ services:
       - path: .env
         required: false
     networks:
-      - coderunner
+      - fabrica
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:4000/healthz"]
       interval: 15s
@@ -85,16 +89,16 @@ services:
   # `workspace-template` because it represents the per-student template image,
   # not a running service.
   workspace-template:
-    container_name: coderunner-workspace-template
+    container_name: fabrica-workspace-template
     image: ${FABRICA_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${FABRICA_TAG:-latest}
     entrypoint: ["/bin/true"]
     restart: "no"
     network_mode: "none"
 
 networks:
-  coderunner:
+  fabrica:
     # Explicit (non-project-prefixed) name so the control plane can pass it
     # verbatim to `docker run --network`. Self-inspection reads it back from
     # this container's own network attachment at startup.
-    name: coderunner
+    name: fabrica
     driver: bridge

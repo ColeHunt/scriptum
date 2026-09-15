@@ -931,7 +931,7 @@ export async function login(
 		role: "student",
 		team_number: null,
 		groups: [
-			...((options.role ?? "student") === "admin" ? ["coderunner-admin"] : []),
+			...((options.role ?? "student") === "admin" ? ["fabrica-admin"] : []),
 			...(options.groups ?? []),
 		],
 		slack_user_id: null,

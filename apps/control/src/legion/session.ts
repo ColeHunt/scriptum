@@ -22,7 +22,7 @@ import { verifyLegionToken } from "./sso";
 const log = getLogger("legion");
 
 export const MW_SSO_COOKIE = "mw_sso";
-export const FABRICA_ADMIN_GROUP = "coderunner-admin";
+export const FABRICA_ADMIN_GROUP = "fabrica-admin";
 
 export type LegionSession = {
 	user: {
