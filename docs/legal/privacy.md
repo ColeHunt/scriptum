@@ -17,8 +17,9 @@ own hardware. Each installation is operated independently.
 
 - **For the instance you use.** The organization that runs your instance — your school,
   robotics team, or mentor — decides who may sign in, controls the server, and is
-  responsible for the data on it. They configure their own Google and GitHub OAuth
-  credentials.
+  responsible for the data on it. Sign-in is delegated to Legion, that organization's own
+  member-management service; CodeRunner never collects a password or contacts a
+  third-party identity provider itself.
 - **For the CodeRunner project.** The project maintainers publish the software and this
   documentation. They do not operate your instance, cannot see your data, and receive no
   data from installations.
@@ -28,36 +29,40 @@ their own.
 
 ## What information is collected
 
-**Account information from sign-in.** CodeRunner supports signing in with Google or GitHub.
-It requests only basic profile scopes — for Google, `openid`, `email`, and `profile`. From
-that, it stores:
+**Account information from sign-in.** CodeRunner delegates sign-in to Legion, the
+operator's own team-roster and single-sign-on service (also run on the operator's own
+server — not a CodeRunner-operated service). Legion authenticates you over Slack and hands
+CodeRunner a signed token containing:
 
-- your Google or GitHub account identifier
-- your email address
+- a stable member identifier (not tied to any external account)
+- your username, as assigned by Legion
 - your display name
-- your profile picture URL
+- your role (student or mentor) and, if applicable, your team number
+- the authorization groups Legion has granted you, which determine whether you can reach
+  CodeRunner's admin panel
 
-These fields refresh from the provider each time you sign in.
-
-CodeRunner requests **no** access to Gmail, Drive, Calendar, Contacts, your repositories, or
-any other Google or GitHub data. It cannot read your mail, files, or private code.
+CodeRunner does not receive an email address, a password, or a profile picture — Legion
+doesn't provide one. This information refreshes from Legion each time you sign in; nothing
+is requested from or shared with Google, GitHub, or any other third-party identity
+provider.
 
 **Work you create.** The Java code, project files, and lesson progress in your workspace are
 stored on the operator's server.
 
-**Operational records.** The server keeps a session record so you stay signed in, a log of
-administrative actions (recording the acting user's ID and email, the action, and its
-target), and standard application logs.
+**Operational records.** The server keeps a log of administrative actions (recording the
+acting user's ID and username, the action, and its target) and standard application logs.
+Sign-in sessions themselves are not stored by CodeRunner — each request is re-verified
+against Legion's signed token directly.
 
 ## How the information is used
 
 Your account information is used only to run the service:
 
-- to identify you across sessions and keep you signed in
-- to check your email address against the allowlist the operator maintains, which is how
-  access to the instance is controlled
+- to identify you across requests and keep you signed in
 - to derive your workspace name and provision your personal container
-- to display your name and picture in the interface
+- to display your name in the interface
+- to determine whether you can reach the administrator panel, based on the groups Legion
+  reports for your account
 - to let administrators of that instance see who has an account and what administrative
   actions were taken
 
@@ -70,22 +75,20 @@ Your account information is used only to run the service:
   operator is legally required to disclose it.
 - It is **not used to train machine learning or AI models**.
 
-CodeRunner's use of information received from Google APIs adheres to the
-[Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy),
-including the Limited Use requirements.
-
 ## Where information is stored
 
-Everything stays on the server your operator runs. Account records, sessions, and audit
-entries live in a SQLite database on that machine; your code lives in a directory on the same
-machine. Nothing is sent to a CodeRunner-operated service, because there isn't one.
+Everything stays on servers your operator runs. Account records and audit entries live in a
+SQLite database on the CodeRunner machine; your code lives in a directory on the same
+machine; your Legion identity and group membership live on the operator's Legion instance.
+Nothing is sent to a CodeRunner-operated service, because there isn't one.
 
 Your operator is responsible for securing that server, and for any backups they choose to
 make.
 
 ## How long it is kept
 
-Sign-in sessions last up to 14 days and refresh as you use the app. Account records,
+A Legion sign-in is trusted for up to the session length the operator's Legion instance
+configures (typically 12 hours), and refreshes as you use the app. Account records,
 workspace contents, and audit entries persist until an administrator deletes them or removes
 the instance.
 
@@ -95,9 +98,8 @@ work you need to keep. See the [Terms of Service](./terms.md).
 
 ## Your choices
 
-- **Stop sharing.** You can revoke CodeRunner's access at any time from your
-  [Google Account permissions page](https://myaccount.google.com/permissions) or your GitHub
-  application settings. Doing so prevents future sign-ins.
+- **Stop sharing.** Sign-in access is controlled through Legion. Ask your operator to remove
+  your Legion account or its authorization groups to prevent future sign-ins.
 - **Access or delete your data.** Contact your instance's administrator. They can delete your
   account and workspace from the server.
 
@@ -105,8 +107,8 @@ work you need to keep. See the [Terms of Service](./terms.md).
 
 CodeRunner is built for FRC teams, so many users are minors. It is deployed by schools and
 robotics programs, and students use it under the supervision of that program. Sign-in
-accounts are created by the student's own Google or GitHub account, and access is limited to
-an operator-maintained allowlist. If you are a parent or guardian with questions about a
+accounts are managed entirely by that program through Legion, its own roster system — there
+is no external account creation step. If you are a parent or guardian with questions about a
 particular instance, contact the operating school or team.
 
 ## Changes to this policy

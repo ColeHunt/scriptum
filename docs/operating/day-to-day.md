@@ -6,14 +6,13 @@ title: Day-to-Day Operations
 # Day-to-Day Operations
 
 This page covers the routine tasks a mentor performs during an active season:
-starting and stopping the app, managing who can sign in, and keeping an eye on
+starting and stopping the app, managing admin access, and keeping an eye on
 what the system is doing.
 
 ::::note[Running ops commands]
 
-The maintenance commands in this page (`allowlist`, `users`, `audit-prune`,
-`backup`, `restore`) run **inside the control container** via the `coderunner`
-CLI:
+The maintenance commands in this page (`users`, `audit-prune`, `backup`,
+`restore`) run **inside the control container** via the `coderunner` CLI:
 
 ```bash
 docker compose exec control coderunner <subcommand> <args>
@@ -75,68 +74,24 @@ without any student-visible data loss.
 
 ---
 
-## Managing who can sign in
+## Managing who can sign in and who is an admin
 
-Access is controlled by an allowlist of email addresses and domains. Sign-in
-is via OAuth (GitHub and/or Google), but only emails that match the allowlist
-are permitted through. An empty allowlist blocks everyone.
+Anyone who can sign in through Legion can use CodeRunner — there is no
+separate local allowlist. Both "who can sign in" and "who is an admin" are
+managed entirely in **Legion's own `/admin/groups`**, not here:
 
-### Viewing the allowlist
+- Sign-in access: whether the person exists in Legion's roster at all.
+- Admin access: whether they're in the `coderunner-admin` Legion group.
 
-```bash
-bun run allowlist:list
-```
-
-### Adding an entry
-
-Pass an individual email address or a whole domain. The script auto-detects
-which kind you mean based on whether the value contains an `@`:
+Role is recomputed live from that group membership on every request — there
+is no local promote/demote step, and no restart is needed after a group
+change takes effect on the next request.
 
 ```bash
-# Allow a specific person
-bun run allowlist:add coach@frcteam.org
-
-# Allow everyone at a domain (useful for team Google Workspace accounts)
-bun run allowlist:add frcteam.org
-```
-
-### Removing an entry
-
-```bash
-bun run allowlist:remove old-member@frcteam.org
-bun run allowlist:remove frcteam.org
-```
-
-Changes take effect immediately; the running control plane watches
-`data/allowlist.json` and picks up edits without a restart.
-
----
-
-## Managing user roles
-
-The **first** admin is best bootstrapped without any exec step: set
-`CODERUNNER_ADMIN_EMAIL` (comma-separated) in `.env` before the first startup
-and those accounts are allowlisted and granted the admin role on first sign-in
-(an existing account is promoted at the next startup). See
-[OAuth Credentials](../deploying/oauth-credentials.md). The commands here are for
-ongoing role changes after that.
-
-After a coach or mentor signs in for the first time they are a regular user.
-Promote them to admin so they can access the admin panel and use the admin API:
-
-```bash
-# List all users (shows ID, name, email, role, workspace slug)
+# List users CodeRunner has seen (name, username, role, workspace slug) —
+# read-only, does not affect access.
 bun run users:list
-
-# Grant admin role (the user must already exist in the DB)
-bun run users:promote coach@frcteam.org
-
-# Remove admin role
-bun run users:demote coach@frcteam.org
 ```
-
-Admins can also promote and demote users from the admin panel in the browser.
-The system prevents demoting the last remaining admin.
 
 ---
 
@@ -175,26 +130,27 @@ cap and active container count with an inline editor.
 
 ## Audit log
 
-All admin actions (promoting users, stopping containers, modifying the
-allowlist, changing the concurrency cap) are recorded in the audit log.
+All admin actions (stopping containers, deleting a workspace, changing the
+concurrency cap, lesson assignment) are recorded in the audit log. Role
+changes themselves are not — role isn't a local mutation anymore, it's
+recomputed live from Legion group membership, which is audited in Legion's
+own admin panel instead.
 
 ### What is logged
 
 | Action | Trigger |
 |---|---|
-| `user.promote` | Promoting a user to admin |
-| `user.demote` | Demoting an admin |
-| `user.delete` | Deleting a user and their workspace |
+| `workspace.delete` | Deleting a user's workspace (their Legion access is unaffected) |
 | `container.stop` | Stopping a workspace's containers |
 | `container.restart-code` | Restarting a workspace's code container |
 | `workspace.backup` | Creating an operator workspace backup |
 | `workspace.restore` | Restoring a workspace from a backup |
-| `allowlist.add` | Adding an email/domain to the allowlist |
-| `allowlist.remove` | Removing an email/domain from the allowlist |
+| `lesson-assignment.add` | Assigning a lesson module or track to a user/group |
+| `lesson-assignment.remove` | Removing a lesson/track assignment |
 | `config.max-active-containers` | Changing the container concurrency cap |
 
-Each entry records the timestamp, the acting user (ID and email), the action,
-the target (kind and ID), and optional metadata.
+Each entry records the timestamp, the acting user (ID and username), the
+action, the target (kind and ID), and optional metadata.
 
 ### Viewing the audit log
 

@@ -12,7 +12,9 @@ describe("templateRoute", () => {
 			"/favicon.ico",
 			"/coderunner-icon.png",
 			"/api/openapi.json",
-			"/api/auth/providers",
+			"/api/session",
+			"/login/legion",
+			"/logout",
 			"/scope",
 			"/metrics",
 		]) {
@@ -21,7 +23,6 @@ describe("templateRoute", () => {
 	});
 
 	test("collapses prefix-shared paths", () => {
-		expect(templateRoute("/api/auth/session/refresh")).toBe("/api/auth/*");
 		expect(templateRoute("/scope/bundled/Crescendo/field.json")).toBe(
 			"/scope/*",
 		);

@@ -332,7 +332,7 @@ describe("code container orchestration", () => {
 			dataDir: join(root, "data"),
 			catalogDir,
 			webDistDir,
-			sessionSecret: "test-session-secret",
+			ssoSecret: "test-session-secret",
 			baseUrl: "http://localhost:4000",
 			containerAutoStart: false,
 			dockerRunner: fakeDocker.runner,

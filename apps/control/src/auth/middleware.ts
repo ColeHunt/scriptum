@@ -2,21 +2,18 @@
  * Auth middleware helpers — default-deny session gating.
  *
  * These replace the old per-route `authFromRequest` + `resolveWorkspaceRequest`
- * with centralized helpers backed by Better Auth.
+ * with centralized helpers backed by Legion's `mw_sso` cookie (see `../legion/`).
  */
 
 import type { WorkspaceSlug } from "@frc-coderunner/contracts";
+import { getLegionSessionFromRequest } from "../legion/session";
 import { getLogger } from "../logging";
 import type { AppStorage, AuthContext } from "../storage";
 import { getDemoSession } from "./demo";
 
 const log = getLogger("auth");
 
-/** Resolve a Better Auth session from the incoming request. Returns null if no valid session. */
-export async function getSessionFromRequest(
-	storage: AppStorage,
-	request: Request,
-): Promise<{
+export type ResolvedSession = {
 	user: {
 		id: string;
 		email: string;
@@ -24,41 +21,37 @@ export async function getSessionFromRequest(
 		image: string | null;
 		role: string;
 		slug: string;
+		groups: string[];
 	};
 	session: { token: string };
-} | null> {
+	/** True on a weak, magic-link-issued Legion session. Always false in demo mode. */
+	viaLink: boolean;
+};
+
+/** Resolve the current session from the incoming request (demo mode, or Legion's
+ * `mw_sso` cookie). Returns null if no valid session. */
+export async function getSessionFromRequest(
+	storage: AppStorage,
+	request: Request,
+): Promise<ResolvedSession | null> {
 	if (storage.config.demo) {
-		return getDemoSession();
+		return { ...getDemoSession(), viaLink: false };
 	}
 	try {
-		const session = await storage.auth.api.getSession({
-			headers: request.headers,
-		});
+		const session = await getLegionSessionFromRequest(
+			storage,
+			storage.config,
+			request,
+		);
 		if (!session) {
 			log.trace("getSession: no session");
 			return null;
 		}
-
-		const user = session.user as {
-			id: string;
-			email: string;
-			name: string;
-			image?: string | null;
-			role?: string;
-			slug?: string;
-		};
-		log.trace("getSession: ok", { userId: user.id, role: user.role });
-		return {
-			user: {
-				id: user.id,
-				email: user.email,
-				name: user.name,
-				image: user.image ?? null,
-				role: (user.role as string) ?? "student",
-				slug: (user.slug as string) ?? "",
-			},
-			session: { token: session.session.token },
-		};
+		log.trace("getSession: ok", {
+			userId: session.user.id,
+			role: session.user.role,
+		});
+		return session;
 	} catch (err) {
 		log.warn("getSession threw", {
 			err: err instanceof Error ? err : new Error(String(err)),
@@ -71,20 +64,7 @@ export async function getSessionFromRequest(
 export async function requireSession(
 	storage: AppStorage,
 	request: Request,
-): Promise<
-	| {
-			user: {
-				id: string;
-				email: string;
-				name: string;
-				image: string | null;
-				role: string;
-				slug: string;
-			};
-			session: { token: string };
-	  }
-	| Response
-> {
+): Promise<ResolvedSession | Response> {
 	const session = await getSessionFromRequest(storage, request);
 	if (!session) {
 		return new Response("Unauthorized", { status: 401 });
@@ -127,19 +107,7 @@ export async function requireWorkspaceOwnership(
 export async function requireAdmin(
 	storage: AppStorage,
 	request: Request,
-): Promise<
-	| {
-			user: {
-				id: string;
-				email: string;
-				name: string;
-				image: string | null;
-				role: string;
-				slug: string;
-			};
-	  }
-	| Response
-> {
+): Promise<{ user: ResolvedSession["user"] } | Response> {
 	// Break-glass: ADMIN_TOKEN header
 	const adminToken = storage.config.adminToken;
 	if (adminToken) {
@@ -154,6 +122,7 @@ export async function requireAdmin(
 					image: null,
 					role: "admin",
 					slug: "",
+					groups: [],
 				},
 			};
 		}
@@ -163,6 +132,22 @@ export async function requireAdmin(
 	if (session && session.user.role === "admin") {
 		log.debug("admin auth via session", { userId: session.user.id });
 		return session;
+	}
+
+	if (session?.viaLink && storage.config.legionBaseUrl) {
+		// A magic-link session is deliberately non-privileged (Legion emits
+		// `groups: []` for these) - offer a step-up to a real sign-in instead of
+		// a flat 403, matching every sibling app's convention.
+		log.info("admin route: stepping up a magic-link session", {
+			userId: session.user.id,
+		});
+		const returnTo = new URL(request.url).pathname;
+		return new Response(null, {
+			status: 303,
+			headers: {
+				location: `${storage.config.legionBaseUrl}/sso/stepup?app=coderunner&return_to=${encodeURIComponent(returnTo)}`,
+			},
+		});
 	}
 
 	if (!session) {

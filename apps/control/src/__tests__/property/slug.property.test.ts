@@ -1,33 +1,30 @@
 /**
- * Property tests for `slugFromEmail` and the storage workspace-slug collision suffix.
+ * Property tests for `slugFromUsername` and the storage workspace-slug collision suffix.
  *
  * P4 — output always matches /^[a-z0-9][a-z0-9_-]{0,39}$/ (or is the "student" fallback).
  * P5 — output is never empty.
- * P6 — for any set of N emails sharing a slug prefix, all generated workspace slugs are unique
- *      and ≤40 chars. (Drives the slug-collision suffix path in storage.)
+ * P6 — for any set of N usernames sharing a slug prefix, all generated workspace slugs are
+ *      unique and ≤40 chars. (Drives the slug-collision suffix path in storage.)
  */
 import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
 import type { ControlApp } from "../../app";
-import { slugFromEmail } from "../../auth/auth";
+import { slugFromUsername } from "../../legion/session";
 import { withApp } from "../helpers";
 
 const NUM_RUNS = Number(process.env.FAST_CHECK_NUM_RUNS ?? 100);
 
 const SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,39}$/;
 
-const emailArb: fc.Arbitrary<string> = fc
-	.tuple(
-		fc.stringMatching(/^[A-Za-z0-9._+-]{1,30}$/u),
-		fc.constantFrom("allowed.test", "example.com", "frcteam.org"),
-	)
-	.map(([local, domain]) => `${local}@${domain}`);
+const usernameArb: fc.Arbitrary<string> = fc.stringMatching(
+	/^[A-Za-z0-9._+-]{1,30}$/u,
+);
 
-describe("slugFromEmail — properties", () => {
+describe("slugFromUsername — properties", () => {
 	test("P4 output is either valid-slug or the literal 'student' fallback", () => {
 		fc.assert(
 			fc.property(fc.string(), (raw) => {
-				const slug = slugFromEmail(`${raw}@example.com`);
+				const slug = slugFromUsername(raw);
 				expect(SLUG_RE.test(slug) || slug === "student").toBe(true);
 			}),
 			{ numRuns: NUM_RUNS },
@@ -37,7 +34,7 @@ describe("slugFromEmail — properties", () => {
 	test("P5 output is never empty", () => {
 		fc.assert(
 			fc.property(fc.string(), (raw) => {
-				const slug = slugFromEmail(raw);
+				const slug = slugFromUsername(raw);
 				expect(slug.length).toBeGreaterThan(0);
 			}),
 			{ numRuns: NUM_RUNS },
@@ -45,24 +42,24 @@ describe("slugFromEmail — properties", () => {
 	});
 
 	test("normalizes diacritics and unicode", () => {
-		expect(slugFromEmail("Élise@example.com")).toBe("elise");
-		expect(slugFromEmail("José@example.com")).toBe("jose");
+		expect(slugFromUsername("Élise")).toBe("elise");
+		expect(slugFromUsername("José")).toBe("jose");
 	});
 
 	test("strips leading/trailing dashes and collapses repeats", () => {
-		expect(slugFromEmail("--alice--@example.com")).toBe("alice");
-		expect(slugFromEmail("a..b..c@example.com")).toBe("a-b-c");
+		expect(slugFromUsername("--alice--")).toBe("alice");
+		expect(slugFromUsername("a..b..c")).toBe("a-b-c");
 	});
 
-	test("falls back to 'student' for all-non-alphanumeric locals", () => {
-		expect(slugFromEmail("...@example.com")).toBe("student");
-		expect(slugFromEmail("___@example.com")).toBe("student");
+	test("falls back to 'student' for all-non-alphanumeric input", () => {
+		expect(slugFromUsername("...")).toBe("student");
+		expect(slugFromUsername("___")).toBe("student");
 	});
 
-	test("output is ≤40 chars even for long locals", () => {
+	test("output is ≤40 chars even for long usernames", () => {
 		fc.assert(
-			fc.property(emailArb, (email) => {
-				expect(slugFromEmail(email).length).toBeLessThanOrEqual(40);
+			fc.property(usernameArb, (username) => {
+				expect(slugFromUsername(username).length).toBeLessThanOrEqual(40);
 			}),
 			{ numRuns: NUM_RUNS },
 		);
@@ -75,22 +72,12 @@ describe("workspace slug collision suffix — property", () => {
 			const slugs: string[] = [];
 			for (let i = 0; i < 5; i += 1) {
 				const userId = `user_${i.toString().padStart(20, "0")}`;
-				const now = new Date().toISOString();
-				app.storage.db
-					.query(
-						"INSERT INTO user (id, name, email, emailVerified, image, createdAt, updatedAt, role, slug) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-					)
-					.run(
-						userId,
-						"Alice",
-						`alice${i}@example.com`,
-						0,
-						null,
-						now,
-						now,
-						"student",
-						"alice",
-					);
+				app.storage.upsertLegionUser({
+					id: userId,
+					name: "Alice",
+					email: `alice${i}@example.com`,
+					role: "student",
+				});
 				const ws = await app.storage.ensureWorkspaceForUser(userId, "alice");
 				slugs.push(ws.slug);
 			}

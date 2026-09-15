@@ -1,6 +1,12 @@
 # 028 — Demo mode for zero-config local tryout
 
-**Status:** accepted
+**Status:** accepted — the mechanism this doc describes (intercepting Better
+Auth's routes, `authClient.useSession()`, disabling OAuth providers) was
+replaced by decision 046: demo mode's *purpose* (zero-config local tryout,
+`getDemoSession()` short-circuit) is unchanged, but there is no OAuth to
+bypass anymore and the demo session now flows through the same Legion
+session-resolution code path as everything else. Kept for historical
+context.
 **Date:** 2026-05-27
 
 ## Context

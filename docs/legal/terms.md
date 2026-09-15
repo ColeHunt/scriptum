@@ -25,7 +25,8 @@ conflict for that instance, theirs govern.
 CodeRunner is intended for educational use by FRC teams and similar programs. Many users are
 minors; they use it under the supervision of the school or robotics program operating the
 instance. You may only sign in to an instance you have been granted access to — access is
-controlled by an allowlist the operator maintains.
+controlled entirely by the operator's Legion roster, the shared sign-in service that instance
+delegates authentication to.
 
 ## 3. Acceptable use
 

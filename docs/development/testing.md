@@ -34,7 +34,7 @@ Runs Bun's built-in test runner across the control plane
 (`apps/web/src/lib/keyboard-mapping.test.ts` and
 `keyboard-mapping.property.test.ts`). Coverage includes:
 
-- Authentication: session creation, cookie HMAC signing, allowlist enforcement, role gating
+- Authentication: Legion `mw_sso` cookie verification (itsdangerous port, cross-checked against a real Python-minted token), session resolution, role-from-group gating
 - Proxy layer: hop-by-hop header stripping, WebSocket upgrade, base-path routing
 - Run manager: build lifecycle, timeout handling, state recovery, concurrent-run gating
 - Lessons catalog: bundled catalog load, module discovery, catalog integrity
@@ -71,7 +71,7 @@ see [Fixture architecture](#fixture-architecture) below. Approximately
 55 tests covering the full login→editor→run→telemetry→driver-station
 flow, including:
 
-- Auth: session isolation, cross-workspace 403 gating, allowlist enforcement, role gating
+- Auth: session isolation, cross-workspace 403 gating, magic-link (`via:link`) step-up to Legion, role-from-group gating
 - Editor proxy: iframe load, WebSocket upgrade, hop-by-hop header stripping, asset base path
 - Run lifecycle: build→running→stopped transitions, build failures, timeout handling, state recovery after crash, concurrent-run rejection
 - Driver Station: enable/disable payload shape, mode switching, multi-tab sync
@@ -144,7 +144,7 @@ Key properties of each isolated test environment:
 - **Temporary directory**: each test gets a fresh `mkdtemp` root that is deleted on teardown.
 - **Own SQLite database**: the control plane's `dbPath` points inside that tempdir.
 - **Random port**: pre-allocated via a throwaway `Bun.serve({ port: 0 })` so the `baseUrl` baked into auth config matches the actual server address.
-- **Seeded auth**: `loginAs` in `e2e/fixtures/auth.ts` writes directly to the `user` and `session` tables and HMAC-signs the session cookie. No OAuth round trip is required and no test-only production code exists.
+- **Seeded auth**: `loginAs` in `e2e/fixtures/auth.ts` signs a real `mw_sso` cookie with the same itsdangerous-compatible code path production uses (`apps/control/src/legion/sso.ts`) and plants it directly in the browser context. No Legion round trip is required and no test-only production code exists.
 
 The fixture exposes four handles to each test:
 

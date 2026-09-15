@@ -1,7 +1,5 @@
 export type {
 	AllianceStation,
-	AuthProvider,
-	AuthProvidersResponse,
 	AutoChooser,
 	AutoChooserPatch,
 	AutoChoosersResponse,
@@ -26,10 +24,10 @@ export type {
 	SessionResponse,
 	SimRunStatus,
 	SimStatusResponse,
+	TopLevelSessionResponse,
 } from "@frc-coderunner/contracts";
 
 export {
-	authProvidersResponseSchema,
 	autoChoosersResponseSchema,
 	checkpointsStateResponseSchema,
 	gamepadClientMessageSchema,
@@ -41,4 +39,5 @@ export {
 	lessonModuleSchema,
 	runServerMessageSchema,
 	simStatusResponseSchema,
+	topLevelSessionResponseSchema,
 } from "@frc-coderunner/contracts";

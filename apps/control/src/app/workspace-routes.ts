@@ -23,6 +23,7 @@ import {
 import type { GamepadSessions } from "../gamepad";
 import type { HalSimBridge } from "../halsim";
 import { ImportError, parseGitHubUrl, RateLimitError } from "../imports";
+import { filterVisibleModules } from "../lesson-assignments";
 import { getLogger } from "../logging";
 import type { Nt4AutoChooserBridge } from "../nt4-auto";
 import type { RunManager } from "../runs";
@@ -510,9 +511,18 @@ export async function handleWorkspaceRoute(
 	// --- Lesson catalog endpoints ---
 	if (suffix === "/api/lessons" && request.method === "GET") {
 		const { modules, error } = await catalogSource.getManifest();
+		// Lock state is computed against the FULL manifest first (so a
+		// prerequisite that happens to be assigned away from this viewer still
+		// correctly locks its dependents), then visibility narrows the result.
+		const withLockState = checkpoints.withLockState(auth.workspace.id, modules);
+		const visible = filterVisibleModules(
+			withLockState,
+			storage.listLessonAssignments(),
+			{ id: auth.user.id, groups: auth.user.groups },
+		);
 		return jsonResponse({
 			ok: true,
-			modules: checkpoints.withLockState(auth.workspace.id, modules),
+			modules: visible,
 			error,
 		});
 	}

@@ -39,8 +39,7 @@ reasons:
 | `serve` (default; also plain `docker compose up`) | `start` | Applies migrations, then starts the server as PID 1. |
 | `backup` | `backup` | See [Backup and Restore](#backup-and-restore). |
 | `restore` | `restore` | See [Backup and Restore](#backup-and-restore). Backup directory paths are resolved inside `/data`. |
-| `allowlist` | `allowlist:list` / `allowlist:add` / `allowlist:remove` | See [Users and Access](#users-and-access). |
-| `users` | `users:list` / `users:promote` / `users:demote` | See [Users and Access](#users-and-access). |
+| `users` | `users:list` | See [Users and Access](#users-and-access). |
 | `audit-prune` | `audit:prune` | See [Database](#database). |
 | `rebuild-workspaces` | `docker:rebuild-workspaces` | See [Docker Images and Containers](#docker-images-and-containers). |
 | `cleanup` | `docker:cleanup` | See [Docker Images and Containers](#docker-images-and-containers). |
@@ -48,11 +47,11 @@ reasons:
 | `help` / `--help` | — | Prints the subcommand list. |
 | anything else | — | Passed through verbatim (`exec "$@"`) — for example, `docker compose run --rm control bash` opens a shell. |
 
-Example: `bun run allowlist:add coach@example.com` on a from-source checkout
-is `docker compose exec control coderunner allowlist add coach@example.com`
-in a compose deployment. Setting `CODERUNNER_ADMIN_EMAIL` before first boot
-avoids needing either form for the first admin — see
-[OAuth credentials](../deploying/oauth-credentials.md#the-easy-path-coderunner_admin_email).
+Example: `bun run users:list` on a from-source checkout is
+`docker compose exec control coderunner users list` in a compose deployment.
+There is no admin bootstrap step here at all — admin access is a Legion group
+membership, granted entirely in Legion's own `/admin/groups`; see
+[Legion Setup](../deploying/legion-setup.md).
 
 ## Build
 
@@ -98,21 +97,22 @@ avoids needing either form for the first admin — see
 
 ## Users and Access
 
+Role (`admin`/`student`) is not stored locally — it's recomputed on every
+request from the signed-in member's Legion `coderunner-admin` group
+membership. Grant or revoke admin access in Legion's own `/admin/groups`, not
+here.
+
 | Script | What it does |
 |--------|-------------|
-| `allowlist:list` | Prints the current email and domain allowlist. An empty allowlist blocks all OAuth sign-ins. |
-| `allowlist:add` | Adds an email address or domain to the allowlist. Usage: `bun run allowlist:add coach@example.com` or `bun run allowlist:add example.com` (domain allows all addresses at that domain). |
-| `allowlist:remove` | Removes an entry from the allowlist. Usage: `bun run allowlist:remove coach@example.com`. |
-| `users:list` | Lists all users in the database with their name, email, role, and workspace slug. |
-| `users:promote` | Sets a user's role to `admin`. Usage: `bun run users:promote coach@example.com`. |
-| `users:demote` | Sets a user's role to `student`. Usage: `bun run users:demote coach@example.com`. |
+| `users:list` | Lists all users in the database with their name, username, role, and workspace slug. |
+| `migrate:legion-identity` | Read-only reconciliation report matching pre-existing local user rows against the Legion roster by name, for teams migrating real production data onto Legion auth. Requires `LEGION_BASE_URL` and `LEGION_API_KEY`. Writes nothing. |
 
 ## Backup and Restore
 
 | Script | What it does |
 |--------|-------------|
-| `backup` | Backs up the SQLite database, allowlist, and all student project and assets directories to a timestamped directory under `data/backups/`. Accepts `--data-dir`, `--output`, and `--projects-only` flags. Safe to run against a running instance. |
-| `restore` | Restores a backup created by `backup`. Usage: `bun run restore -- <backup-dir>`. Accepts `--workspace <id>` to restore a single workspace, plus `--skip-db`, `--skip-allowlist`, `--skip-assets`, and `--dry-run`. Stop the control plane before restoring to avoid conflicts. |
+| `backup` | Backs up the SQLite database and all student project and assets directories to a timestamped directory under `data/backups/`. Accepts `--data-dir`, `--output`, and `--projects-only` flags. Safe to run against a running instance. |
+| `restore` | Restores a backup created by `backup`. Usage: `bun run restore -- <backup-dir>`. Accepts `--workspace <id>` to restore a single workspace, plus `--skip-db`, `--skip-assets`, and `--dry-run`. Stop the control plane before restoring to avoid conflicts. |
 
 ## Quality and Tests
 

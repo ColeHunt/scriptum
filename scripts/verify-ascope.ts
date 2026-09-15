@@ -153,7 +153,7 @@ async function verifyScopeServing(): Promise<void> {
 		webDistDir,
 		advantageScopeDistDir: distDir,
 		containerAutoStart: false,
-		sessionSecret: "verify-ascope-session-secret",
+		ssoSecret: "verify-ascope-sso-secret",
 	});
 
 	try {

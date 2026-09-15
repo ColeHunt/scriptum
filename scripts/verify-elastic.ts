@@ -123,7 +123,7 @@ async function verifyElasticServing(): Promise<void> {
 		webDistDir,
 		elasticDistDir: distDir,
 		containerAutoStart: false,
-		sessionSecret: "verify-elastic-session-secret",
+		ssoSecret: "verify-elastic-sso-secret",
 	});
 
 	try {

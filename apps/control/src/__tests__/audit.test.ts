@@ -32,33 +32,6 @@ describe("audit log", () => {
 		});
 	});
 
-	test("admin user promote creates audit event", async () => {
-		await withApp(async (app) => {
-			const adminRes = await login(app, "coach", { role: "admin" });
-			const adminCookie = cookieFrom(adminRes);
-			await login(app, "student");
-
-			const student = app.storage.db
-				.query("SELECT id FROM user WHERE email = ?")
-				.get("student@test.local") as { id: string };
-
-			const promoteRes = await app.fetch(
-				new Request(`http://localhost/admin/users/${student.id}/promote`, {
-					method: "POST",
-					headers: { cookie: adminCookie },
-				}),
-			);
-			expect(promoteRes.status).toBe(200);
-
-			const rows = app.storage.db
-				.query("SELECT * FROM audit_log WHERE action = 'user.promote'")
-				.all() as AuditLogEntry[];
-			expect(rows.length).toBe(1);
-			expect(rows[0]?.target_kind).toBe("user");
-			expect(rows[0]?.target_id).toBe(student.id);
-		});
-	});
-
 	test("admin user delete creates audit event", async () => {
 		const fakeDocker = createFakeDocker();
 		await withApp(
@@ -69,7 +42,7 @@ describe("audit log", () => {
 
 				const student = app.storage.db
 					.query("SELECT id FROM user WHERE email = ?")
-					.get("student@test.local") as { id: string };
+					.get("student") as { id: string };
 
 				const deleteRes = await app.fetch(
 					new Request(`http://localhost/admin/users/${student.id}`, {
@@ -80,7 +53,7 @@ describe("audit log", () => {
 				expect(deleteRes.status).toBe(200);
 
 				const rows = app.storage.db
-					.query("SELECT * FROM audit_log WHERE action = 'user.delete'")
+					.query("SELECT * FROM audit_log WHERE action = 'workspace.delete'")
 					.all() as AuditLogEntry[];
 				expect(rows.length).toBe(1);
 				expect(rows[0]?.target_id).toBe(student.id);
@@ -146,28 +119,6 @@ describe("audit log", () => {
 				.all() as AuditLogEntry[];
 			expect(rows.length).toBe(1);
 			expect(JSON.parse(rows[0]!.metadata_json!)).toEqual({ value: 5 });
-		});
-	});
-
-	test("allowlist add creates audit event", async () => {
-		await withApp(async (app) => {
-			const adminRes = await login(app, "coach", { role: "admin" });
-			const adminCookie = cookieFrom(adminRes);
-
-			const res = await app.fetch(
-				new Request("http://localhost/admin/allowlist", {
-					method: "POST",
-					headers: { cookie: adminCookie, "content-type": "application/json" },
-					body: JSON.stringify({ kind: "email", value: "test@example.com" }),
-				}),
-			);
-			expect(res.status).toBe(200);
-
-			const rows = app.storage.db
-				.query("SELECT * FROM audit_log WHERE action = 'allowlist.add'")
-				.all() as AuditLogEntry[];
-			expect(rows.length).toBe(1);
-			expect(rows[0]?.target_id).toBe("test@example.com");
 		});
 	});
 

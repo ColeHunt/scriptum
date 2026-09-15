@@ -8,7 +8,6 @@
  *
  * Backs up:
  *   - data/app.db                            (SQLite snapshot via serialize)
- *   - data/allowlist.json                    (auth allowlist)
  *   - data/users/<workspaceId>/project/      (per-workspace, as project.tar.gz)
  *   - data/users/<workspaceId>/assets/       (per-workspace, as assets.tar.gz)
  *
@@ -18,7 +17,7 @@
  */
 
 import { Database } from "bun:sqlite";
-import { copyFile, mkdir, readdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 type Args = {
@@ -50,7 +49,7 @@ function parseArgs(): Args {
 			);
 			console.log("");
 			console.log(
-				"Backs up the SQLite DB, allowlist, and all workspace project + assets directories.",
+				"Backs up the SQLite DB and all workspace project + assets directories.",
 			);
 			console.log("Excludes regenerable home/, jdtls-data/, and logs/.");
 			console.log("");
@@ -131,7 +130,6 @@ async function backupDatabase(dbPath: string, destPath: string): Promise<void> {
 async function main(): Promise<void> {
 	const { dataDir, dbPath, output, projectsOnly } = parseArgs();
 	const usersDir = resolve(dataDir, "users");
-	const allowlistPath = resolve(dataDir, "allowlist.json");
 
 	const backupRoot = resolve(
 		output ?? resolve(dataDir, "backups", timestamp()),
@@ -139,7 +137,6 @@ async function main(): Promise<void> {
 	await mkdir(backupRoot, { recursive: true });
 
 	let dbBacked = false;
-	let allowlistBacked = false;
 
 	if (!projectsOnly) {
 		if (await fileExists(dbPath)) {
@@ -153,19 +150,6 @@ async function main(): Promise<void> {
 			}
 		} else {
 			console.log(`-  database  (not found at ${dbPath})`);
-		}
-
-		if (await fileExists(allowlistPath)) {
-			try {
-				await copyFile(allowlistPath, resolve(backupRoot, "allowlist.json"));
-				console.log(`✓ allowlist (${allowlistPath})`);
-				allowlistBacked = true;
-			} catch (error) {
-				const detail = error instanceof Error ? error.message : "unknown error";
-				console.error(`✗ allowlist: ${detail}`);
-			}
-		} else {
-			console.log(`-  allowlist (not found at ${allowlistPath})`);
 		}
 	}
 
@@ -230,7 +214,6 @@ async function main(): Promise<void> {
 	console.log("");
 	console.log(`Backup written to ${backupRoot}`);
 	console.log(`  database:  ${dbBacked ? "yes" : "no"}`);
-	console.log(`  allowlist: ${allowlistBacked ? "yes" : "no"}`);
 	console.log(
 		`  workspaces: ${projectsBacked} project / ${assetsBacked} assets (of ${projectsTotal})`,
 	);

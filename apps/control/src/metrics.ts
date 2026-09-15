@@ -112,13 +112,15 @@ const WORKSPACE_PATH = /^\/u\/[^/]+(\/.*)?$/u;
 const KNOWN_TOP_LEVEL: ReadonlySet<string> = new Set([
 	"/",
 	"/login",
+	"/login/legion",
+	"/logout",
 	"/healthz",
 	"/admin",
 	"/admin/",
 	"/favicon.ico",
 	"/coderunner-icon.png",
 	"/api/openapi.json",
-	"/api/auth/providers",
+	"/api/session",
 	"/scope",
 	"/metrics",
 	"/choreo",
@@ -156,7 +158,6 @@ const KNOWN_WORKSPACE_SUFFIXES: ReadonlySet<string> = new Set([
 
 export function templateRoute(path: string): string {
 	if (KNOWN_TOP_LEVEL.has(path)) return path;
-	if (path.startsWith("/api/auth/")) return "/api/auth/*";
 	if (path.startsWith("/scope/")) return "/scope/*";
 	if (path.startsWith("/choreo/")) return "/choreo/*";
 	if (path.startsWith("/elastic/")) return "/elastic/*";

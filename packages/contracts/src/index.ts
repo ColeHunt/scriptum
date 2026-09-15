@@ -8,12 +8,14 @@ export const EDITOR_STATE_HEADER = "x-coderunner-editor-state";
 
 export const ROUTE_SLUG_PATTERN = /^[a-zA-Z0-9_-]{1,40}$/;
 export const WORKSPACE_ID_PATTERN = /^ws_[a-f0-9]{32}$/;
-// Better Auth's default user/session IDs are URL-safe alphanumeric strings;
-// keep the bound loose enough to absorb a future generator change.
-export const BETTERAUTH_ID_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
+// User ids are Legion `member_code`s (8 lowercase hex chars) in normal
+// operation, the fixed demo user id, or the `<admin-token>` break-glass
+// sentinel — keep the bound loose enough to absorb all three plus a future
+// generator change, without going so loose it stops catching malformed ids.
+export const USER_ID_PATTERN = /^[A-Za-z0-9_<>-]{4,64}$/;
 
 export const workspaceSlugSchema = z.string().regex(ROUTE_SLUG_PATTERN);
-export const userIdSchema = z.string().regex(BETTERAUTH_ID_PATTERN);
+export const userIdSchema = z.string().regex(USER_ID_PATTERN);
 export const workspaceIdSchema = z.string().regex(WORKSPACE_ID_PATTERN);
 
 export const displayNameSchema = z
@@ -41,6 +43,15 @@ export const heartbeatRequestSchema = z.object({
 
 export const lessonModuleKindSchema = z.enum(["plain-java", "robot", "git"]);
 
+// Top-level (pre-workspace) session probe: does the SPA's `RootIndex` have a
+// slug to redirect to, or should it send the visitor to /login? Deliberately
+// separate from `sessionResponseSchema`, which requires a resolved workspace
+// and is only reachable from inside `/u/:slug/`.
+export const topLevelSessionResponseSchema = z.object({
+	authenticated: z.boolean(),
+	slug: workspaceSlugSchema.nullable(),
+});
+
 export const sessionResponseSchema = z.object({
 	user: z.object({
 		id: userIdSchema,
@@ -58,12 +69,6 @@ export const sessionResponseSchema = z.object({
 		projectEmpty: z.boolean(),
 	}),
 	demo: z.boolean().optional(),
-});
-
-export const authProviderSchema = z.enum(["github", "google"]);
-
-export const authProvidersResponseSchema = z.object({
-	providers: z.array(authProviderSchema),
 });
 
 export const heartbeatResponseSchema = z.object({
@@ -274,8 +279,9 @@ export const simRunCommandResponseSchema = z.object({
 
 export type HeartbeatRequest = z.infer<typeof heartbeatRequestSchema>;
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;
-export type AuthProvider = z.infer<typeof authProviderSchema>;
-export type AuthProvidersResponse = z.infer<typeof authProvidersResponseSchema>;
+export type TopLevelSessionResponse = z.infer<
+	typeof topLevelSessionResponseSchema
+>;
 export type HeartbeatResponse = z.infer<typeof heartbeatResponseSchema>;
 export type ContainerRole = "sim" | "code" | "halsim";
 export type ContainerState = z.infer<typeof containerStateSchema>;

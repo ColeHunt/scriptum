@@ -8,7 +8,7 @@ import TabItem from '@theme/TabItem';
 
 # Quick Start (Installation)
 
-Run CodeRunner locally in demo mode to try the editor, AdvantageScope/Elastic Dashboard telemetry, and Choreo without setting up OAuth.
+Run CodeRunner locally in demo mode to try the editor, AdvantageScope/Elastic Dashboard telemetry, and Choreo without setting up Legion.
 
 :::danger[Do not expose demo mode to the internet]
 

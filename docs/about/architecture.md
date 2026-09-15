@@ -36,13 +36,13 @@ At a high level there are three moving parts:
                         ▼
    ┌───────────────────────────────────────────────┐
    │  Control plane (Bun/TypeScript)                 │
-   │  ├─ Auth + sessions (OAuth, allowlist)          │
+   │  ├─ Auth (Legion mw_sso, verified locally)      │
    │  ├─ Workspace orchestration (start/stop)        │
    │  ├─ Authenticated proxy → editor / sim / NT4    │
    │  ├─ Authenticated proxy → choreo-server sidecar │
    │  ├─ Elastic layout persistence API              │
    │  ├─ Run pipeline (build + simulate)             │
-   │  └─ SQLite (users, sessions, leases, audit)     │
+   │  └─ SQLite (users, leases, audit, assignments)  │
    └───────────────────────────────────────────────┘
                         │  loopback ports, or a private Docker network
                         │  with no published ports (deployment-dependent)
@@ -74,9 +74,10 @@ single reverse proxy and TLS certificate.
 
 The control plane is a single Bun process. Its responsibilities:
 
-- **Authentication and sessions.** Sign-in is OAuth (GitHub and/or Google).
-  Only emails on an allowlist may sign in. Sessions are tracked with a signed
-  cookie. See the [Security Model](./security-model.md) for details.
+- **Authentication.** Sign-in is delegated to Legion, a shared Slack-native
+  SSO service — the control plane verifies Legion's signed `mw_sso` cookie
+  locally on every request; there is no local session table. See the
+  [Security Model](./security-model.md) for details.
 - **Workspace orchestration.** On a student's first sign-in the control plane
   creates their workspace and, when they open it, starts their Docker
   container. Depending on deployment mode it either publishes loopback host
@@ -164,7 +165,6 @@ workspace:
 ```text
 data/
 ├─ app.db                         control-plane database (SQLite)
-├─ allowlist.json                 who is allowed to sign in
 └─ users/
    └─ <workspaceId>/
       ├─ project/                 the student's code (authoritative)

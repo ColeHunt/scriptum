@@ -2,8 +2,7 @@
  * Playwright globalSetup — runs once before any tests.
  *
  * Responsibilities:
- *  1. Ensure E2E_TEST=1 is set so the control plane installs the Better Auth
- *     `testUtils` plugin (gated in apps/control/src/auth/auth.ts).
+ *  1. Ensure E2E_TEST=1 is set (quiets logging — see apps/control/src/logging.ts).
  *  2. Build the web bundle (apps/web/dist/) so the control plane can serve it
  *     in-process — a stale bundle is the failure mode that defeats the suite's
  *     whole point.

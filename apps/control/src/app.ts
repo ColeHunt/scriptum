@@ -1,4 +1,4 @@
-import type { AuthProvidersResponse } from "@frc-coderunner/contracts";
+import type { TopLevelSessionResponse } from "@frc-coderunner/contracts";
 import { handleAdminRoute } from "./app/admin-routes";
 import {
 	choreoWebAssetResponse,
@@ -19,9 +19,8 @@ import type {
 } from "./app/types";
 import { createWebSocketHandlers } from "./app/websocket";
 import { handleWorkspaceRoute } from "./app/workspace-routes";
-import { getDemoSessionResponseBody, seedDemoUser } from "./auth/demo";
+import { seedDemoUser } from "./auth/demo";
 import { getSessionFromRequest, requireAdmin } from "./auth/middleware";
-import { getEnabledAuthProviders } from "./auth/providers";
 import { createCatalogSource } from "./catalog";
 import { CheckpointManager } from "./checkpoints";
 import { LocalDockerRuntimeProvider } from "./containers";
@@ -186,7 +185,7 @@ export async function createApp(
 	const dockerStatsPoller = new DockerStatsPoller({ containers });
 	dockerStatsPoller.start();
 
-	const adminCtx = { storage, runs, runtimeProvider };
+	const adminCtx = { storage, runs, runtimeProvider, catalogSource };
 	const workspaceCtx = {
 		storage,
 		runs,
@@ -324,18 +323,17 @@ export async function createApp(
 			return elasticWebAssetResponse(storage, url.pathname);
 		}
 
-		if (url.pathname === "/api/auth/providers" && request.method === "GET") {
+		// Top-level (pre-workspace) session probe for the SPA's RootIndex — is
+		// there a slug to redirect to, or should it send the visitor to /login?
+		if (url.pathname === "/api/session" && request.method === "GET") {
+			const session = await getSessionFromRequest(storage, request);
+			const workspace = session
+				? storage.findWorkspaceByUserId(session.user.id)
+				: null;
 			return jsonResponse({
-				providers: getEnabledAuthProviders(storage.config),
-			} satisfies AuthProvidersResponse);
-		}
-
-		// --- Better Auth API routes ---
-		if (url.pathname.startsWith("/api/auth/")) {
-			if (storage.config.demo && url.pathname === "/api/auth/get-session") {
-				return jsonResponse(getDemoSessionResponseBody());
-			}
-			return storage.auth.handler(request);
+				authenticated: session !== null,
+				slug: workspace?.slug ?? null,
+			} satisfies TopLevelSessionResponse);
 		}
 
 		if (url.pathname === "/" && request.method === "GET") {
@@ -351,6 +349,30 @@ export async function createApp(
 
 		if (url.pathname === "/login" && request.method === "GET") {
 			return webShellResponse(storage);
+		}
+
+		// Plain-link redirects (no client-side fetch needed) to Legion's sign-in
+		// form and single-logout endpoint. Not under /api/ - these return
+		// redirects, not JSON.
+		if (url.pathname === "/login/legion" && request.method === "GET") {
+			if (!storage.config.legionBaseUrl) {
+				return new Response("Legion is not configured for this deployment.", {
+					status: 503,
+				});
+			}
+			const returnTo = url.searchParams.get("return_to") || "/";
+			return redirect(
+				`${storage.config.legionBaseUrl}/sso/authorize?app=coderunner&return_to=${encodeURIComponent(returnTo)}`,
+			);
+		}
+
+		if (url.pathname === "/logout" && request.method === "GET") {
+			if (!storage.config.legionBaseUrl) {
+				return redirect("/login");
+			}
+			return redirect(
+				`${storage.config.legionBaseUrl}/sso/logout?return_to=${encodeURIComponent("/login")}`,
+			);
 		}
 
 		// Serve the favicon from the site root for pages outside the /u/:slug/ scope
@@ -369,8 +391,8 @@ export async function createApp(
 		}
 
 		// --- Default-deny: everything below requires a session (or admin token). ---
-		// Public routes (healthz, scope, /choreo, /elastic, /api/auth/providers, other api/auth routes, /, /login,
-		// /coderunner-icon.png, /assets/*) are handled above.
+		// Public routes (healthz, scope, /choreo, /elastic, /api/session, /, /login,
+		// /login/legion, /logout, /coderunner-icon.png, /assets/*) are handled above.
 		// If we reach here without matching a gated route, we return 404.
 
 		// --- Admin / operator routes ---

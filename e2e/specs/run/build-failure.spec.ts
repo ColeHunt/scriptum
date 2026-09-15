@@ -310,13 +310,8 @@ test("stale running status cleared on app restart", async ({
 	expect(running).toBe("running");
 
 	// Close the app abruptly — the DB row stays in "running" state (orphaned).
-	const {
-		dataDir,
-		catalogDir,
-		webDistDir,
-		advantageScopeDistDir,
-		sessionSecret,
-	} = app.storage.config;
+	const { dataDir, catalogDir, webDistDir, advantageScopeDistDir, ssoSecret } =
+		app.storage.config;
 	app.close();
 
 	// Re-create a new app instance pointing at the same SQLite database.
@@ -328,7 +323,7 @@ test("stale running status cleared on app restart", async ({
 		catalogDir,
 		webDistDir,
 		advantageScopeDistDir,
-		sessionSecret,
+		ssoSecret,
 		baseUrl,
 		idleStopMinutes: 30,
 		containerAutoStart: false,

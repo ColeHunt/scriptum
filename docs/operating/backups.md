@@ -14,8 +14,7 @@ container next starts.
 
 | Path | Contains | Back up? |
 |---|---|---|
-| `data/app.db` | Users, workspaces, sessions, port leases, audit log | **Yes** |
-| `data/allowlist.json` | Emails and domains permitted to sign in | **Yes** |
+| `data/app.db` | Users, workspaces, port leases, audit log, lesson assignments | **Yes** |
 | `data/users/*/project/` | Student Java source code | **Yes** |
 | `data/users/*/assets/` | Per-workspace AdvantageScope assets | **Yes** |
 | `data/users/*/home/` | Gradle cache, editor state, VS Code user data | No (regenerated) |
@@ -59,7 +58,6 @@ with the following layout:
 ```
 data/backups/2026-05-16-151038/
   app.db                         SQLite online-backup snapshot
-  allowlist.json                 copy of the allowlist
   workspaces/
     <workspaceId>/
       project.tar.gz             student source tree
@@ -77,7 +75,7 @@ saving files, or stop the control plane first if consistency matters.
 # Write the backup to a custom location
 bun run backup -- --output /path/to/backup
 
-# Legacy mode: skip DB and allowlist, archive project files only
+# Legacy mode: skip DB, archive project files only
 bun run backup -- --projects-only
 ```
 
@@ -90,9 +88,8 @@ Stop the control plane before restoring (`docker compose stop control`, or
 bun run restore -- <backup-dir>
 ```
 
-This restores the database, allowlist, and every workspace's project and
-assets. Restore is destructive: existing files at the destination are
-overwritten.
+This restores the database and every workspace's project and assets. Restore
+is destructive: existing files at the destination are overwritten.
 
 ### Restore options
 
@@ -100,22 +97,21 @@ overwritten.
 # Preview what would be restored without writing anything
 bun run restore -- <backup-dir> --dry-run
 
-# Restore a single workspace only (implies --skip-db and --skip-allowlist)
+# Restore a single workspace only (implies --skip-db)
 bun run restore -- <backup-dir> --workspace ws_abc123
 
 # Keep the current database; restore only project files
 bun run restore -- <backup-dir> --skip-db
-
-# Keep the current allowlist
-bun run restore -- <backup-dir> --skip-allowlist
 
 # Skip per-workspace assets/; restore project files only
 bun run restore -- <backup-dir> --skip-assets
 ```
 
 Legacy backups created with `--projects-only` or by older versions of the
-backup script restore only per-workspace project files; `--skip-db` and
-`--skip-allowlist` are no-ops for those since the backup does not include them.
+backup script restore only per-workspace project files; `--skip-db` is a
+no-op for those since the backup does not include a database snapshot. An
+older backup's `allowlist.json` (if present) is ignored — nothing reads that
+file under Legion auth.
 
 ## Recommended cadence
 

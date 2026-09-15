@@ -2,7 +2,12 @@
 
 ## Status
 
-Accepted.
+Accepted. The `allowlist`/`users promote`/`CODERUNNER_ADMIN_EMAIL` admin-bootstrap
+mechanism described in "Admin bootstrap" below was removed by decision 046 —
+admin access is now a Legion group membership with no local bootstrap step at
+all. The rest of this doc (image layering, `coderunner` CLI dispatch,
+self-inspection, non-root uid:gid handling) is current. See 046 and
+[Legion Setup](../deploying/legion-setup.md).
 
 ## Context
 

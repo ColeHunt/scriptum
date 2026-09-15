@@ -12,12 +12,6 @@ import type {
 	WorkspaceId,
 	WorkspaceSlug,
 } from "@frc-coderunner/contracts";
-import {
-	addAllowlistEntry,
-	loadAllowlist,
-	setAllowlistPath,
-} from "./auth/allowlist";
-import { type Auth, createAuth } from "./auth/auth";
 import type { ControlConfig, ControlConfigInput } from "./config";
 import { loadControlConfig } from "./config";
 import { getLogger } from "./logging";
@@ -60,7 +54,17 @@ export type RunJobRow = {
 	log_path: string | null;
 };
 
-/** Context returned by Better Auth session resolution + workspace lookup. */
+export type LessonAssignmentRow = {
+	id: number;
+	target_type: "module" | "track";
+	target_id: string;
+	assignee_type: "user" | "group";
+	assignee_id: string;
+	created_at: string;
+	created_by: string;
+};
+
+/** Context returned by session resolution + workspace lookup. */
 export type AuthContext = {
 	user: {
 		id: string;
@@ -69,6 +73,7 @@ export type AuthContext = {
 		image: string | null;
 		role: string;
 		slug: string;
+		groups: string[];
 	};
 	workspace: WorkspaceRow;
 };
@@ -134,7 +139,6 @@ async function ensureWorkspaceFiles(
 export class AppStorage {
 	readonly config: ControlConfig;
 	readonly db: Database;
-	auth!: Auth;
 
 	constructor(configInput: ControlConfigInput = {}) {
 		this.config = loadControlConfig(configInput);
@@ -146,7 +150,7 @@ export class AppStorage {
 	async initialize(): Promise<void> {
 		await mkdir(dirname(this.config.dbPath), { recursive: true });
 
-		// 1. Run our migrations (including the Better Auth schema handoff).
+		// 1. Run our migrations (including the Legion identity schema).
 		const applied = await applyMigrations(this.db, this.config.migrationsDir);
 		log.info("storage initialized", {
 			dbPath: this.config.dbPath,
@@ -161,76 +165,10 @@ export class AppStorage {
 		// restored backup) carry the old prefix. Docker mounts and file APIs use
 		// the path the control plane sees now, so normalize eagerly.
 		this.normalizeWorkspaceProjectPaths();
-
-		// 3. Initialize allowlist
-		setAllowlistPath(this.config.dataDir);
-		await loadAllowlist();
-
-		// 4. Create Better Auth instance and run its migrations
-		this.auth = createAuth(this.db, this.config, {
-			ensureWorkspace: async (userId, slug) => {
-				await this.ensureWorkspaceForUser(userId, slug);
-			},
-		});
-		const { getMigrations } = await import("better-auth/db/migration");
-		const { runMigrations } = await getMigrations(this.auth.options);
-		await runMigrations();
-
-		// 5. Bootstrap admins from CODERUNNER_ADMIN_EMAIL. Runs after the allowlist
-		// is loaded and the better-auth `user` table exists, so it can both seed
-		// allowlist entries and promote an account that signed in before the env
-		// was set. New accounts get the admin role via the user.create hook.
-		await this.seedBootstrapAdmins();
-
-		// 6. Warn if no auth providers are configured (skipped in demo mode).
-		if (!this.config.demo) {
-			const hasGitHub = Boolean(
-				this.config.githubClientId && this.config.githubClientSecret,
-			);
-			const hasGoogle = Boolean(
-				this.config.googleClientId && this.config.googleClientSecret,
-			);
-			if (!hasGitHub && !hasGoogle) {
-				log.warn("no OAuth providers configured — login will not work", {
-					baseUrl: this.config.baseUrl,
-					hint: "Set GITHUB_CLIENT_ID/SECRET or GOOGLE_CLIENT_ID/SECRET in your .env",
-				});
-			} else {
-				log.debug("oauth providers configured", {
-					github: hasGitHub,
-					google: hasGoogle,
-				});
-			}
-		}
 	}
 
 	close(): void {
 		this.db.close();
-	}
-
-	/**
-	 * Seed the accounts named in CODERUNNER_ADMIN_EMAIL so a fresh deployment
-	 * needs zero exec steps: each email is added to the allowlist (idempotent),
-	 * and any existing non-admin account with that email is promoted. Accounts
-	 * that have not signed in yet get the admin role from the user.create hook.
-	 */
-	private async seedBootstrapAdmins(): Promise<void> {
-		for (const email of this.config.adminEmails) {
-			await addAllowlistEntry("email", email);
-			log.info("bootstrap admin allowlisted", { email });
-
-			// config.adminEmails is lowercased; the stored email keeps whatever
-			// case the OAuth provider returned, so match case-insensitively.
-			const user = this.db
-				.query("SELECT id, role FROM user WHERE lower(email) = ?")
-				.get(email) as { id: string; role: string | null } | null;
-			if (user && user.role !== "admin") {
-				this.db
-					.query("UPDATE user SET role = ?, updatedAt = ? WHERE id = ?")
-					.run("admin", nowIso(), user.id);
-				log.info("bootstrap admin promoted", { email });
-			}
-		}
 	}
 
 	private normalizeWorkspaceProjectPaths(): void {
@@ -279,7 +217,33 @@ export class AppStorage {
 		);
 	}
 
-	/** Create a workspace for a Better Auth user (called on first login). */
+	/**
+	 * Insert or refresh the local `user` row for a Legion identity. Called on
+	 * every Legion session resolution (see legion/session.ts) — role is always
+	 * recomputed from the cookie's `groups` claim, so this keeps it in sync
+	 * without a separate promote/demote mechanism.
+	 */
+	upsertLegionUser(input: {
+		id: string;
+		email: string;
+		name: string;
+		role: string;
+	}): void {
+		const now = nowIso();
+		this.db
+			.query(
+				`INSERT INTO user (id, name, email, image, createdAt, updatedAt, role, slug)
+				 VALUES (?, ?, ?, NULL, ?, ?, ?, NULL)
+				 ON CONFLICT(id) DO UPDATE SET
+				   name = excluded.name,
+				   email = excluded.email,
+				   role = excluded.role,
+				   updatedAt = excluded.updatedAt`,
+			)
+			.run(input.id, input.name, input.email, now, now, input.role);
+	}
+
+	/** Create a workspace for a user (called on first login). */
 	async ensureWorkspaceForUser(
 		userId: string,
 		slug: string,
@@ -823,6 +787,61 @@ export class AppStorage {
 			}
 		}
 		return this.config.maxActiveContainers;
+	}
+
+	// --- Lesson/track assignment (admin portal) ---
+
+	listLessonAssignments(): LessonAssignmentRow[] {
+		return this.db
+			.query(
+				"SELECT * FROM lesson_assignments ORDER BY target_type, target_id, assignee_type, assignee_id",
+			)
+			.all() as LessonAssignmentRow[];
+	}
+
+	addLessonAssignment(input: {
+		targetType: "module" | "track";
+		targetId: string;
+		assigneeType: "user" | "group";
+		assigneeId: string;
+		createdBy: string;
+	}): LessonAssignmentRow {
+		const now = nowIso();
+		this.db
+			.query(
+				`INSERT INTO lesson_assignments (target_type, target_id, assignee_type, assignee_id, created_at, created_by)
+				 VALUES (?, ?, ?, ?, ?, ?)`,
+			)
+			.run(
+				input.targetType,
+				input.targetId,
+				input.assigneeType,
+				input.assigneeId,
+				now,
+				input.createdBy,
+			);
+		const row = this.db
+			.query(
+				"SELECT * FROM lesson_assignments WHERE target_type = ? AND target_id = ? AND assignee_type = ? AND assignee_id = ?",
+			)
+			.get(
+				input.targetType,
+				input.targetId,
+				input.assigneeType,
+				input.assigneeId,
+			) as LessonAssignmentRow | null;
+		if (!row) {
+			throw new Error("Failed to reload newly created lesson assignment.");
+		}
+		return row;
+	}
+
+	/** Returns true if a row was deleted. */
+	removeLessonAssignment(id: number): boolean {
+		const result = this.db
+			.query("DELETE FROM lesson_assignments WHERE id = ?")
+			.run(id);
+		return result.changes > 0;
 	}
 }
 

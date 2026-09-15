@@ -11,46 +11,39 @@ to evaluate whether CodeRunner is safe to deploy on their network.
 
 ## Authentication
 
-Sign-in is handled by [Better Auth](https://www.better-auth.com/) using OAuth.
-GitHub and Google are the supported providers; you configure one or both by
-supplying their client ID and secret as environment variables
-(`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` and `GOOGLE_CLIENT_ID` /
-`GOOGLE_CLIENT_SECRET`). If a provider's credentials are absent it is simply
-not offered on the login page.
+Sign-in is delegated entirely to **Legion**, the operator's own Slack-native
+SSO service (also used by the sibling MARS/WARS apps). CodeRunner stores no
+passwords and never talks to a third-party identity provider — Legion mints a
+signed `mw_sso` cookie after authenticating the person over Slack, and
+CodeRunner verifies that cookie locally on every request using a shared
+secret (`SSO_SECRET`, must match Legion's own value exactly). There is no
+OAuth, no callback route, and no local session table: every request
+re-verifies the cookie fresh, and the verified session is trusted for up to
+`SSO_SESSION_TTL` seconds (must also match Legion's own setting).
 
-Sessions are stored in the SQLite database and tracked with a signed cookie
-named `coderunner_session`. The signing key is the `BETTER_AUTH_SECRET`
-environment variable. Sessions expire after 14 days; the expiry is silently
-refreshed daily while the student is active.
+A weak, Slack-magic-link-issued session (Legion's `via:"link"` marker) is
+accepted for the student portal but is never treated as an admin session,
+even for someone who holds the admin group — an admin route redirects such a
+session to Legion's own step-up flow rather than granting access outright.
 
-## Email allowlist
+## Access control
 
-OAuth alone is not enough to sign in. After the OAuth provider confirms a
-user's identity, CodeRunner checks whether the returned email address is on the
-**allowlist** (`data/allowlist.json`). The check runs in two places (on new
-user creation and again on every OAuth callback), so a removed entry takes
-effect at the next login attempt.
-
-The allowlist accepts individual addresses and whole domains. A team using
-`@frcteam1234.org` Google Workspace accounts can add that domain once rather
-than listing every member. The file format is:
-
-```json
-{
-  "emails": ["coach@example.com"],
-  "domains": ["frcteam1234.org"]
-}
-```
-
-An admin can manage the allowlist through the admin UI or the admin API.
+There is no local allowlist. Anyone who can sign in through Legion at all can
+use CodeRunner — access control lives entirely on Legion's side (its own
+roster of active members). CodeRunner never receives or stores an email
+address; the local `user.email` field is populated with Legion's `username`.
 
 ## Admin role
 
-Users have a `role` field: `student` (the default) or `admin`. Admin-only
-routes require the session's role to be `admin`. An operator can also use a
-static break-glass token (`ADMIN_TOKEN`) by passing it as a `Bearer` token in
-the `Authorization` header. This is intended for automated tooling and
-one-off operator commands, not for day-to-day use.
+Admin access is a Legion **group membership** (`coderunner-admin`), not a
+locally stored field — it's recomputed fresh from the `mw_sso` cookie's
+`groups` claim on every request, so revoking it in Legion's `/admin/groups`
+takes effect on the very next request, with no CodeRunner-side action needed.
+Admin-only routes require that group. An operator can also use a static
+break-glass token (`ADMIN_TOKEN`) by passing it as a `Bearer` token in the
+`Authorization` header. This is intended for automated tooling and one-off
+operator commands, not for day-to-day use, and is independent of Legion (it
+still works even if Legion is unreachable).
 
 ## Single entry point
 
@@ -157,7 +150,7 @@ through the admin API.
 ## WebSocket origin validation
 
 Before upgrading any WebSocket connection the control plane validates the
-`Origin` header against the configured `BETTER_AUTH_URL`. Cross-origin
+`Origin` header against the configured `CODERUNNER_BASE_URL`. Cross-origin
 WebSocket upgrades are rejected with `403`. Loopback aliases
 (`localhost` / `127.0.0.1`) are treated as equivalent to support local
 development, but production deployments served over a real hostname are not
@@ -166,14 +159,15 @@ affected by that exception.
 ## Demo mode
 
 Starting the control plane with `--demo` (or `CODERUNNER_DEMO_MODE=1`) bypasses
-OAuth entirely: every request is treated as a single synthetic admin session.
-This is designed for zero-configuration local evaluation only.
+Legion entirely: every request is treated as a single synthetic admin session,
+and `SSO_SECRET` doesn't need to be set at all. This is designed for
+zero-configuration local evaluation only.
 
 **Demo mode must never be deployed publicly.** There is no privacy boundary
 between concurrent visitors in demo mode: all requests resolve to the same
 user. The control plane prints a multi-line warning banner at startup and the
 workspace shell displays a yellow banner to make this visible. See
-[Deploying](../deploying/overview.md) for how to configure OAuth for a real
+[Deploying](../deploying/overview.md) for how to configure Legion for a real
 deployment.
 
 ## What CodeRunner does not provide

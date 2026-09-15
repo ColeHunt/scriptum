@@ -10,21 +10,15 @@
  */
 import { expect, test } from "../../fixtures/app";
 
-test("login response sets HttpOnly + SameSite + Path on session cookie", async ({
-	app,
-}) => {
-	// The `loginAs` test helper plants a cookie programmatically; to inspect the
-	// cookie *attributes* the auth handler returns, we need to drive the real
-	// sign-out → which itself manipulates the cookie. Instead, we read the
-	// cookie set during the planted login by hitting any authenticated route
-	// and inspecting the Set-Cookie response (Better Auth refreshes/rolls).
+test("public session probe does not leak Set-Cookie", async ({ app }) => {
+	// CodeRunner never issues its own session cookie - Legion sets `mw_sso` on
+	// its own domain. The header-shape test for that cookie belongs in Legion's
+	// own test suite; here we just confirm this app's public probe route stays
+	// side-effect-free.
 	const baseUrl = app.storage.config.baseUrl;
-	const resp = await app.fetch(new Request(`${baseUrl}/api/auth/providers`));
-	// This is a public endpoint; the assertion is that the *response* doesn't
-	// leak Set-Cookie unless a session is involved. The header-shape test for
-	// cookies is exercised via the production sign-in flow during real browser
-	// E2E coverage.
+	const resp = await app.fetch(new Request(`${baseUrl}/api/session`));
 	expect(resp.status).toBe(200);
+	expect(resp.headers.get("set-cookie")).toBeNull();
 });
 
 test("/healthz response does not include sensitive cache headers", async ({

@@ -4,14 +4,16 @@
  *
  * Usage:
  *   bun scripts/restore.ts <backup-dir> [--data-dir <path>] [--workspace <id>]
- *                                       [--skip-db] [--skip-allowlist] [--skip-assets]
+ *                                       [--skip-db] [--skip-assets]
  *                                       [--dry-run]
  *
  * Restores:
  *   - data/app.db                            (from <backup>/app.db, if present)
- *   - data/allowlist.json                    (from <backup>/allowlist.json, if present)
  *   - data/users/<id>/project/               (from <backup>/workspaces/<id>/project.tar.gz)
  *   - data/users/<id>/assets/                (from <backup>/workspaces/<id>/assets.tar.gz)
+ *
+ * An older backup's allowlist.json (if present) is ignored - nothing reads
+ * that file under Legion auth.
  *
  * Old-format backups (no top-level app.db, workspaces directly under root) are
  * still supported for the per-workspace data.
@@ -36,7 +38,6 @@ type Args = {
 	dbPath: string;
 	workspace: string | null;
 	skipDb: boolean;
-	skipAllowlist: boolean;
 	skipAssets: boolean;
 	dryRun: boolean;
 };
@@ -48,7 +49,6 @@ function parseArgs(): Args {
 	let dbPathArg: string | null = null;
 	let workspace: string | null = null;
 	let skipDb = false;
-	let skipAllowlist = false;
 	let skipAssets = false;
 	let dryRun = false;
 
@@ -61,8 +61,6 @@ function parseArgs(): Args {
 			workspace = args[++i]!;
 		} else if (args[i] === "--skip-db") {
 			skipDb = true;
-		} else if (args[i] === "--skip-allowlist") {
-			skipAllowlist = true;
 		} else if (args[i] === "--skip-assets") {
 			skipAssets = true;
 		} else if (args[i] === "--dry-run") {
@@ -71,7 +69,7 @@ function parseArgs(): Args {
 			console.log("Usage: bun scripts/restore.ts <backup-dir> [options]");
 			console.log("");
 			console.log(
-				"Restores DB, allowlist, and workspace project/assets directories from a backup.",
+				"Restores DB and workspace project/assets directories from a backup.",
 			);
 			console.log("");
 			console.log("Options:");
@@ -85,10 +83,9 @@ function parseArgs(): Args {
 				"  --db-path <path>      SQLite DB path (default: <data-dir>/app.db or $FRC_DB_PATH)",
 			);
 			console.log(
-				"  --workspace <id>      Restore only this workspace; implies --skip-db --skip-allowlist",
+				"  --workspace <id>      Restore only this workspace; implies --skip-db",
 			);
 			console.log("  --skip-db             Don't restore app.db");
-			console.log("  --skip-allowlist      Don't restore allowlist.json");
 			console.log(
 				"  --skip-assets         Don't restore per-workspace assets/",
 			);
@@ -109,7 +106,6 @@ function parseArgs(): Args {
 
 	if (workspace) {
 		skipDb = true;
-		skipAllowlist = true;
 	}
 
 	const resolvedDataDir = resolve(dataDir);
@@ -122,7 +118,6 @@ function parseArgs(): Args {
 		dbPath,
 		workspace,
 		skipDb,
-		skipAllowlist,
 		skipAssets,
 		dryRun,
 	};
@@ -253,16 +248,8 @@ async function discoverWorkspaces(
 
 async function main(): Promise<void> {
 	const args = await parseArgs();
-	const {
-		backupDir,
-		dataDir,
-		dbPath,
-		workspace,
-		skipDb,
-		skipAllowlist,
-		skipAssets,
-		dryRun,
-	} = args;
+	const { backupDir, dataDir, dbPath, workspace, skipDb, skipAssets, dryRun } =
+		args;
 
 	if (!(await dirExists(backupDir))) {
 		console.error(`Backup directory not found: ${backupDir}`);
@@ -276,9 +263,7 @@ async function main(): Promise<void> {
 	}
 
 	const usersDir = resolve(dataDir, "users");
-	const allowlistPath = resolve(dataDir, "allowlist.json");
 	const backupDbPath = resolve(backupDir, "app.db");
-	const backupAllowlistPath = resolve(backupDir, "allowlist.json");
 
 	// --- Database ---
 	if (!skipDb && (await fileExists(backupDbPath))) {
@@ -291,22 +276,6 @@ async function main(): Promise<void> {
 			} catch (error) {
 				const detail = error instanceof Error ? error.message : "unknown error";
 				console.error(`✗ database: ${detail}`);
-			}
-		}
-	}
-
-	// --- Allowlist ---
-	if (!skipAllowlist && (await fileExists(backupAllowlistPath))) {
-		if (dryRun) {
-			console.log(`  allowlist ${backupAllowlistPath} → ${allowlistPath}`);
-		} else {
-			try {
-				await mkdir(dirname(allowlistPath), { recursive: true });
-				await copyFile(backupAllowlistPath, allowlistPath);
-				console.log(`✓ allowlist ${allowlistPath}`);
-			} catch (error) {
-				const detail = error instanceof Error ? error.message : "unknown error";
-				console.error(`✗ allowlist: ${detail}`);
 			}
 		}
 	}

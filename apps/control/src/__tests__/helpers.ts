@@ -4,7 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { WorkspaceId } from "@frc-coderunner/contracts";
 import { type ControlApp, type ControlAppOptions, createApp } from "../app";
+import { getSessionFromRequest } from "../auth/middleware";
 import type { DockerCommandResult, DockerRunner } from "../containers";
+import type { LegionSsoClaims } from "../legion/sso";
+import { signLegionToken } from "../legion/sso";
 import type { RunCommandFactory } from "../runs";
 import type {
 	ExecOptions,
@@ -296,7 +299,7 @@ export async function withApp<T>(
 		advantageScopeDistDir,
 		choreoDistDir,
 		elasticDistDir,
-		sessionSecret: "test-session-secret",
+		ssoSecret: "test-sso-secret",
 		baseUrl: "http://localhost:4000",
 		idleStopMinutes: 30,
 		containerAutoStart: false,
@@ -870,103 +873,83 @@ export async function waitFor(predicate: () => boolean): Promise<void> {
 	throw new Error("Timed out waiting for condition.");
 }
 
-/** HMAC-SHA256 sign a session token for Better Auth cookies. */
-async function signToken(token: string, secret: string): Promise<string> {
-	const encoder = new TextEncoder();
-	const key = await crypto.subtle.importKey(
-		"raw",
-		encoder.encode(secret),
-		{ name: "HMAC", hash: "SHA-256" },
-		false,
-		["sign"],
-	);
-	const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(token));
-	const signature = btoa(String.fromCharCode(...new Uint8Array(sig)));
-	return encodeURIComponent(`${token}.${signature}`);
-}
-
-/** Better Auth generates random 32-char alphanumeric tokens, not UUIDs. */
-function randomToken(): string {
-	const chars =
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-	let result = "";
-	const bytes = crypto.getRandomValues(new Uint8Array(32));
-	for (const b of bytes) result += chars[b % chars.length];
-	return result;
+/** Legion mints an 8-lowercase-hex-char `member_code` (`secrets.token_hex(4)`). */
+function randomMemberCode(): string {
+	const bytes = crypto.getRandomValues(new Uint8Array(4));
+	return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /**
- * Simulate an OAuth login by directly inserting Better Auth records.
- * Returns a fake Response whose set-cookie header carries the signed session token,
+ * Simulate a Legion login by signing a real `mw_sso` cookie (see
+ * `../legion/sso.ts`) rather than driving Legion's own /sso/authorize flow.
+ * Returns a fake Response whose set-cookie header carries the signed token,
  * keeping the existing `cookieFrom()` helper working unchanged.
+ *
+ * `options.email`, despite the name, becomes the Legion `username` claim —
+ * kept as `email` so existing call sites across the test suite don't need a
+ * rename; the wire field it ends up in (`session.user.email`) is unchanged.
  */
 export async function login(
 	app: ControlApp,
 	displayName: string,
-	options: { role?: "student" | "admin"; email?: string } = {},
+	options: {
+		role?: "student" | "admin";
+		email?: string;
+		/** Extra Legion group slugs beyond what `role` implies (e.g. for
+		 * testing lesson-assignment targeting a non-admin group). */
+		groups?: string[];
+	} = {},
 ): Promise<Response> {
-	const db = app.storage.db;
-	const secret = app.storage.config.sessionSecret;
-	const email = (
-		options.email ?? `${displayName.toLowerCase()}@test.local`
-	).toLowerCase();
-	const role = options.role ?? "student";
-	const avatarUrl = `https://example.test/avatar/${displayName.toLowerCase()}.png`;
-	const slug = displayName
-		.toLowerCase()
-		.replace(/[^a-z0-9_-]/g, "-")
-		.slice(0, 40);
-	const now = new Date().toISOString();
-	const expiresAt = new Date(
-		Date.now() + 14 * 24 * 60 * 60 * 1000,
-	).toISOString();
-
-	// If user already exists (same email → same display name), create a new session
-	const existing = db
-		.query("SELECT id, slug FROM user WHERE email = ?")
-		.get(email) as {
-		id: string;
-		slug: string;
-	} | null;
-	if (existing) {
-		if (options.role) {
-			db.query("UPDATE user SET role = ?, updatedAt = ? WHERE id = ?").run(
-				options.role,
-				now,
-				existing.id,
-			);
-		}
-		const sessionToken = randomToken();
-		const signedToken = await signToken(sessionToken, secret);
-		db.query(
-			"INSERT INTO session (id, expiresAt, token, createdAt, updatedAt, userId) VALUES (?, ?, ?, ?, ?, ?)",
-		).run(randomToken(), expiresAt, sessionToken, now, now, existing.id);
-		return new Response(null, {
-			status: 303,
-			headers: new Headers([
-				["set-cookie", `coderunner_session=${signedToken}; Path=/; HttpOnly`],
-				["location", `/u/${existing.slug}/`],
-			]),
-		});
+	const secret = app.storage.config.ssoSecret;
+	if (!secret) {
+		throw new Error("Test ControlApp has no ssoSecret configured for login().");
 	}
+	// Bare, no "@domain" - a real Legion username never contains one (unlike
+	// the OAuth email this replaced), and slugFromUsername has no email-style
+	// "strip everything after @" step, so a domain suffix here would leak into
+	// the derived workspace slug.
+	const username = (options.email ?? displayName.toLowerCase()).toLowerCase();
 
-	// New user — create user, session, and workspace
-	const userId = randomToken();
-	const sessionToken = randomToken();
-	const signedToken = await signToken(sessionToken, secret);
-	db.query(
-		"INSERT INTO user (id, name, email, emailVerified, image, createdAt, updatedAt, role, slug) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-	).run(userId, displayName, email, 0, avatarUrl, now, now, role, slug);
-	db.query(
-		"INSERT INTO session (id, expiresAt, token, createdAt, updatedAt, userId) VALUES (?, ?, ?, ?, ?, ?)",
-	).run(randomToken(), expiresAt, sessionToken, now, now, userId);
-	await app.storage.ensureWorkspaceForUser(userId, slug);
+	// Reuse the same member_code across repeated logins for the same identity
+	// (matches the old OAuth login()'s "same email -> same user" behavior),
+	// rather than minting a fresh identity - and workspace - every call.
+	const existing = app.storage.db
+		.query("SELECT id FROM user WHERE email = ?")
+		.get(username) as { id: string } | null;
+	const memberCode = existing?.id ?? randomMemberCode();
+
+	const claims: LegionSsoClaims = {
+		member_code: memberCode,
+		username,
+		name: displayName,
+		role: "student",
+		team_number: null,
+		groups: [
+			...((options.role ?? "student") === "admin" ? ["coderunner-admin"] : []),
+			...(options.groups ?? []),
+		],
+		slack_user_id: null,
+	};
+	const token = signLegionToken(claims, secret);
+
+	// Resolve the session once server-side so the redirect Location carries the
+	// materialized workspace slug, and the user/workspace rows exist before the
+	// caller's first request under the cookie.
+	const probeRequest = new Request(`${app.storage.config.baseUrl}/`, {
+		headers: { cookie: `mw_sso=${encodeURIComponent(token)}` },
+	});
+	const session = await getSessionFromRequest(app.storage, probeRequest);
+	if (!session) {
+		throw new Error(
+			"login(): failed to resolve the freshly-signed test session.",
+		);
+	}
 
 	return new Response(null, {
 		status: 303,
 		headers: new Headers([
-			["set-cookie", `coderunner_session=${signedToken}; Path=/; HttpOnly`],
-			["location", `/u/${slug}/`],
+			["set-cookie", `mw_sso=${encodeURIComponent(token)}; Path=/; HttpOnly`],
+			["location", `/u/${session.user.slug}/`],
 		]),
 	});
 }

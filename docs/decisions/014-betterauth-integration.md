@@ -1,6 +1,9 @@
 # Decision 014 — Better Auth Integration
 
-**Status:** Accepted  
+**Status:** Accepted, superseded by 046 (2026-09-15) — Better Auth and its
+GitHub/Google OAuth were removed entirely in favor of Legion SSO. This
+document is kept as a historical record of the original design; see 046 for
+the current auth model.  
 **Date:** 2026-05-10
 
 ## Context

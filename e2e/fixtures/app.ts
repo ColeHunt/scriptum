@@ -122,7 +122,7 @@ export const test = base.extend<AppFixtures & AppOptions>({
 				webDistDir,
 				advantageScopeDistDir: ascopeDistDir,
 				choreoDistDir,
-				sessionSecret: "e2e-session-secret",
+				ssoSecret: "e2e-sso-secret",
 				baseUrl,
 				idleStopMinutes: 30,
 				containerAutoStart: false,

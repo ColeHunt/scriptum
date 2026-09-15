@@ -324,7 +324,7 @@ describe("run lifecycle and log streaming", () => {
 			catalogDir,
 			webDistDir,
 			advantageScopeDistDir,
-			sessionSecret: "test-session-secret",
+			ssoSecret: "test-session-secret",
 			baseUrl: "http://localhost:4000",
 			containerAutoStart: false,
 			dockerRunner: fakeDocker.runner,

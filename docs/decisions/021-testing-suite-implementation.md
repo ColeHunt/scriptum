@@ -1,7 +1,12 @@
 # Decision 021: Testing suite implementation — deviations from TESTING-PLAN.md
 
 **Date:** 2026-05-15
-**Status:** Accepted; Docker-smoke scope superseded by decisions 022 and 038
+**Status:** Accepted; Docker-smoke scope superseded by decisions 022 and 038.
+The Better Auth-specific reasoning in §1 (why not `testUtils`, the OAuth-callback
+coverage gap) is moot as of decision 046 — Better Auth is gone, and
+`helpers.ts:login()` / `e2e/fixtures/auth.ts:loginAs()` now sign a real Legion
+`mw_sso` cookie instead. Kept for historical context on why direct-DB/cookie
+seeding was chosen over a framework testing plugin in the first place.
 **Context:** `TESTING-PLAN.md` proposed a three-phase test suite (property + security unit tests, E2E mocked + frontend unit tests, Docker smoke + security browser tests). The plan was AI-drafted and reviewed; while implementing it, a handful of details warranted deviation. This log captures those decisions so future work doesn't reintroduce them by reading the plan and assuming it was followed verbatim.
 
 ## Summary

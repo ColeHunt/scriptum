@@ -19,12 +19,13 @@ export type ControlConfig = {
 	advantageScopeDistDir: string;
 	choreoDistDir: string;
 	elasticDistDir: string;
-	sessionSecret: string;
 	baseUrl: string;
-	githubClientId: string | null;
-	githubClientSecret: string | null;
-	googleClientId: string | null;
-	googleClientSecret: string | null;
+	/** Shared secret for verifying Legion's `mw_sso` cookie. Required outside demo mode. */
+	ssoSecret: string | null;
+	/** How long (seconds) a verified `mw_sso` cookie is trusted — must match Legion's own SSO_SESSION_TTL. */
+	ssoSessionTtlSeconds: number;
+	/** Legion's own origin, for building /sso/authorize and /sso/stepup redirect links. */
+	legionBaseUrl: string | null;
 	dockerPath: string;
 	codeImage: string;
 	codeMemoryLimit: string;
@@ -45,7 +46,6 @@ export type ControlConfig = {
 	adminToken: string | null;
 	maxActiveContainers: number;
 	demo: boolean;
-	adminEmails: string[];
 };
 
 export type ControlConfigInput = Partial<
@@ -57,7 +57,7 @@ export type ControlConfigInput = Partial<
 		| "logLevel"
 		| "containerAutoStart"
 		| "demo"
-		| "adminEmails"
+		| "ssoSessionTtlSeconds"
 	>
 > & {
 	simPortRange?: PortRange | string;
@@ -66,11 +66,11 @@ export type ControlConfigInput = Partial<
 	idleStopMinutes?: number | string;
 	idleCheckIntervalMs?: number | string;
 	maxActiveContainers?: number | string;
+	ssoSessionTtlSeconds?: number | string;
 	port?: number | string;
 	logLevel?: LogLevel | string;
 	demo?: boolean | string;
 	containerAutoStart?: boolean | string;
-	adminEmails?: string[] | string;
 };
 
 function parseLogLevelOrThrow(value: string | LogLevel | undefined): LogLevel {
@@ -140,16 +140,6 @@ function parseBoolean(
 		return fallback;
 	}
 	return !["0", "false", "no", "off"].includes(normalized);
-}
-
-function parseAdminEmails(value: string | string[] | undefined): string[] {
-	if (value === undefined) {
-		return [];
-	}
-	const entries = Array.isArray(value) ? value : value.split(",");
-	return entries
-		.map((entry) => entry.trim().toLowerCase())
-		.filter((entry) => entry.length > 0);
 }
 
 function parsePositiveInteger(
@@ -287,6 +277,16 @@ export function loadControlConfig(
 		);
 	}
 
+	const demo = parseBoolean(input.demo ?? Bun.env.CODERUNNER_DEMO_MODE, false);
+	const ssoSecret = input.ssoSecret ?? Bun.env.SSO_SECRET ?? null;
+	if (!demo && !ssoSecret) {
+		throw new Error(
+			"SSO_SECRET is required outside demo mode. Set it to the same value " +
+				"as Legion's own SSO_SECRET, or set CODERUNNER_DEMO_MODE=1 to run " +
+				"without Legion configured.",
+		);
+	}
+
 	return {
 		logLevel: parseLogLevelOrThrow(input.logLevel ?? Bun.env.LOG_LEVEL),
 		dataDir,
@@ -326,20 +326,17 @@ export function loadControlConfig(
 				Bun.env.FRC_ELASTIC_DIST_DIR ??
 				resolve(repoRoot, "dist", "elastic"),
 		),
-		sessionSecret:
-			input.sessionSecret ??
-			Bun.env.BETTER_AUTH_SECRET ??
-			"frc-local-dev-session-secret-change-me",
 		baseUrl:
 			input.baseUrl ??
-			Bun.env.BETTER_AUTH_URL ??
+			Bun.env.CODERUNNER_BASE_URL ??
 			`http://localhost:${input.port ?? Bun.env.PORT ?? 4000}`,
-		githubClientId: input.githubClientId ?? Bun.env.GITHUB_CLIENT_ID ?? null,
-		githubClientSecret:
-			input.githubClientSecret ?? Bun.env.GITHUB_CLIENT_SECRET ?? null,
-		googleClientId: input.googleClientId ?? Bun.env.GOOGLE_CLIENT_ID ?? null,
-		googleClientSecret:
-			input.googleClientSecret ?? Bun.env.GOOGLE_CLIENT_SECRET ?? null,
+		ssoSecret,
+		ssoSessionTtlSeconds: parsePositiveInteger(
+			input.ssoSessionTtlSeconds ?? Bun.env.SSO_SESSION_TTL,
+			12 * 60 * 60,
+			"SSO_SESSION_TTL",
+		),
+		legionBaseUrl: input.legionBaseUrl ?? Bun.env.LEGION_BASE_URL ?? null,
 		dockerPath: input.dockerPath ?? Bun.env.FRC_DOCKER_PATH ?? "docker",
 		codeImage:
 			input.codeImage ??
@@ -404,9 +401,6 @@ export function loadControlConfig(
 			10,
 			"MAX_ACTIVE_CONTAINERS",
 		),
-		demo: parseBoolean(input.demo ?? Bun.env.CODERUNNER_DEMO_MODE, false),
-		adminEmails: parseAdminEmails(
-			input.adminEmails ?? Bun.env.CODERUNNER_ADMIN_EMAIL,
-		),
+		demo,
 	};
 }

@@ -31,15 +31,16 @@ describe("demo mode", () => {
 				expect(body.user.role).toBe("admin");
 				expect(body.demo).toBe(true);
 
-				// /api/auth/get-session is intercepted and returns the demo user.
-				const betterAuthSession = await app.fetch(
-					new Request("http://localhost/api/auth/get-session"),
+				// The top-level session probe also resolves to the demo user.
+				const topLevelSession = await app.fetch(
+					new Request("http://localhost/api/session"),
 				);
-				expect(betterAuthSession.status).toBe(200);
-				const baBody = (await betterAuthSession.json()) as {
-					user: { id: string; role: string };
+				expect(topLevelSession.status).toBe(200);
+				const tlBody = (await topLevelSession.json()) as {
+					authenticated: boolean;
+					slug: string | null;
 				};
-				expect(baBody.user.id).toBe(DEMO_USER_ID);
+				expect(tlBody).toEqual({ authenticated: true, slug: DEMO_SLUG });
 
 				// Admin route returns 200 without any cookie.
 				const adminResponse = await app.fetch(
@@ -88,12 +89,15 @@ describe("demo mode", () => {
 			);
 			expect(response.status).toBe(401);
 
-			const session = await app.fetch(
-				new Request("http://localhost/api/auth/get-session"),
+			// The top-level session probe is public but reports unauthenticated.
+			const topLevelSession = await app.fetch(
+				new Request("http://localhost/api/session"),
 			);
-			// Better Auth returns 200 with `null` body when there's no session.
-			const body = await session.json();
-			expect(body).toBeNull();
+			expect(topLevelSession.status).toBe(200);
+			expect(await topLevelSession.json()).toEqual({
+				authenticated: false,
+				slug: null,
+			});
 		});
 	});
 });

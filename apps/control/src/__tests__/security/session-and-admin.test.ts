@@ -4,10 +4,10 @@
  * S12 — Tampered cookie / no-cookie requests are rejected.
  * S14 — Every /admin/* route requires admin role.
  * S15 — Break-glass ADMIN_TOKEN requires the configured secret.
- * S20 — Session cookie carries HttpOnly + SameSite + (in prod) Secure attributes.
  *
- * S22 (rate-limit) — handled by Better Auth + ImportRateLimiter, which is covered
- *                    elsewhere in the unit tests.
+ * S22 (rate-limit) — handled by ImportRateLimiter, covered elsewhere in the unit tests.
+ * Session cookie attributes (HttpOnly/SameSite/Secure) are Legion's own `mw_sso`
+ * cookie, set on Legion's domain, not something this app issues or can test here.
  */
 import { describe, expect, test } from "bun:test";
 import { isAllowedWebSocketOrigin } from "../../auth/middleware";
@@ -18,7 +18,6 @@ const ADMIN_GET_ROUTES = [
 	"/admin/containers/stats",
 	"/admin/workspaces/disk-usage",
 	"/admin/users",
-	"/admin/allowlist",
 	"/admin/audit-log",
 	"/admin/config/max-active-containers",
 ];
@@ -33,9 +32,9 @@ describe("S12 — session-cookie tampering", () => {
 		});
 	});
 
-	test("tampered HMAC → 401 (rejected at the auth layer)", async () => {
+	test("tampered mw_sso cookie → 401 (rejected at the auth layer)", async () => {
 		await withApp(async (app) => {
-			const garbage = "coderunner_session=AAAA.BAD_SIG; Path=/";
+			const garbage = "mw_sso=not-a-real-token.BAD_SIG; Path=/";
 			const response = await app.fetch(
 				new Request("http://localhost:4000/admin/status", {
 					headers: { cookie: garbage },
@@ -125,19 +124,6 @@ describe("S15 — ADMIN_TOKEN break-glass", () => {
 			);
 			expect(response.status).toBe(401);
 		});
-	});
-});
-
-describe("S20 — session cookie attributes (Better Auth default config)", () => {
-	test("cookie name is the configured `coderunner_session` prefix", () => {
-		const cookieStr = "coderunner_session=AAA; HttpOnly; SameSite=Lax; Path=/";
-		expect(cookieStr.split("=")[0]).toBe("coderunner_session");
-	});
-	test("HttpOnly + SameSite are required attributes (compile-time presence)", () => {
-		// This is a lightweight smoke; the real attributes are validated by Better Auth.
-		// Browser E2E flow covers attribute observation end-to-end.
-		expect("HttpOnly").toBe("HttpOnly");
-		expect(["Lax", "Strict"]).toContain("Lax");
 	});
 });
 

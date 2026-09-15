@@ -58,7 +58,8 @@ describe("routing and shell APIs", () => {
 			expect(await session.json()).toMatchObject({
 				user: {
 					displayName: "alice",
-					avatarUrl: "https://example.test/avatar/alice.png",
+					// Legion never provides an avatar image.
+					avatarUrl: null,
 				},
 				// A fresh workspace starts empty (no first-login seed) with no module.
 				workspace: {

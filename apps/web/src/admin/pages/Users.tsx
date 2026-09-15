@@ -29,24 +29,12 @@ export function Users() {
 	} = useAdminPoll(useCallback(fetchUsers, []), 10000);
 	const [busy, setBusy] = useState<string | null>(null);
 
-	async function setRole(userId: string, action: "promote" | "demote") {
-		setBusy(userId);
-		try {
-			const response = await fetch(`/admin/users/${userId}/${action}`, {
-				method: "POST",
-				credentials: "same-origin",
-			});
-			if (!response.ok) throw new Error(`${response.status}`);
-			await refetch();
-		} finally {
-			setBusy(null);
-		}
-	}
-
 	async function removeUser(user: UserRow) {
 		if (
 			!confirm(
-				`Delete ${user.email} and their workspace? This cannot be undone.`,
+				`Delete ${user.name}'s workspace and project files? This cannot be undone. ` +
+					"Their Legion access is unaffected — they'll get a fresh, empty " +
+					"workspace the next time they sign in.",
 			)
 		)
 			return;
@@ -69,7 +57,14 @@ export function Users() {
 
 	return (
 		<div className="space-y-6">
-			<h2 className="text-xl font-semibold">Users</h2>
+			<div>
+				<h2 className="text-xl font-semibold">Users</h2>
+				<p className="text-muted-foreground text-sm">
+					Roles come from Legion group membership and can't be changed here —
+					grant or revoke <code className="font-mono">coderunner-admin</code> in
+					Legion's own <code className="font-mono">/admin/groups</code>.
+				</p>
+			</div>
 			<Card>
 				<CardContent className="pt-6">
 					{!users || users.length === 0 ? (
@@ -78,7 +73,7 @@ export function Users() {
 						<table className="w-full text-sm">
 							<thead>
 								<tr className="border-b text-left text-muted-foreground">
-									<th className="pb-2">Email</th>
+									<th className="pb-2">Username</th>
 									<th className="pb-2">Name</th>
 									<th className="pb-2">Role</th>
 									<th className="pb-2">Slug</th>
@@ -108,33 +103,14 @@ export function Users() {
 												? new Date(u.lastSeenAt).toLocaleString()
 												: "—"}
 										</td>
-										<td className="flex gap-2 py-2">
-											{u.role === "admin" ? (
-												<Button
-													variant="outline"
-													size="sm"
-													disabled={busy === u.id}
-													onClick={() => setRole(u.id, "demote")}
-												>
-													Demote
-												</Button>
-											) : (
-												<Button
-													variant="outline"
-													size="sm"
-													disabled={busy === u.id}
-													onClick={() => setRole(u.id, "promote")}
-												>
-													Promote
-												</Button>
-											)}
+										<td className="py-2">
 											<Button
 												variant="destructive"
 												size="sm"
 												disabled={busy === u.id}
 												onClick={() => void removeUser(u)}
 											>
-												Remove
+												Delete workspace
 											</Button>
 										</td>
 									</tr>

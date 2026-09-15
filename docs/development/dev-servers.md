@@ -87,7 +87,7 @@ all you need.
 #### Demo mode
 
 Demo mode bypasses authentication and seeds a single `demo` user, which is handy
-for poking at the app without setting up an OAuth provider:
+for poking at the app without setting up Legion:
 
 ```bash
 bun run dev:control -- --demo

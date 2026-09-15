@@ -60,7 +60,19 @@ import. The catalog has two sources behind one interface: a **bundled** `catalog
 `LESSONS_CATALOG_REPO` is set. Catalog loads are gitless (reset = re-load); team
 imports keep `.git` for push. The per-import backup/restore flow was removed
 (pure discard + git). See [`docs/lessons/overview.md`](./docs/lessons/overview.md)
-and `docs/decisions/029-lessons-and-modules.md`.
+and `docs/decisions/029-lessons-and-modules.md`. An admin can further narrow a
+module or track's visibility to specific Legion users/groups via the admin
+portal's Lessons tab — unassigned modules stay visible to everyone; see
+`docs/decisions/047-lesson-assignment.md`.
+
+**Auth (post-V2):** sign-in is delegated entirely to Legion
+(`/prj/frc/apps/legion`), the same Slack-native SSO the sibling MARS/WARS apps
+use — verified locally from the `mw_sso` cookie (`apps/control/src/legion/`),
+no OAuth, no callback route. Demo mode (`CODERUNNER_DEMO_MODE=1`) still runs
+fully standalone with zero Legion config. Admin access is the
+`coderunner-admin` Legion group, recomputed live on every request — there is
+no local promote/demote or allowlist anymore. See
+`docs/decisions/046-legion-auth-integration.md`.
 
 **Containerized control plane (post-V2):** the control plane ships as a Docker
 image (`containers/control/Dockerfile` → `ghcr.io/mathewdunne/coderunner-control`)
@@ -80,10 +92,11 @@ joins a shared Docker network with no published ports and needs
 control plane self-inspects (`docker inspect` on itself) to auto-detect the
 network, host data path, and workspace uid:gid, so those two env vars —
 plus `FRC_CONTAINER_USER` — are optional overrides rather than required
-plumbing; `CODERUNNER_ADMIN_EMAIL` bootstraps the first admin(s) with zero exec
-steps; ops commands run as `coderunner <subcommand>` (a dispatching CLI baked
-into the image) instead of `bun scripts/<name>.ts`. The image build runs the
-emsdk/AdvantageScope compile in a build stage. See
+plumbing; admin access is granted entirely through Legion group membership
+(the `coderunner-admin` group — see `docs/decisions/046-legion-auth-integration.md`),
+with zero exec steps on this side; ops commands run as `coderunner <subcommand>`
+(a dispatching CLI baked into the image) instead of `bun scripts/<name>.ts`. The
+image build runs the emsdk/AdvantageScope compile in a build stage. See
 `docs/decisions/031-containerized-control-plane.md`.
 
 **CI, release, and multi-arch images (post-V2):** three workflows —

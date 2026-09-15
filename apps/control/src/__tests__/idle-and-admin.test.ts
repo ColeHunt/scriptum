@@ -679,7 +679,7 @@ describe("idle lifecycle and admin controls", () => {
 			expect(body.ok).toBe(true);
 			expect(body.users.length).toBe(2);
 			const emails = body.users.map((u) => u.email).sort();
-			expect(emails).toEqual(["alice@test.local", "bob@test.local"]);
+			expect(emails).toEqual(["alice", "bob"]);
 		});
 	});
 
@@ -742,46 +742,6 @@ describe("idle lifecycle and admin controls", () => {
 		);
 	});
 
-	test("admin can promote and demote users", async () => {
-		await withApp(async (app) => {
-			const admin = await login(app, "alice", { role: "admin" });
-			const adminCookie = cookieFrom(admin);
-			await login(app, "bob");
-			const user = app.storage.db
-				.query("SELECT id, role FROM user WHERE email = ?")
-				.get("bob@test.local") as {
-				id: string;
-				role: string;
-			};
-			expect(user.role).toBe("student");
-
-			const promote = await app.fetch(
-				new Request(`http://localhost/admin/users/${user.id}/promote`, {
-					method: "POST",
-					headers: { cookie: adminCookie },
-				}),
-			);
-			expect(promote.status).toBe(200);
-			const body = (await promote.json()) as { ok: boolean; role: string };
-			expect(body.role).toBe("admin");
-
-			const after = app.storage.db
-				.query("SELECT role FROM user WHERE id = ?")
-				.get(user.id) as { role: string };
-			expect(after.role).toBe("admin");
-
-			const demote = await app.fetch(
-				new Request(`http://localhost/admin/users/${user.id}/demote`, {
-					method: "POST",
-					headers: { cookie: adminCookie },
-				}),
-			);
-			expect(demote.status).toBe(200);
-			const dBody = (await demote.json()) as { ok: boolean; role: string };
-			expect(dBody.role).toBe("student");
-		});
-	});
-
 	test("admin can delete a user and their workspace", async () => {
 		const fakeDocker = createFakeDocker();
 		await withApp(
@@ -797,7 +757,7 @@ describe("idle lifecycle and admin controls", () => {
 
 				const bob = app.storage.db
 					.query("SELECT id FROM user WHERE email = ?")
-					.get("bob@test.local") as { id: string };
+					.get("bob") as { id: string };
 				const response = await app.fetch(
 					new Request(`http://localhost/admin/users/${bob.id}`, {
 						method: "DELETE",
@@ -826,51 +786,6 @@ describe("idle lifecycle and admin controls", () => {
 				halsimPortRange: { start: 34111, end: 34112 },
 			},
 		);
-	});
-
-	test("admin allowlist CRUD works", async () => {
-		await withApp(async (app) => {
-			const admin = await login(app, "alice", { role: "admin" });
-			const adminCookie = cookieFrom(admin);
-
-			// List — should be empty
-			const list = await app.fetch(
-				new Request("http://localhost/admin/allowlist", {
-					headers: { cookie: adminCookie },
-				}),
-			);
-			expect(list.status).toBe(200);
-			const body = (await list.json()) as {
-				ok: boolean;
-				emails: string[];
-				domains: string[];
-			};
-			expect(body.emails).toEqual([]);
-			expect(body.domains).toEqual([]);
-
-			// Add email
-			const add = await app.fetch(
-				new Request("http://localhost/admin/allowlist", {
-					method: "POST",
-					headers: { cookie: adminCookie, "content-type": "application/json" },
-					body: JSON.stringify({ kind: "email", value: "test@example.com" }),
-				}),
-			);
-			expect(add.status).toBe(200);
-			const addBody = (await add.json()) as { ok: boolean; emails: string[] };
-			expect(addBody.emails).toContain("test@example.com");
-
-			// Remove email
-			const del = await app.fetch(
-				new Request("http://localhost/admin/allowlist/test%40example.com", {
-					method: "DELETE",
-					headers: { cookie: adminCookie },
-				}),
-			);
-			expect(del.status).toBe(200);
-			const delBody = (await del.json()) as { ok: boolean; emails: string[] };
-			expect(delBody.emails).toEqual([]);
-		});
 	});
 
 	test("admin endpoints are gated when adminToken is set", async () => {

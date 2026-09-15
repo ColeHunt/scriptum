@@ -34,8 +34,8 @@ filesystem bridge makes the bind-mounted student workspaces noticeably slower.
 
 :::
 
-Before continuing, register at least one GitHub or Google OAuth app as described
-in [OAuth Credentials](./oauth-credentials.md).
+Before continuing, make sure you have a running Legion instance and know its
+base URL and `SSO_SECRET`, as described in [Legion Setup](./legion-setup.md).
 
 ## 1. Clone and configure
 
@@ -48,20 +48,17 @@ cp .env.example .env
 Open `.env` and set at minimum:
 
 ```bash
-# Generate with: openssl rand -hex 32
-BETTER_AUTH_SECRET=<random-string>
+# Must be the exact same value as Legion's own SSO_SECRET.
+SSO_SECRET=<same-value-as-legion>
+
+# Must match Legion's own SSO_SESSION_TTL (Legion's default is 43200, 12h).
+SSO_SESSION_TTL=43200
+
+# Legion's own base URL.
+LEGION_BASE_URL=https://legion.yourteam.org
 
 # The address students will open. Replace this example with the host's LAN IP.
-BETTER_AUTH_URL=http://192.168.1.50:4000
-
-# Configure at least one OAuth provider.
-GITHUB_CLIENT_ID=<your-github-client-id>
-GITHUB_CLIENT_SECRET=<your-github-client-secret>
-# GOOGLE_CLIENT_ID=<your-google-client-id>
-# GOOGLE_CLIENT_SECRET=<your-google-client-secret>
-
-# Comma-separated coach/admin emails.
-CODERUNNER_ADMIN_EMAIL=you@yourteam.org
+CODERUNNER_BASE_URL=http://192.168.1.50:4000
 
 # REQUIRED on Linux and WSL2. Run this and paste the number it prints:
 #   stat -c '%g' /var/run/docker.sock
@@ -72,9 +69,10 @@ CODERUNNER_DOCKER_GID=<docker-socket-group-id>
 Desktop's WSL2 integration, or the control plane cannot manage student
 containers. Omit it on Docker Desktop for macOS and native Windows.
 
-OAuth callback URLs must match `BETTER_AUTH_URL`. Use `localhost` only when the
-browser is on the host machine; use the host's LAN IP when students connect from
-other devices. Always replace the default `BETTER_AUTH_SECRET` outside demo use.
+CodeRunner and Legion must share a parent domain so the browser can send the
+`mw_sso` cookie to both — see [Legion Setup](./legion-setup.md). Use
+`localhost` for `CODERUNNER_BASE_URL` only when the browser is on the host
+machine; use the host's LAN IP when students connect from other devices.
 
 Student projects and the database are stored in `./data`. To use another disk,
 set `CODERUNNER_HOST_DATA_DIR` to an absolute host path.
@@ -122,28 +120,17 @@ container from that image when needed.
 
 Students can then open `http://<your-LAN-IP>:4000/`.
 
-## 3. Sign in and allow students
+## 3. Sign in
 
-Sign in with an address listed in `CODERUNNER_ADMIN_EMAIL`. At startup that
-address is added to the allowlist, and its account becomes an admin on first
-sign-in. From the admin panel you can manage workspaces and other users.
+Click "Sign in via Legion" and authenticate the way you always do for any
+MARS/WARS app. Anyone who can sign in through Legion can use CodeRunner —
+there is no separate local allowlist. To reach the admin panel, add yourself
+to the `coderunner-admin` group in Legion's own `/admin/groups` (see
+[Legion Setup](./legion-setup.md)); no CodeRunner-side command or restart is
+needed for that to take effect.
 
-Other users must match an allowlist entry before OAuth sign-in can complete.
-Add an individual address or a whole domain:
-
-```bash
-docker compose exec control coderunner allowlist add student@frcteam.org
-docker compose exec control coderunner allowlist add frcteam.org
-```
-
-To promote another coach after they have signed in once:
-
-```bash
-docker compose exec control coderunner users promote coach@frcteam.org
-```
-
-See the [CLI reference](../reference/cli-reference.md) for list, remove, and
-demote commands.
+See the [CLI reference](../reference/cli-reference.md) for the remaining
+`coderunner` subcommands (backups, listing users, etc.).
 
 ## Updating CodeRunner to a new release
 

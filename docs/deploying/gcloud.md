@@ -6,6 +6,21 @@ sidebar_label: Google Cloud Deployment (Advanced)
 
 # Google Cloud Deployment
 
+:::warning[Not yet updated for Legion auth]
+
+CodeRunner's application code now authenticates through Legion (see
+[Legion Setup](./legion-setup.md)), but this Terraform/cloud-init deployment
+path (`deploy/terraform/`, `deploy/cloud-init/`) still provisions the old
+Better Auth / GitHub / Google OAuth secrets and env vars described below. It
+has not been updated to match. Do not follow the secret-provisioning and
+"become the first admin" steps on this page as-is for a fresh deployment —
+the VM's rendered `.env` will be missing `SSO_SECRET`/`LEGION_BASE_URL` and
+the control plane will refuse to start outside demo mode. This page is kept
+for the rest of the infrastructure (networking, disks, Caddy/TLS, CI/CD
+wiring), which is unaffected.
+
+:::
+
 A single Google Compute Engine VM, provisioned by Terraform, fronted by Caddy
 for automatic HTTPS on your own domain. Releases ship through a GitHub Actions
 workflow, with no manual SSH after the one-time bootstrap.
@@ -34,9 +49,10 @@ C4 machines require Hyperdisk volumes; `pd-*` disk types are not compatible.
 
 - A GCP project with billing enabled and the `gcloud` CLI authenticated
 - Terraform 1.6+
-- A domain name where you can add DNS records
-- OAuth credentials for at least one provider. Register them first and note the
-  client ID and secret; see [OAuth Credentials](./oauth-credentials.md)
+- A domain name where you can add DNS records, sharing a parent domain with
+  your Legion instance
+- A running Legion instance and its `SSO_SECRET`/base URL; see
+  [Legion Setup](./legion-setup.md)
 
 ## One-time bootstrap
 
@@ -121,7 +137,7 @@ gcloud secrets versions add coderunner-metrics-token \
 gcloud secrets versions add coderunner-admin-token \
   --data-file=<(openssl rand -hex 32)
 
-# OAuth credentials (register apps at the provider first; see ./oauth-credentials.md)
+# OAuth credentials (pre-Legion infra - see the warning at the top of this page)
 # Use the real domain in the callback URLs: https://<your-domain>/api/auth/callback/github
 echo -n '<your-github-client-id>'     | gcloud secrets versions add coderunner-github-client-id --data-file=-
 echo -n '<your-github-client-secret>' | gcloud secrets versions add coderunner-github-client-secret --data-file=-
@@ -225,8 +241,9 @@ in. From an IAP SSH session:
 sudo docker compose exec -T control coderunner allowlist add coach@frcteam.org
 ```
 
-See [OAuth Credentials](./oauth-credentials.md) for the full allowlist and admin
-bootstrap flow.
+> This whole section describes the pre-Legion bootstrap flow — see the warning
+> at the top of this page. Once this deployment path is updated, admin access
+> will instead be a Legion group membership; see [Legion Setup](./legion-setup.md).
 
 ## Runtime shape on the VM
 

@@ -6,6 +6,7 @@ import type {
 } from "@frc-coderunner/contracts";
 import { queryAuditLog, recordAuditEvent } from "../audit";
 import { requireAdmin } from "../auth/middleware";
+import type { CatalogSource } from "../catalog";
 import { getLogger } from "../logging";
 import type { RunManager } from "../runs";
 import type { WorkspaceRuntimeProvider } from "../runtime";
@@ -25,6 +26,7 @@ export type AdminRouteContext = {
 	storage: AppStorage;
 	runs: RunManager;
 	runtimeProvider: WorkspaceRuntimeProvider;
+	catalogSource: CatalogSource;
 };
 
 export async function handleAdminRoute(
@@ -32,7 +34,7 @@ export async function handleAdminRoute(
 	url: URL,
 	request: Request,
 ): Promise<Response> {
-	const { storage, runs, runtimeProvider } = ctx;
+	const { storage, runs, runtimeProvider, catalogSource } = ctx;
 	const adminResult = await requireAdmin(storage, request);
 	if (adminResult instanceof Response) {
 		return adminResult;
@@ -268,46 +270,10 @@ export async function handleAdminRoute(
 		return jsonResponse({ ok: true, users });
 	}
 
-	const userActionMatch = /^\/admin\/users\/([^/]+)\/(promote|demote)$/.exec(
-		url.pathname,
-	);
-	if (userActionMatch && request.method === "POST") {
-		const userId = userActionMatch[1] ?? "";
-		const action = userActionMatch[2] as "promote" | "demote";
-		const user = storage.db
-			.query("SELECT id, name, email, role FROM user WHERE id = ?")
-			.get(userId) as {
-			id: string;
-			name: string;
-			email: string;
-			role: string | null;
-		} | null;
-		if (!user) {
-			return jsonResponse({ error: "User not found." }, { status: 404 });
-		}
-		const newRole = action === "promote" ? "admin" : "student";
-		if (action === "demote" && user.role === "admin") {
-			const adminCount = storage.db
-				.query("SELECT COUNT(*) AS count FROM user WHERE role = 'admin'")
-				.get() as { count: number };
-			if (adminCount.count <= 1) {
-				return jsonResponse(
-					{ error: "Cannot demote the last admin user." },
-					{ status: 409 },
-				);
-			}
-		}
-		storage.db
-			.query("UPDATE user SET role = ?, updatedAt = ? WHERE id = ?")
-			.run(newRole, new Date().toISOString(), userId);
-		recordAuditEvent(storage, {
-			actor: auditActor(adminResult),
-			action: action === "promote" ? "user.promote" : "user.demote",
-			target: { kind: "user", id: userId },
-			metadata: { email: user.email, newRole },
-		});
-		return jsonResponse({ ok: true, userId, role: newRole });
-	}
+	// Role is no longer a local mutable field — it is recomputed on every
+	// request from the Legion `mw_sso` cookie's `groups` claim (see
+	// legion/session.ts), so there is no promote/demote route: admin access is
+	// granted/revoked entirely in Legion's own /admin/groups.
 
 	const userDeleteMatch = /^\/admin\/users\/([^/]+)$/.exec(url.pathname);
 	if (userDeleteMatch && request.method === "DELETE") {
@@ -323,18 +289,10 @@ export async function handleAdminRoute(
 		if (!user) {
 			return jsonResponse({ error: "User not found." }, { status: 404 });
 		}
-		if (user.role === "admin") {
-			const adminCount = storage.db
-				.query("SELECT COUNT(*) AS count FROM user WHERE role = 'admin'")
-				.get() as { count: number };
-			if (adminCount.count <= 1) {
-				return jsonResponse(
-					{ error: "Cannot delete the last admin user." },
-					{ status: 409 },
-				);
-			}
-		}
 
+		// Deleting the local row does not revoke Legion access — the person is
+		// lazily re-upserted (with a fresh workspace) on their next login. This
+		// only clears their CodeRunner workspace and project files.
 		const workspace = storage.findWorkspaceByUserId(userId);
 		if (workspace) {
 			runs.stopWorkspace(workspace.id);
@@ -355,8 +313,6 @@ export async function handleAdminRoute(
 					.query("DELETE FROM workspaces WHERE id = ?")
 					.run(workspace.id);
 			}
-			storage.db.query("DELETE FROM session WHERE userId = ?").run(userId);
-			storage.db.query("DELETE FROM account WHERE userId = ?").run(userId);
 			storage.db.query("DELETE FROM user WHERE id = ?").run(userId);
 			storage.db.exec("COMMIT");
 		} catch (error) {
@@ -373,78 +329,12 @@ export async function handleAdminRoute(
 
 		recordAuditEvent(storage, {
 			actor: auditActor(adminResult),
-			action: "user.delete",
+			action: "workspace.delete",
 			target: { kind: "user", id: userId },
 			metadata: { email: user.email },
 		});
 
 		return jsonResponse({ ok: true, userId });
-	}
-
-	// --- Allowlist endpoints ---
-	if (url.pathname === "/admin/allowlist" && request.method === "GET") {
-		const { getAllowlist } = await import("../auth/allowlist");
-		return jsonResponse({ ok: true, ...getAllowlist() });
-	}
-
-	if (url.pathname === "/admin/allowlist" && request.method === "POST") {
-		const { addAllowlistEntry } = await import("../auth/allowlist");
-		let body: { kind?: string; value?: string };
-		try {
-			body = (await request.json()) as { kind?: string; value?: string };
-		} catch {
-			return jsonResponse({ error: "Invalid JSON body." }, { status: 400 });
-		}
-		if (body.kind !== "email" && body.kind !== "domain") {
-			return jsonResponse(
-				{ error: "kind must be 'email' or 'domain'." },
-				{ status: 400 },
-			);
-		}
-		if (typeof body.value !== "string" || !body.value.trim()) {
-			return jsonResponse({ error: "value is required." }, { status: 400 });
-		}
-		const result = await addAllowlistEntry(body.kind, body.value);
-		recordAuditEvent(storage, {
-			actor: auditActor(adminResult),
-			action: "allowlist.add",
-			target: { kind: "allowlist", id: body.value },
-			metadata: { kind: body.kind },
-		});
-		return jsonResponse({ ok: true, ...result });
-	}
-
-	const allowlistDeleteMatch = /^\/admin\/allowlist\/(.+)$/.exec(url.pathname);
-	if (allowlistDeleteMatch && request.method === "DELETE") {
-		const { removeAllowlistEntry, getAllowlist } = await import(
-			"../auth/allowlist"
-		);
-		const value = decodeURIComponent(allowlistDeleteMatch[1] ?? "");
-		const current = getAllowlist();
-		const kind = current.emails.includes(value.toLowerCase())
-			? "email"
-			: "domain";
-		await removeAllowlistEntry(kind, value);
-		recordAuditEvent(storage, {
-			actor: auditActor(adminResult),
-			action: "allowlist.remove",
-			target: { kind: "allowlist", id: value },
-			metadata: { kind },
-		});
-		const updated = getAllowlist();
-		return jsonResponse({ ok: true, ...updated });
-	}
-
-	// --- Allowlist reload ---
-	if (url.pathname === "/admin/allowlist/reload" && request.method === "POST") {
-		const { reloadAllowlist } = await import("../auth/allowlist");
-		try {
-			const result = await reloadAllowlist();
-			return jsonResponse({ ok: true, ...result });
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			return jsonResponse({ ok: false, error: message }, { status: 400 });
-		}
 	}
 
 	// --- Capacity cap runtime override ---
@@ -506,6 +396,115 @@ export async function handleAdminRoute(
 			sinceMs,
 		});
 		return jsonResponse({ ok: true, entries });
+	}
+
+	// --- Lesson/track assignment ---
+	if (url.pathname === "/admin/lessons/catalog" && request.method === "GET") {
+		const { modules, error } = await catalogSource.getManifest();
+		return jsonResponse({ ok: true, modules, error });
+	}
+
+	if (
+		url.pathname === "/admin/lessons/assignments" &&
+		request.method === "GET"
+	) {
+		return jsonResponse({
+			ok: true,
+			assignments: storage.listLessonAssignments(),
+		});
+	}
+
+	if (
+		url.pathname === "/admin/lessons/assignments" &&
+		request.method === "POST"
+	) {
+		let body: {
+			targetType?: string;
+			targetId?: string;
+			assigneeType?: string;
+			assigneeId?: string;
+		};
+		try {
+			body = (await request.json()) as typeof body;
+		} catch {
+			return jsonResponse({ error: "Invalid JSON body." }, { status: 400 });
+		}
+		if (body.targetType !== "module" && body.targetType !== "track") {
+			return jsonResponse(
+				{ error: "targetType must be 'module' or 'track'." },
+				{ status: 400 },
+			);
+		}
+		if (body.assigneeType !== "user" && body.assigneeType !== "group") {
+			return jsonResponse(
+				{ error: "assigneeType must be 'user' or 'group'." },
+				{ status: 400 },
+			);
+		}
+		if (
+			typeof body.targetId !== "string" ||
+			!body.targetId.trim() ||
+			typeof body.assigneeId !== "string" ||
+			!body.assigneeId.trim()
+		) {
+			return jsonResponse(
+				{ error: "targetId and assigneeId are required." },
+				{ status: 400 },
+			);
+		}
+		try {
+			const assignment = storage.addLessonAssignment({
+				targetType: body.targetType,
+				targetId: body.targetId.trim(),
+				assigneeType: body.assigneeType,
+				assigneeId: body.assigneeId.trim(),
+				createdBy: adminResult.user.id,
+			});
+			recordAuditEvent(storage, {
+				actor: auditActor(adminResult),
+				action: "lesson-assignment.add",
+				target: { kind: assignment.target_type, id: assignment.target_id },
+				metadata: {
+					assigneeType: assignment.assignee_type,
+					assigneeId: assignment.assignee_id,
+				},
+			});
+			return jsonResponse({ ok: true, assignment });
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Could not add assignment.";
+			const isDuplicate = message.includes("UNIQUE constraint");
+			return jsonResponse(
+				{
+					error: isDuplicate
+						? "That assignment already exists."
+						: "Could not add assignment.",
+				},
+				{ status: isDuplicate ? 409 : 500 },
+			);
+		}
+	}
+
+	const lessonAssignmentDeleteMatch =
+		/^\/admin\/lessons\/assignments\/(\d+)$/.exec(url.pathname);
+	if (lessonAssignmentDeleteMatch && request.method === "DELETE") {
+		const id = Number(lessonAssignmentDeleteMatch[1]);
+		const assignments = storage.listLessonAssignments();
+		const existing = assignments.find((a) => a.id === id);
+		if (!existing) {
+			return jsonResponse({ error: "Assignment not found." }, { status: 404 });
+		}
+		storage.removeLessonAssignment(id);
+		recordAuditEvent(storage, {
+			actor: auditActor(adminResult),
+			action: "lesson-assignment.remove",
+			target: { kind: existing.target_type, id: existing.target_id },
+			metadata: {
+				assigneeType: existing.assignee_type,
+				assigneeId: existing.assignee_id,
+			},
+		});
+		return jsonResponse({ ok: true, id });
 	}
 
 	return notFound();

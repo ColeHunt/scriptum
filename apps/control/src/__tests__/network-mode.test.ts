@@ -18,6 +18,7 @@ describe("toHostPath", () => {
 	const config = loadControlConfig({
 		dataDir: "/data",
 		hostDataDir: "/var/lib/coderunner/data",
+		demo: true,
 	});
 
 	test("translates paths under dataDir to the host prefix", () => {
@@ -28,7 +29,7 @@ describe("toHostPath", () => {
 	});
 
 	test("passes paths through unchanged when hostDataDir is unset", () => {
-		const passthrough = loadControlConfig({ dataDir: "/data" });
+		const passthrough = loadControlConfig({ dataDir: "/data", demo: true });
 		expect(toHostPath(passthrough, "/data/users/ws_1/project")).toBe(
 			"/data/users/ws_1/project",
 		);
@@ -45,7 +46,11 @@ describe("toHostPath", () => {
 
 	test("rejects a relative FRC_HOST_DATA_DIR", () => {
 		expect(() =>
-			loadControlConfig({ dataDir: "/data", hostDataDir: "relative/path" }),
+			loadControlConfig({
+				dataDir: "/data",
+				hostDataDir: "relative/path",
+				demo: true,
+			}),
 		).toThrow(/absolute path/);
 	});
 });
@@ -345,24 +350,15 @@ describe("workspace project path normalization", () => {
 		try {
 			const first = await createStorage({
 				dataDir,
-				sessionSecret: "test-session-secret",
+				ssoSecret: "test-session-secret",
 				baseUrl: "http://localhost:4000",
 			});
 			const now = new Date().toISOString();
 			first.db
 				.query(
-					"INSERT INTO user (id, name, email, emailVerified, createdAt, updatedAt, role, slug) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+					"INSERT INTO user (id, name, email, createdAt, updatedAt, role, slug) VALUES (?, ?, ?, ?, ?, ?, ?)",
 				)
-				.run(
-					"user-1",
-					"Alice",
-					"alice@test.local",
-					0,
-					now,
-					now,
-					"student",
-					"alice",
-				);
+				.run("user-1", "Alice", "alice", now, now, "student", "alice");
 			first.db
 				.query(
 					"INSERT INTO workspaces (id, user_id, slug, project_path, created_at, last_accessed_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -381,7 +377,7 @@ describe("workspace project path normalization", () => {
 			// different location) must rewrite the stale prefix.
 			const second = await createStorage({
 				dataDir,
-				sessionSecret: "test-session-secret",
+				ssoSecret: "test-session-secret",
 				baseUrl: "http://localhost:4000",
 			});
 			const row = second.db

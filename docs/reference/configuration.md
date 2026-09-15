@@ -25,7 +25,7 @@ These rarely need changing in a standard deployment. Override them only if you n
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `FRC_DATA_DIR` | `data/` (repo root) | Runtime data root: the SQLite database, student project files, allowlist, and backups all land here. |
+| `FRC_DATA_DIR` | `data/` (repo root) | Runtime data root: the SQLite database, student project files, and backups all land here. |
 | `FRC_DB_PATH` | `{FRC_DATA_DIR}/app.db` | Path to the SQLite database file. Defaults to `app.db` inside `FRC_DATA_DIR`. |
 | `FRC_MIGRATIONS_DIR` | auto-detected from source | Path to DB migration files. Leave unset unless you are running a non-standard layout. |
 | `FRC_WEB_DIST_DIR` | `apps/web/dist` | Built React web shell assets. Must exist before starting; run `bun run build:web` first. |
@@ -53,22 +53,23 @@ CodeRunner has two catalog sources behind one interface. When `LESSONS_CATALOG_R
 
 See [Lessons overview](../lessons/overview.md) and [Authoring modules](../lessons/authoring-modules.md) for catalog structure.
 
-## Auth and OAuth
+## Auth (Legion)
 
-OAuth credentials are required for multi-user production deployments. At least one provider (GitHub or Google) must be configured for login to work. Register your OAuth app at the provider and set the callback URL to `$BETTER_AUTH_URL/api/auth/callback/github` or `$BETTER_AUTH_URL/api/auth/callback/google`.
+Sign-in is delegated to Legion for any non-demo deployment — there is no
+OAuth, no callback route, and no local allowlist. `SSO_SECRET` is required
+outside demo mode; startup fails fast with a clear error if it's missing.
 
-See [OAuth credentials](../deploying/oauth-credentials.md) for step-by-step registration instructions.
+See [Legion Setup](../deploying/legion-setup.md) for the deploy-topology
+prerequisites (shared parent domain) and how to grant admin access.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `BETTER_AUTH_SECRET` | `frc-local-dev-session-secret-change-me` | Session signing secret. **Change this for any production deployment.** Use a random 32+ character string. |
-| `BETTER_AUTH_URL` | `http://localhost:{PORT}` | Public base URL of the app. OAuth providers redirect back to this URL; it must be reachable by the browser. |
-| `GITHUB_CLIENT_ID` | none | GitHub OAuth app client ID. |
-| `GITHUB_CLIENT_SECRET` | none | GitHub OAuth app client secret. |
-| `GOOGLE_CLIENT_ID` | none | Google OAuth client ID. |
-| `GOOGLE_CLIENT_SECRET` | none | Google OAuth client secret. |
-| `CODERUNNER_DEMO_MODE` | `false` | When `1` or `true`, bypasses authentication entirely. All visitors share one admin session. Never expose a demo instance publicly. Also enabled with the `--demo` CLI flag on startup. |
-| `CODERUNNER_ADMIN_EMAIL` | none | Comma-separated email addresses to bootstrap as admins with zero exec steps. Each is added to the allowlist at startup and granted the admin role on first OAuth sign-in; an existing account with that email is promoted to admin at the next startup. See [OAuth credentials](../deploying/oauth-credentials.md#the-easy-path-coderunner_admin_email). |
+| `SSO_SECRET` | none (required outside demo mode) | Shared secret for verifying Legion's `mw_sso` cookie. Must be the exact same value as Legion's own `SSO_SECRET`. |
+| `SSO_SESSION_TTL` | `43200` (12h) | Seconds a verified `mw_sso` cookie is trusted. Must match Legion's own `SSO_SESSION_TTL`. |
+| `LEGION_BASE_URL` | none | Legion's own origin, e.g. `https://legion.yourteam.org`. Used to build the "Sign in via Legion" and admin step-up redirects. |
+| `CODERUNNER_BASE_URL` | `http://localhost:{PORT}` | Public base URL of this app. |
+| `CODERUNNER_DEMO_MODE` | `false` | When `1` or `true`, bypasses authentication entirely and does not require `SSO_SECRET`. All visitors share one admin session. Never expose a demo instance publicly. Also enabled with the `--demo` CLI flag on startup. |
+| `LEGION_API_KEY` | none | Optional — only `scripts/migrate-legion-identity.ts` (a one-off ops script, not runtime) uses this, to pull the Legion roster for matching pre-existing local accounts. |
 
 ## Docker and Containers
 
@@ -163,7 +164,7 @@ On a cloud VM the `.env` file is regenerated on every boot by `render-env.sh`, s
 
 Three variables appear in `.env.example` but are not in `config.ts`'s `ControlConfig` struct because they are read outside of it:
 
-- `PORT`: read directly by `apps/control/src/main.ts` as the listen port; also feeds the `BETTER_AUTH_URL` default in `config.ts`.
+- `PORT`: read directly by `apps/control/src/main.ts` as the listen port; also feeds the `CODERUNNER_BASE_URL` default in `config.ts`.
 - `LOG_FORMAT`: read directly by `apps/control/src/logging.ts`; not part of `ControlConfig`.
 - `METRICS_TOKEN`: read directly by `apps/control/src/app.ts` to gate the `/metrics` endpoint; not part of `ControlConfig`.
 

@@ -182,38 +182,35 @@ only re-reads the project on load.
 
 ---
 
-## OAuth login fails
+## Legion sign-in fails
 
-**Symptom.** Students see an OAuth error page, a "not authorized" flash, or
-are silently redirected back to the login page.
+**Symptom.** Students land back on `/login` after clicking "Sign in via
+Legion", or the browser never picks up a session after completing Legion's
+own sign-in flow.
 
-**Cause: wrong callback URL.** The OAuth app registration does not include
-the actual host URL. Fix by ensuring the callback URL registered with GitHub
-or Google matches `BETTER_AUTH_URL`:
+**Cause: `SSO_SECRET` mismatch.** CodeRunner's `SSO_SECRET` must be the exact
+same value as Legion's own `SSO_SECRET` — if they differ, CodeRunner silently
+rejects every `mw_sso` cookie as invalid (logged at `trace` level, not visible
+by default). Compare both `.env` files directly.
 
-- GitHub: `<BETTER_AUTH_URL>/api/auth/callback/github`
-- Google: `<BETTER_AUTH_URL>/api/auth/callback/google`
+**Cause: cookie domain mismatch.** CodeRunner and Legion must share a parent
+domain (Legion's own `SSO_COOKIE_DOMAIN`) for the browser to send the
+`mw_sso` cookie to both. Two hosts with no common parent domain can never
+share the cookie, even with identical secrets. See
+[Legion Setup](../deploying/legion-setup.md).
 
-`BETTER_AUTH_URL` must be the externally reachable base URL of the control
-plane (for example `https://coderunner.yourteam.ca`). On a local deployment
-it is `http://<host-ip>:4000`.
+**Cause: `SSO_SESSION_TTL` mismatch.** If CodeRunner's `SSO_SESSION_TTL`
+differs from Legion's own, a session that's still valid by one app's clock
+can be rejected by the other's. Keep them identical.
 
-**Cause: email not on allowlist.** The student's email or domain is not in
-`data/allowlist.json`. Check and add:
+**Cause: Legion itself is unreachable.** `LEGION_BASE_URL` must be the
+externally reachable base URL of your Legion instance — check it resolves
+and is not blocked by a firewall between the student's browser and Legion.
 
-```bash
-bun run allowlist:list
-bun run allowlist:add student@gmail.com
-# or allow a whole domain
-bun run allowlist:add yourteam.org
-```
-
-On a containerized deployment run these inside the control container instead
-(`cd /opt/coderunner && sudo` on the VM):
-`docker compose exec control coderunner allowlist list|add <email-or-domain>`.
-
-**Cause: empty allowlist.** If the allowlist is empty, everyone is blocked.
-Confirm with `bun run allowlist:list` and add at least one entry.
+There is no local allowlist to check — if a student can sign in through
+Legion at all, CodeRunner lets them in. If they can't reach CodeRunner's
+`/admin`, that's a Legion `coderunner-admin` group membership question, not
+a CodeRunner-side setting.
 
 ---
 

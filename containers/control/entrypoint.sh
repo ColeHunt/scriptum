@@ -24,10 +24,9 @@ Usage: coderunner <subcommand> [args...]
 
 Subcommands:
   serve                    Run pending DB migrations, then start the control plane (default).
-  backup [args]            Back up the database, allowlist, and workspace projects.
+  backup [args]            Back up the database and workspace projects.
   restore <dir> [args]     Restore state from a backup created by `backup`.
-  allowlist <cmd> [args]   Manage the email/domain allowlist (list/add/remove).
-  users <cmd> [args]       Manage user roles (list/promote/demote).
+  users <cmd> [args]       List users (roles come from Legion group membership).
   audit-prune [args]       Prune audit log entries older than a given date.
   rebuild-workspaces       Remove managed workspace containers and clear their leases.
   cleanup [args]           Remove stopped managed containers.
@@ -58,10 +57,6 @@ backup)
 restore)
 	shift
 	exec bun scripts/restore.ts "$@"
-	;;
-allowlist)
-	shift
-	exec bun scripts/allowlist.ts "$@"
 	;;
 users)
 	shift

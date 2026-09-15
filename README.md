@@ -4,7 +4,7 @@ A self-hosted, browser-based IDE for learning FRC robot programming. Students ge
 
 ## Quick Start
 
-Try CodeRunner locally in demo mode — no OAuth, no allowlist, no configuration required. Just Docker:
+Try CodeRunner locally in demo mode — no Legion setup, no configuration required. Just Docker:
 
 ```bash
 git clone https://github.com/mathewdunne/CodeRunner coderunner

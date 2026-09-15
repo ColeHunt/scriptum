@@ -8,7 +8,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 interface UserMenuProps {
@@ -68,9 +67,10 @@ function Avatar({
 	);
 }
 
-async function signOut() {
-	await authClient.signOut();
-	window.location.assign("/login");
+function signOut() {
+	// Single logout via Legion's /sso/logout, which clears the shared mw_sso
+	// cookie for every MARS/WARS app, not just CodeRunner.
+	window.location.assign("/logout");
 }
 
 function navigateToAdmin() {
@@ -127,7 +127,7 @@ export function UserMenu({
 						</>
 					) : null}
 					<DropdownMenuItem
-						onClick={() => void signOut()}
+						onClick={signOut}
 						className="gap-2.5 px-2.5 py-2 text-[12.5px]"
 					>
 						<LogOut className="size-[15px] text-muted-foreground" />

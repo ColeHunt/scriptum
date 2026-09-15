@@ -99,7 +99,7 @@ no DNS change.
 
 **Release it**: saves that cost, but you get a new IP in the fall and must
 update the DNS A record (`coderunner.wiredcats5885.ca` → new IP) and wait for
-propagation before TLS and OAuth callbacks work.
+propagation before TLS and Legion sign-in work.
 
 ```bash
 # Only if you choose to release the IP
@@ -168,7 +168,7 @@ This recreates everything:
 
 Update the DNS A record `coderunner.wiredcats5885.ca` to the new IP
 (`terraform output -raw static_ip`) and wait for propagation before relying on
-TLS or OAuth callbacks.
+TLS or Legion sign-in.
 
 ### Step 4. Deploy a release
 
