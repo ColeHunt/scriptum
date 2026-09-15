@@ -17,6 +17,7 @@ function renderLayout(props: Partial<ComponentProps<typeof IDELayout>> = {}) {
 				editor={<div>Editor</div>}
 				scope={<div>Scope</div>}
 				choreo={<div>Choreo</div>}
+				elastic={<div>Elastic</div>}
 				driverStation={<div>Driver Station</div>}
 				{...props}
 			/>
@@ -36,12 +37,13 @@ describe("IDELayout", () => {
 		sessionStorage.clear();
 	});
 
-	test("renders editor, scope, choreo, and Driver Station in robot mode", () => {
+	test("renders editor, scope, choreo, elastic, and Driver Station in robot mode", () => {
 		renderLayout();
 
 		expect(screen.getByText("Editor")).toBeInTheDocument();
 		expect(screen.getByText("Scope")).toBeInTheDocument();
 		expect(screen.getByText("Choreo")).toBeInTheDocument();
+		expect(screen.getByText("Elastic")).toBeInTheDocument();
 		expect(screen.getByText("Driver Station")).toBeInTheDocument();
 		expect(screen.queryByText(/Run this lesson from the editor/)).toBeNull();
 	});
@@ -52,6 +54,7 @@ describe("IDELayout", () => {
 		expect(screen.getByText("Editor")).toBeInTheDocument();
 		expect(screen.queryByText("Scope")).toBeNull();
 		expect(screen.queryByText("Choreo")).toBeNull();
+		expect(screen.queryByText("Elastic")).toBeNull();
 		expect(screen.queryByText("Driver Station")).toBeNull();
 		expect(
 			screen.getByText(/Run this lesson from the editor/),
@@ -66,9 +69,10 @@ describe("IDELayout", () => {
 		sessionStorage.setItem(
 			"react-resizable-panels:ide-columns",
 			JSON.stringify({
-				"ide-editor": 50,
-				"ide-scope": 25,
-				"ide-choreo": 25,
+				"ide-editor": 40,
+				"ide-scope": 20,
+				"ide-choreo": 20,
+				"ide-elastic": 20,
 			}),
 		);
 
@@ -76,9 +80,10 @@ describe("IDELayout", () => {
 
 		expect(document.getElementById("ide-workbench")?.style.flexGrow).toBe("30");
 		expect(document.getElementById("ide-console")?.style.flexGrow).toBe("70");
-		expect(document.getElementById("ide-editor")?.style.flexGrow).toBe("50");
-		expect(document.getElementById("ide-scope")?.style.flexGrow).toBe("25");
-		expect(document.getElementById("ide-choreo")?.style.flexGrow).toBe("25");
+		expect(document.getElementById("ide-editor")?.style.flexGrow).toBe("40");
+		expect(document.getElementById("ide-scope")?.style.flexGrow).toBe("20");
+		expect(document.getElementById("ide-choreo")?.style.flexGrow).toBe("20");
+		expect(document.getElementById("ide-elastic")?.style.flexGrow).toBe("20");
 	});
 
 	test("a pane toggled off in shared state stays mounted (not removed)", () => {

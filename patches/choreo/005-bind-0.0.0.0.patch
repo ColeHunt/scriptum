@@ -1,0 +1,20 @@
+diff --git a/src-server/src/main.rs b/src-server/src/main.rs
+index db3162e..e728f5b 100644
+--- a/src-server/src/main.rs
++++ b/src-server/src/main.rs
+@@ -126,7 +126,14 @@ async fn run_server() {
+         .ok()
+         .and_then(|p| p.parse().ok())
+         .unwrap_or(5900);
+-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
++    // 0.0.0.0, not loopback: in network mode the control plane reaches this
++    // over the docker bridge network by container name (coderunner-workspace-
++    // <id>:CHOREO_PORT), which arrives on the container's bridge interface,
++    // not its loopback one - binding 127.0.0.1 here would make it
++    // unreachable from any other container, same reasoning as codium-server's
++    // --host 0.0.0.0. Each student's container is on its own network
++    // namespace regardless, so this doesn't widen who can reach it.
++    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+     tracing::info!(%addr, "choreo-server listening");
+ 
+     let listener = tokio::net::TcpListener::bind(addr)

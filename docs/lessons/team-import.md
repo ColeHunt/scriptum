@@ -71,7 +71,8 @@ When a valid URL is submitted, the control plane:
    cleanly.
 
 The workspace is then treated as a robot project. The Driver Station and the
-AdvantageScope/PathPlanner tabs are available, matching a `robot` lesson.
+AdvantageScope, Choreo, and Elastic Dashboard tabs are available, matching a
+`robot` lesson.
 
 ## Pushing and pulling after import
 
@@ -94,7 +95,7 @@ The server does not store, inject, or manage any Git credentials.
 Imported projects run through the same Driver Station flow as `robot` lessons:
 click **Start** to build and start the simulation. When robot code and
 communications are ready, choose a mode and click **Enable**. Use AdvantageScope
-for telemetry or PathPlanner for the project's paths and autos.
+or Elastic Dashboard for telemetry, or Choreo for the project's paths and autos.
 
 No changes to `build.gradle` are required, even if the project calls
 `wpi.sim.addGui()` or `wpi.sim.addDriverstation()`. At run time, a Gradle

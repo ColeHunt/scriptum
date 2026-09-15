@@ -2,6 +2,7 @@ import type { AuthProvidersResponse } from "@frc-coderunner/contracts";
 import { handleAdminRoute } from "./app/admin-routes";
 import {
 	choreoWebAssetResponse,
+	elasticWebAssetResponse,
 	handleUploadAsset,
 	scopeResponse,
 	userAssetsPath,
@@ -167,6 +168,8 @@ export async function createApp(
 		storage,
 		runtimeProvider,
 		catalogSource,
+		nt4Auto,
+		runs,
 	);
 	const idle = new IdleManager({
 		storage,
@@ -237,6 +240,7 @@ export async function createApp(
 			url.pathname === "/healthz" ||
 			url.pathname.startsWith("/scope/") ||
 			url.pathname.startsWith("/choreo/") ||
+			url.pathname.startsWith("/elastic/") ||
 			url.pathname.startsWith("/assets/") ||
 			url.pathname === "/coderunner-icon.png" ||
 			url.pathname === "/favicon.ico" ||
@@ -313,6 +317,13 @@ export async function createApp(
 			return choreoWebAssetResponse(storage, url.pathname);
 		}
 
+		if (
+			(url.pathname === "/elastic" || url.pathname.startsWith("/elastic/")) &&
+			request.method === "GET"
+		) {
+			return elasticWebAssetResponse(storage, url.pathname);
+		}
+
 		if (url.pathname === "/api/auth/providers" && request.method === "GET") {
 			return jsonResponse({
 				providers: getEnabledAuthProviders(storage.config),
@@ -358,7 +369,7 @@ export async function createApp(
 		}
 
 		// --- Default-deny: everything below requires a session (or admin token). ---
-		// Public routes (healthz, scope, /choreo, /api/auth/providers, other api/auth routes, /, /login,
+		// Public routes (healthz, scope, /choreo, /elastic, /api/auth/providers, other api/auth routes, /, /login,
 		// /coderunner-icon.png, /assets/*) are handled above.
 		// If we reach here without matching a gated route, we return 404.
 

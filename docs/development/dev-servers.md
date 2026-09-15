@@ -21,15 +21,18 @@ bun install
 git submodule update --init --recursive
 ```
 
-The submodule step pulls the pinned `vendor/AdvantageScope` checkout, which the
-telemetry build (`bun run build:ascope`) depends on. If you don't want to build
-AdvantageScope from source (it needs emscripten), run `bun run setup:demo` (or
-`bun run fetch:dist`) to download the prebuilt web shell, AdvantageScope, and
-PathPlanner assets into their local dist directories. PathPlanner is only ever
-downloaded — it is built by the separate `pathplanner-web` fork, so there is no
-local build. `fetch:dist` treats it as optional (a missing artifact leaves
-`/pathplanner/` serving a 503), while `bun run build` fetches it via
-`bun run fetch:pathplanner` and fails if it is unavailable.
+The submodule step pulls the pinned `vendor/AdvantageScope` and
+`vendor/elastic_dashboard` checkouts (see `vendor/tools.json` for their exact
+pins), which `bun run build:ascope`/`bun run build:elastic` depend on. If you
+don't want to build AdvantageScope from source (it needs emscripten), run
+`bun run setup:demo` (or `bun run fetch:dist`) to download the prebuilt web
+shell and AdvantageScope, and build Choreo inline (`bun run build:choreo`,
+needs only Bun — no submodule, no separate fork download). Elastic Dashboard
+is the exception: it needs a local Flutter SDK (`bun run build:elastic`), so
+it's deliberately left out of `bun run build` entirely — `fetch:dist` treats
+it as optional (a missing/failed fetch leaves `/elastic/` serving a 503). See
+[decision 043](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/043-vendor-tool-manifest.md)
+for how each vendored tool's build is wired.
 
 :::note[Dev runs use published host ports, not a Docker network]
 
@@ -100,7 +103,7 @@ bun run dev:web
 ```
 
 This starts the Vite dev server on **port 5173** with hot module replacement.
-Vite proxies API, health, metrics, AdvantageScope, PathPlanner, admin, and
+Vite proxies API, health, metrics, AdvantageScope, Choreo, Elastic, admin, and
 per-user (`/u/<id>/…`) traffic, including WebSocket upgrades, to the control
 plane at `http://localhost:4000`. The proxy config lives in `apps/web/vite.config.ts`, so
 front-end changes hot-reload at `http://localhost:5173` while every backend call

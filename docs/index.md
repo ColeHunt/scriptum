@@ -8,9 +8,9 @@ title: Overview
 
 import useBaseUrl from '@docusaurus/useBaseUrl';
 
-CodeRunner is a self-hosted, browser-based IDE for teaching FRC robot programming. Students can open a web page, log in, write Java in a real VS Code editor, simulate their robot, inspect telemetry in AdvantageScope, and edit PathPlanner files. There is nothing to install on a student's machine and no per-device setup to maintain. Everything runs on a machine you control and is delivered through the browser.
+CodeRunner is a self-hosted, browser-based IDE for teaching FRC robot programming. Students can open a web page, log in, write Java in a real VS Code editor, simulate their robot, inspect telemetry in AdvantageScope or Elastic Dashboard, and plan paths and autos in Choreo. There is nothing to install on a student's machine and no per-device setup to maintain. Everything runs on a machine you control and is delivered through the browser.
 
-{/* TODO(pathplanner-docs): Record a new overview showing both tool tabs. */}
+{/* TODO(tool-tabs-docs): Record a new overview showing all four tool tabs. */}
 <video
   autoPlay
   loop
@@ -35,7 +35,7 @@ CodeRunner is a self-hosted, browser-based IDE for teaching FRC robot programmin
 2. Follow the lesson instructions or open the files you want to edit.
 3. Click **Start** in the Driver Station at the bottom of the page.
 4. When robot code and communications are ready, choose a mode and click **Enable**.
-5. Use the **AdvantageScope** and **PathPlanner** tabs to inspect telemetry or edit paths.
+5. Use the **AdvantageScope**, **Choreo**, and **Elastic Dashboard** tabs to inspect telemetry or edit paths — each is independently toggleable alongside the editor.
 
 Use CodeRunner's **Start** button for robot projects, not the WPILib extension's simulation command. Console lessons are the exception: run those with the editor's ▷ button.
 
@@ -46,7 +46,7 @@ Use CodeRunner's **Start** button for robot projects, not the WPILib extension's
 - **A real VS Code editor in the browser.** Each student works in VSCodium with the Java and WPILib extensions already installed, so they get auto-import, code completion, Ctrl-click into library classes, and inline diagnostics, the same tooling a mentor would use locally.
 - **An isolated workspace per student.** Every student gets their own Docker container, so one person's broken build or runaway process never affects anyone else.
 - **One-click simulation with a built-in Driver Station.** Clicking **Start** builds the project and starts a WPILib simulation. The Driver Station UI lets students enable the robot, switch modes, and drive with a gamepad.
-- **Integrated robot tools.** Robot data streams into AdvantageScope, while PathPlanner edits files in the current project. Both are available beside the editor without a separate install.
+- **Integrated robot tools.** Robot telemetry streams into AdvantageScope and Elastic Dashboard, while Choreo edits paths and autos directly in the current project. All three are available beside the editor without a separate install.
 
 ## Lessons and team projects
 

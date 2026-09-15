@@ -7,18 +7,26 @@
 # lives only in a build stage — neither CI runners nor operators install it.
 #
 # Build context is the repo root (like containers/code/Dockerfile) and needs
-# the vendor/AdvantageScope submodule initialized:
+# the vendor/AdvantageScope and vendor/Choreo submodules initialized:
 #   bun run docker:build:control
 #
 # Choreo's frontend (served at /choreo/, talking to the choreo-server sidecar
-# containers/code/Dockerfile bakes into the workspace image) is built from a
-# pinned commit of its own fork - see docs/decisions/040-choreo-integration.md.
+# containers/code/Dockerfile bakes into the workspace image) is built from
+# the pinned vendor/Choreo submodule, patched the same way AdvantageScope is
+# - see docs/decisions/045-choreo-submodule-migration.md (which superseded
+# 042's original clone-at-build-time approach).
+#
+# Elastic Dashboard (served at /elastic/) is Flutter-built OUTSIDE this image
+# entirely - unlike AdvantageScope's emsdk stage below, no Flutter SDK enters
+# this Dockerfile. dist/elastic/ is supplied as a prebuilt directory in the
+# build context (fetched by `bun run fetch:dist`, or produced locally by
+# `bun run build:elastic`, which needs Flutter installed on the host) or via
+# `--build-context elastic-dist=<dir>` in CI - see the build-elastic job in
+# .github/workflows/release.yml and docs/decisions/041-elastic-dashboard-integration.md.
 #
 # See docs/decisions/031-containerized-control-plane.md.
 
 ARG BUN_VERSION=1.3.13
-ARG CHOREO_REPO=https://github.com/ColeHunt/Choreo.git
-ARG CHOREO_COMMIT=0f5f366574dfa4b76eeed636d0d2d246d618fe21
 
 # ── Stage 1: web shell build ───────────────────────────────────────────
 FROM oven/bun:${BUN_VERSION} AS web-build
@@ -62,7 +70,7 @@ COPY vendor/ vendor/
 COPY patches/ patches/
 # Only the two scripts this stage runs — copying all of scripts/ would rerun
 # the expensive wasm compile whenever any unrelated ops script changes.
-COPY scripts/build-ascope-lite.ts scripts/apply-ascope-patches.ts scripts/
+COPY scripts/build-ascope-lite.ts scripts/apply-vendor-patches.ts scripts/
 RUN git config --global --add safe.directory '*'
 # /usr/bin first so the nodesource node/npm win over emsdk's bundled runtime;
 # the wasm step re-prepends the emsdk paths itself (envWithEmsdk).
@@ -79,22 +87,28 @@ FROM scratch AS ascope-dist
 COPY --from=ascope-build /repo/dist/advantagescope /
 
 # ── Stage 3b: Choreo web build ──────────────────────────────────────────
-# Choreo's frontend (src/ in the fork below) is plain Vite/React/TS - this
-# repo's own stack, unlike PathPlanner's Flutter, which had to stay out of
-# the toolchain entirely (decision 039). Built from the same pinned commit
-# as containers/code/Dockerfile's choreo-builder stage (which builds the
-# Rust sidecar that serves this frontend's API).
+# Choreo's frontend (plain Vite/React/TS - this repo's own stack, unlike
+# PathPlanner's Flutter, which had to stay out of the toolchain entirely -
+# decision 039) is built from the pinned vendor/Choreo submodule, patched
+# the same way AdvantageScope is (decision 045). Built from the same
+# submodule/pin as containers/code/Dockerfile's choreo-builder stage, which
+# builds the Rust sidecar that serves this frontend's API.
 FROM oven/bun:${BUN_VERSION} AS choreo-web-build
-ARG CHOREO_REPO
-ARG CHOREO_COMMIT
+# The base bun image doesn't ship git; apply-vendor-patches.ts needs it for
+# `git apply`/`git -C`.
 RUN apt-get update -qq \
     && apt-get install -y --no-install-recommends git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-RUN git clone "${CHOREO_REPO}" /choreo \
-    && git -C /choreo checkout "${CHOREO_COMMIT}"
-WORKDIR /choreo
-RUN bun install
-RUN bunx vite build
+WORKDIR /repo
+# Same reasoning as ascope-build's gitdir copy above: the submodule worktree
+# carries a gitfile pointing at .git/modules/vendor/Choreo, needed for
+# apply-vendor-patches.ts's `git apply` calls.
+COPY .git/modules/vendor/Choreo/ .git/modules/vendor/Choreo/
+COPY vendor/ vendor/
+COPY patches/ patches/
+COPY scripts/build-choreo.ts scripts/apply-vendor-patches.ts scripts/vendor-manifest.ts scripts/
+RUN git config --global --add safe.directory '*'
+RUN bun scripts/build-choreo.ts
 
 # ── Stage 3c: Choreo web dist hand-off ──────────────────────────────────
 # Filesystem-only stage, same reasoning as ascope-dist above: lets CI
@@ -103,7 +117,18 @@ RUN bunx vite build
 # above is architecture-independent, so there's never a reason to redo it
 # per arch - but the pattern stays consistent with ascope-dist either way).
 FROM scratch AS choreo-web-dist
-COPY --from=choreo-web-build /choreo/dist /
+COPY --from=choreo-web-build /repo/dist/choreo /
+
+# ── Stage 3d: Elastic dist hand-off (no in-image Flutter build) ─────────
+# Unlike ascope-dist/choreo-web-dist above, there is no Flutter build stage
+# feeding this one - dist/elastic/ must already exist in the build context
+# (see the file header comment) by the time this stage runs. CI always
+# substitutes it via `--build-context elastic-dist=<dir>` (the build-elastic
+# job's output), which skips evaluating this stage's COPY entirely; a local
+# `docker build`/`docker:build:control` needs dist/elastic/ populated first
+# via `bun run fetch:dist` or `bun run build:elastic`.
+FROM scratch AS elastic-dist
+COPY dist/elastic/ /
 
 # ── Stage 4: dist export (CI only) ─────────────────────────────────────
 # A filesystem-only stage holding just the built web shell + AdvantageScope
@@ -117,6 +142,7 @@ FROM scratch AS dist-export
 COPY --from=web-build /repo/apps/web/dist /web-dist
 COPY --from=ascope-dist / /ascope-dist
 COPY --from=choreo-web-dist / /choreo-dist
+COPY --from=elastic-dist / /elastic-dist
 
 # ── Stage 5: runtime (default build target) ────────────────────────────
 FROM oven/bun:${BUN_VERSION}
@@ -146,6 +172,7 @@ COPY catalog/ catalog/
 COPY --from=web-build /repo/apps/web/dist apps/web/dist
 COPY --from=ascope-dist / dist/advantagescope
 COPY --from=choreo-web-dist / dist/choreo
+COPY --from=elastic-dist / dist/elastic
 
 # License texts travel with the image, not just the repo: this image ships a
 # patched AdvantageScope build, and BSD-3-Clause requires the notice to

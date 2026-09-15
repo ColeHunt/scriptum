@@ -38,7 +38,9 @@ Runs Bun's built-in test runner across the control plane
 - Proxy layer: hop-by-hop header stripping, WebSocket upgrade, base-path routing
 - Run manager: build lifecycle, timeout handling, state recovery, concurrent-run gating
 - Lessons catalog: bundled catalog load, module discovery, catalog integrity
-- PathPlanner: deploy-file access controls and static asset routing
+- Choreo: proxy auth/ownership checks (`choreo-proxy.test.ts`)
+- Elastic Dashboard: layout API ownership/size/validation checks, static asset routing, NT4 `?app=` passthrough (`elastic.test.ts`)
+- AdvantageScope: static asset routing, bundled-assets manifest, NT4 endpoint (`scope-and-nt4.test.ts`)
 - Security: SSRF/path-traversal/command-injection validators, admin-route enumeration
 - Property-based tests via `fast-check`: URL validation, slug generation, contract schema round-trips, audit-filter SQL parameterization
 - Metrics: route-templating cardinality
@@ -55,7 +57,7 @@ Runs Vitest inside `apps/web/`. Coverage includes:
 - DriverStation components: Enable/Disable button state machine, mode switching
 - Zustand store: input-mode transitions, gamepad selection persistence
 - Keyboard and gamepad mappings
-- PathPlanner iframe URL, pane switching, keyboard navigation, and saved tab choice
+- AdvantageScope/Choreo/Elastic pane iframe URLs, independent pane visibility toggling, keyboard navigation, and saved pane choices
 
 ### `bun run e2e`: Playwright mocked tier
 
@@ -75,7 +77,7 @@ flow, including:
 - Driver Station: enable/disable payload shape, mode switching, multi-tab sync
 - Gamepad: controller selection persistence across run cycles, unplug-while-enabled safety, pre-run no-lease behavior, keyboard tile focus gating, auto-chooser refresh on restart
 - Telemetry: AdvantageScope iframe load, NT4 per-workspace isolation
-- Sim pane tools: AdvantageScope selected first, the PathPlanner iframe mounted while hidden, tab switching without unloading it, the tab choice surviving a reload, and a project swap reloading PathPlanner
+- Sim pane tools: AdvantageScope visible by default, the Choreo iframe mounted while hidden and reporting readiness/load counts (`choreo-pane.spec.ts`), independent pane visibility surviving a reload, and a project swap reloading each visible pane
 - Admin: capacity cap enforcement, audit log entries, user management
 - Public routes: health check, OpenAPI endpoint
 
@@ -182,14 +184,14 @@ fake endpoint URLs pointing at the in-process fake servers, plus
 `seedWorkspaceProject` for specs that need a non-empty project (an empty one
 auto-opens the Switch Project dialog).
 
-The two tool panes are served from throwaway dists built by
-`createAdvantageScopeDist` / `createPathPlannerDist` in
+The three tool panes are served from throwaway dists built by
+`createAdvantageScopeDist` / `createChoreoDist` / `createElasticDist` in
 `apps/control/src/__tests__/helpers.ts` — not the real builds, so the mocked
-tier needs neither emscripten nor a PathPlanner download. The fake PathPlanner
-page counts its own loads in `sessionStorage` and publishes the count as
-`data-fake-pathplanner-loads` on `<body>`: a project swap remounts that iframe
-without changing its `src`, so the counter is the only way to observe the
-reload.
+tier needs neither emscripten, a Choreo clone, nor the Flutter SDK. The fake
+Choreo page counts its own loads in `sessionStorage` and publishes the count
+as `data-fake-choreo-loads` on `<body>` (plus `data-fake-choreo-ready="true"`
+once loaded): a project swap remounts that iframe without changing its `src`,
+so the counter is the only way to observe the reload.
 
 ## Debugging helpers
 

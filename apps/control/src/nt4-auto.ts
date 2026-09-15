@@ -391,6 +391,20 @@ export class Nt4AutoChooserBridge extends ReconnectingWsBridge<
 		return this.snapshotFromEntry(entry);
 	}
 
+	/**
+	 * Current tracked value of an arbitrary NT4 topic, for checkpoints that
+	 * need to read live robot telemetry directly (see CheckpointManager's
+	 * "nt4-value" verifier). This bridge already subscribes to every topic
+	 * (`topics: ["/"]` below), so no new subscription is needed - just a read
+	 * of what's already being tracked. `undefined` if the bridge isn't
+	 * connected for this workspace, or the topic has never been seen.
+	 */
+	getValue(workspaceId: WorkspaceId, topicName: string): unknown {
+		return this.entries
+			.get(workspaceId)
+			?.valuesByName.get(normalizeTopicName(topicName));
+	}
+
 	getSnapshot(workspaceId: WorkspaceId): AutoChoosersResponse {
 		const entry = this.entries.get(workspaceId);
 		return entry

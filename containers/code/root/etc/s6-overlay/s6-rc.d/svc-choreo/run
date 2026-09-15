@@ -1,7 +1,7 @@
 #!/usr/bin/with-contenv bash
 # shellcheck shell=bash
 # Launches choreo-server, the HTTP/WS sidecar exposing Choreo's trajectory
-# editor (replaces PathPlanner - see docs/decisions/040-choreo-integration.md).
+# editor (replaces PathPlanner - see docs/decisions/042-choreo-integration.md).
 # Binds loopback-only; the control plane proxies to it the same way it
 # proxies to codium-server and the HALSim bridge.
 

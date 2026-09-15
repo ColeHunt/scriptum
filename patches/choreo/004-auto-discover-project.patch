@@ -1,0 +1,117 @@
+diff --git a/src-core/src/file_management/mod.rs b/src-core/src/file_management/mod.rs
+index f41b8d9..9630849 100644
+--- a/src-core/src/file_management/mod.rs
++++ b/src-core/src/file_management/mod.rs
+@@ -330,3 +330,24 @@ pub async fn find_all_trajectories(resources: &WritingResources) -> Vec<String>
+     );
+     out
+ }
++
++/// Finds the first `.chor` project file in the deploy directory, if any.
++///
++/// The desktop app opens a project the user explicitly picks via a native
++/// file dialog; a hosted browser IDE has exactly one project per workspace
++/// (its fixed deploy root) and no dialog to pick with, so this discovers
++/// whatever is already there instead.
++pub async fn find_project_name(resources: &WritingResources) -> Option<String> {
++    let deploy_dir = resources.root.lock().await.clone();
++    let mut dir = fs::read_dir(&deploy_dir).await.ok()?;
++    while let Ok(Some(entry)) = dir.next_entry().await {
++        let path = entry.path();
++        if let Some(extension) = path.extension()
++            && extension.eq_ignore_ascii_case("chor")
++            && let Some(name) = path.file_stem().map(|p| p.to_string_lossy())
++        {
++            return Some(name.to_string());
++        }
++    }
++    None
++}
+diff --git a/src-server/src/handlers.rs b/src-server/src/handlers.rs
+index 44b5452..0e923df 100644
+--- a/src-server/src/handlers.rs
++++ b/src-server/src/handlers.rs
+@@ -51,6 +51,22 @@ pub async fn default_project() -> Json<ProjectFile> {
+     Json(ProjectFile::default())
+ }
+ 
++#[derive(Serialize)]
++pub struct DiscoverProjectResponse {
++    pub name: Option<String>,
++}
++
++/// Finds whatever project already exists in the deploy root, if any - the
++/// browser IDE's replacement for the desktop app's native "Open" dialog
++/// (there is exactly one project per workspace, so there is nothing to
++/// choose between).
++pub async fn discover_project(
++    State(state): State<AppState>,
++) -> Json<DiscoverProjectResponse> {
++    let name = file_management::find_project_name(&state.writing).await;
++    Json(DiscoverProjectResponse { name })
++}
++
+ pub async fn read_project(
+     State(state): State<AppState>,
+     AxPath(name): AxPath<String>,
+diff --git a/src-server/src/main.rs b/src-server/src/main.rs
+index d0d200e..db3162e 100644
+--- a/src-server/src/main.rs
++++ b/src-server/src/main.rs
+@@ -97,6 +97,7 @@ async fn run_server() {
+         .route("/worker-count", get(handlers::worker_count))
+         .route("/intervals/guess", post(handlers::guess_intervals))
+         .route("/project/default", get(handlers::default_project))
++        .route("/project/discover", get(handlers::discover_project))
+         .route("/project/{name}", get(handlers::read_project))
+         .route("/project", put(handlers::write_project))
+         .route("/trajectories", get(handlers::read_all_trajectory))
+diff --git a/src/document/DocumentManager.ts b/src/document/DocumentManager.ts
+index ff84308..51ae7bd 100644
+--- a/src/document/DocumentManager.ts
++++ b/src/document/DocumentManager.ts
+@@ -359,6 +359,23 @@ export async function openProjectFile() {
+         `Failed to open last Choreo file '${fileDirectory.name}': ${err}`
+       );
+     });
++  } else {
++    // Neither a CLI arg nor a remembered file applies in the browser IDE -
++    // there's exactly one project per workspace (its fixed deploy root) and
++    // no native dialog to pick a different one with, so open whatever is
++    // already there instead of leaving the blank default project on screen.
++    const discoveredName = await Commands.discoverProject().catch(() => null);
++    if (discoveredName) {
++      tracing.info(`Attempting to open: ${discoveredName}`);
++      return openProject({ dir: "", name: discoveredName }).catch((err) => {
++        tracing.error(
++          `Failed to open Choreo project '${discoveredName}': ${err}`
++        );
++        toast.error(
++          `Failed to open Choreo project '${discoveredName}': ${err}`
++        );
++      });
++    }
+   }
+ }
+ 
+diff --git a/src/document/tauriCommands.ts b/src/document/tauriCommands.ts
+index 15f73ea..48df56d 100644
+--- a/src/document/tauriCommands.ts
++++ b/src/document/tauriCommands.ts
+@@ -116,6 +116,16 @@ export const Commands = {
+    * @returns The default `Project` that is loaded when a new `Project` is created.
+    */
+   defaultProject: () => apiFetch<Project>("/project/default"),
++  /**
++   * Finds whatever project already exists in the deploy root, if any - the
++   * browser IDE's replacement for the desktop app's native "Open" dialog.
++   *
++   * @returns The discovered project's name (without extension), or null.
++   */
++  discoverProject: () =>
++    apiFetch<{ name: string | null }>("/project/discover").then(
++      (r) => r.name
++    ),
+   /**
+    * Reads the `Project` with the specified name from the deploy root directory.
+    *

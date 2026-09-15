@@ -1,0 +1,879 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index e091d47..57f348f 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -283,6 +283,61 @@ dependencies = [
+  "arrayvec",
+ ]
+ 
++[[package]]
++name = "axum"
++version = "0.8.9"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "31b698c5f9a010f6573133b09e0de5408834d0c82f8d7475a89fc1867a71cd90"
++dependencies = [
++ "axum-core",
++ "base64 0.22.1",
++ "bytes",
++ "form_urlencoded",
++ "futures-util",
++ "http",
++ "http-body",
++ "http-body-util",
++ "hyper",
++ "hyper-util",
++ "itoa",
++ "matchit",
++ "memchr",
++ "mime",
++ "percent-encoding",
++ "pin-project-lite",
++ "serde_core",
++ "serde_json",
++ "serde_path_to_error",
++ "serde_urlencoded",
++ "sha1",
++ "sync_wrapper",
++ "tokio",
++ "tokio-tungstenite",
++ "tower",
++ "tower-layer",
++ "tower-service",
++ "tracing",
++]
++
++[[package]]
++name = "axum-core"
++version = "0.5.6"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "08c78f31d7b1291f7ee735c1c6780ccde7785daae9a9206026862dab7d8792d1"
++dependencies = [
++ "bytes",
++ "futures-core",
++ "http",
++ "http-body",
++ "http-body-util",
++ "mime",
++ "pin-project-lite",
++ "sync_wrapper",
++ "tower-layer",
++ "tower-service",
++ "tracing",
++]
++
+ [[package]]
+ name = "base64"
+ version = "0.21.7"
+@@ -588,6 +643,21 @@ dependencies = [
+  "zip",
+ ]
+ 
++[[package]]
++name = "choreo-server"
++version = "2027.0.0-alpha.3"
++dependencies = [
++ "axum",
++ "choreo-core",
++ "futures-util",
++ "serde",
++ "serde_json",
++ "tokio",
++ "tokio-tungstenite",
++ "tracing",
++ "tracing-subscriber",
++]
++
+ [[package]]
+ name = "chrono"
+ version = "0.4.42"
+@@ -978,6 +1048,12 @@ dependencies = [
+  "parking_lot_core",
+ ]
+ 
++[[package]]
++name = "data-encoding"
++version = "2.11.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
++
+ [[package]]
+ name = "deranged"
+ version = "0.5.5"
+@@ -1894,6 +1970,12 @@ version = "1.10.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
+ 
++[[package]]
++name = "httpdate"
++version = "1.0.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
++
+ [[package]]
+ name = "hyper"
+ version = "1.8.1"
+@@ -1907,6 +1989,7 @@ dependencies = [
+  "http",
+  "http-body",
+  "httparse",
++ "httpdate",
+  "itoa",
+  "pin-project-lite",
+  "pin-utils",
+@@ -2508,12 +2591,27 @@ dependencies = [
+  "syn 2.0.112",
+ ]
+ 
++[[package]]
++name = "matchers"
++version = "0.2.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "d1525a2a28c7f4fa0fc98bb91ae755d1e2d1505079e05539e35bc876b5d65ae9"
++dependencies = [
++ "regex-automata",
++]
++
+ [[package]]
+ name = "matches"
+ version = "0.1.10"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "2532096657941c2fea9c289d370a250971c689d4f143798ff67113ec042024a5"
+ 
++[[package]]
++name = "matchit"
++version = "0.8.4"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
++
+ [[package]]
+ name = "maybe-rayon"
+ version = "0.1.1"
+@@ -3975,6 +4073,17 @@ dependencies = [
+  "zmij",
+ ]
+ 
++[[package]]
++name = "serde_path_to_error"
++version = "0.1.20"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "10a9ff822e371bb5403e391ecd83e182e0e77ba7f6fe0160b795797109d1b457"
++dependencies = [
++ "itoa",
++ "serde",
++ "serde_core",
++]
++
+ [[package]]
+ name = "serde_repr"
+ version = "0.1.20"
+@@ -4079,6 +4188,17 @@ dependencies = [
+  "stable_deref_trait",
+ ]
+ 
++[[package]]
++name = "sha1"
++version = "0.10.7"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "a978451301f4db1d02937a4ab3ccce137717b81826e79b7d49ffe3244a13c3b8"
++dependencies = [
++ "cfg-if",
++ "cpufeatures",
++ "digest",
++]
++
+ [[package]]
+ name = "sha2"
+ version = "0.10.9"
+@@ -4815,6 +4935,18 @@ dependencies = [
+  "syn 2.0.112",
+ ]
+ 
++[[package]]
++name = "tokio-tungstenite"
++version = "0.29.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "8f72a05e828585856dacd553fba484c242c46e391fb0e58917c942ee9202915c"
++dependencies = [
++ "futures-util",
++ "log",
++ "tokio",
++ "tungstenite",
++]
++
+ [[package]]
+ name = "tokio-util"
+ version = "0.7.17"
+@@ -4937,6 +5069,7 @@ dependencies = [
+  "tokio",
+  "tower-layer",
+  "tower-service",
++ "tracing",
+ ]
+ 
+ [[package]]
+@@ -4975,6 +5108,7 @@ version = "0.1.44"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
+ dependencies = [
++ "log",
+  "pin-project-lite",
+  "tracing-attributes",
+  "tracing-core",
+@@ -5040,12 +5174,16 @@ version = "0.3.22"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "2f30143827ddab0d256fd843b7a66d164e9f271cfa0dde49142c5ca0ca291f1e"
+ dependencies = [
++ "matchers",
+  "nu-ansi-term",
++ "once_cell",
++ "regex-automata",
+  "serde",
+  "serde_json",
+  "sharded-slab",
+  "smallvec",
+  "thread_local",
++ "tracing",
+  "tracing-core",
+  "tracing-log",
+  "tracing-serde",
+@@ -5090,6 +5228,22 @@ version = "0.2.5"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
+ 
++[[package]]
++name = "tungstenite"
++version = "0.29.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "6c01152af293afb9c7c2a57e4b559c5620b421f6d133261c60dd2d0cdb38e6b8"
++dependencies = [
++ "bytes",
++ "data-encoding",
++ "http",
++ "httparse",
++ "log",
++ "rand 0.9.2",
++ "sha1",
++ "thiserror 2.0.17",
++]
++
+ [[package]]
+ name = "typeid"
+ version = "1.0.3"
+diff --git a/Cargo.toml b/Cargo.toml
+index 7fbb9fe..c6cb1ad 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -3,6 +3,7 @@
+ members = [
+     "src-cli",
+     "src-core",
++    "src-server",
+     "src-tauri",
+     "trajoptlib",
+ ]
+diff --git a/src-server/Cargo.toml b/src-server/Cargo.toml
+new file mode 100644
+index 0000000..7eff6a3
+--- /dev/null
++++ b/src-server/Cargo.toml
+@@ -0,0 +1,26 @@
++[package]
++name = "choreo-server"
++version = "2027.0.0-alpha.3"
++edition = "2024"
++homepage = "https://github.com/SleipnirGroup/Choreo"
++repository = "https://github.com/SleipnirGroup/Choreo.git"
++authors = ["Sleipnir Group"]
++license = "BSD-3-Clause"
++description = """\
++  HTTP sidecar exposing choreo-core over a JSON API, for running Choreo's \
++  trajectory editor inside a hosted browser IDE (CodeRunner) instead of the \
++  Tauri desktop shell.\
++  """
++
++[dependencies]
++choreo-core = { path = "../src-core" }
++axum = { version = "0.8", features = ["ws"] }
++tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync"] }
++serde = { version = "1.0", features = ["derive"] }
++serde_json = "1.0"
++tracing = "0.1.44"
++tracing-subscriber = { version = "0.3.22", features = ["ansi", "fmt", "std", "env-filter"] }
++
++[dev-dependencies]
++tokio-tungstenite = "0.29"
++futures-util = "0.3"
+diff --git a/src-server/examples/ws_smoke_test.rs b/src-server/examples/ws_smoke_test.rs
+new file mode 100644
+index 0000000..09d740b
+--- /dev/null
++++ b/src-server/examples/ws_smoke_test.rs
+@@ -0,0 +1,42 @@
++//! Manual smoke test for the /ws/progress route - not part of the port,
++//! just a throwaway client since no WebSocket CLI tool was available in the
++//! dev environment. Connects, prints whatever arrives for a few seconds,
++//! then exits.
++use std::time::Duration;
++
++use futures_util::StreamExt;
++use tokio_tungstenite::connect_async;
++
++#[tokio::main]
++async fn main() {
++    let url = std::env::args()
++        .nth(1)
++        .unwrap_or_else(|| "ws://127.0.0.1:5900/ws/progress".to_string());
++    let (ws_stream, _) = connect_async(&url).await.expect("failed to connect");
++    println!("connected to {url}");
++    let (_, mut read) = ws_stream.split();
++
++    let result = tokio::time::timeout(Duration::from_secs(5), async {
++        let mut count = 0;
++        while let Some(msg) = read.next().await {
++            match msg {
++                Ok(tokio_tungstenite::tungstenite::Message::Text(text)) => {
++                    count += 1;
++                    println!("[{count}] {text}");
++                }
++                Ok(other) => println!("(non-text frame: {other:?})"),
++                Err(e) => {
++                    println!("error: {e}");
++                    break;
++                }
++            }
++        }
++        count
++    })
++    .await;
++
++    match result {
++        Ok(count) => println!("stream ended, {count} messages received"),
++        Err(_) => println!("timed out waiting for messages"),
++    }
++}
+diff --git a/src-server/src/error.rs b/src-server/src/error.rs
+new file mode 100644
+index 0000000..acb3c63
+--- /dev/null
++++ b/src-server/src/error.rs
+@@ -0,0 +1,25 @@
++use axum::{Json, http::StatusCode, response::IntoResponse, response::Response};
++use choreo_core::ChoreoError;
++
++/// Wraps [`ChoreoError`] for use as an axum handler return type. `ChoreoError`
++/// already derives `Serialize` (tagged `{"type": ..., "content": ...}`, used
++/// as-is by the desktop frontend's error handling), so the body is the error
++/// unchanged - only the status code is decided here.
++pub struct ApiError(pub ChoreoError);
++
++impl From<ChoreoError> for ApiError {
++    fn from(e: ChoreoError) -> Self {
++        Self(e)
++    }
++}
++
++impl IntoResponse for ApiError {
++    fn into_response(self) -> Response {
++        let status = match &self.0 {
++            ChoreoError::FileNotFound(_) => StatusCode::NOT_FOUND,
++            ChoreoError::NoDeployPath => StatusCode::INTERNAL_SERVER_ERROR,
++            _ => StatusCode::BAD_REQUEST,
++        };
++        (status, Json(self.0)).into_response()
++    }
++}
+diff --git a/src-server/src/handlers.rs b/src-server/src/handlers.rs
+new file mode 100644
+index 0000000..b5e0420
+--- /dev/null
++++ b/src-server/src/handlers.rs
+@@ -0,0 +1,267 @@
++//! JSON HTTP handlers mirroring `src-tauri/src/api.rs`, minus the
++//! desktop-only commands (native file dialogs, "open in explorer", the
++//! diagnostic-file opener, and `set_deploy_root`/`get_deploy_root` - the
++//! sidecar's deploy root is fixed for the lifetime of the process, set once
++//! at startup from `CHOREO_DEPLOY_ROOT`, since each instance serves exactly
++//! one student's project).
++
++use std::{fs, num::NonZero};
++
++use axum::{Json, extract::Path as AxPath, extract::State};
++use choreo_core::{
++    ChoreoError,
++    codegen::{TRAJ_DATA_FILENAME, VARS_FILENAME, java},
++    file_management::{self},
++    generation::{self, remote::remote_generate_parent},
++    spec::{
++        Expr,
++        project::{ProjectFile, RobotConfig},
++        trajectory::TrajectoryFile,
++    },
++};
++use serde::{Deserialize, Serialize};
++
++use crate::error::ApiError;
++use crate::state::AppState;
++
++type JsonResult<T> = Result<Json<T>, ApiError>;
++
++pub async fn worker_count() -> Json<NonZero<usize>> {
++    Json(std::thread::available_parallelism().unwrap_or(NonZero::new(4).unwrap()))
++}
++
++#[derive(Deserialize)]
++pub struct GuessIntervalsRequest {
++    pub config: RobotConfig<Expr>,
++    pub trajectory: TrajectoryFile,
++}
++
++pub async fn guess_intervals(
++    Json(req): Json<GuessIntervalsRequest>,
++) -> JsonResult<Vec<usize>> {
++    let counts = generation::intervals::guess_control_interval_counts(
++        &req.config.snapshot(),
++        &req.trajectory.params.snapshot(),
++    )
++    .map_err(ApiError::from)?;
++    Ok(Json(counts))
++}
++
++pub async fn default_project() -> Json<ProjectFile> {
++    Json(ProjectFile::default())
++}
++
++pub async fn read_project(
++    State(state): State<AppState>,
++    AxPath(name): AxPath<String>,
++) -> JsonResult<ProjectFile> {
++    let project = file_management::read_projectfile(&state.writing, name).await?;
++    Ok(Json(project))
++}
++
++pub async fn write_project(
++    State(state): State<AppState>,
++    Json(project): Json<ProjectFile>,
++) -> Result<(), ApiError> {
++    file_management::write_projectfile(&state.writing, project).await?;
++    Ok(())
++}
++
++pub async fn read_trajectory(
++    State(state): State<AppState>,
++    AxPath(name): AxPath<String>,
++) -> JsonResult<TrajectoryFile> {
++    let trajectory = file_management::read_trajectory_file(&state.writing, name).await?;
++    Ok(Json(trajectory))
++}
++
++pub async fn read_all_trajectory(State(state): State<AppState>) -> JsonResult<Vec<TrajectoryFile>> {
++    let names = file_management::find_all_trajectories(&state.writing).await;
++    let mut out = vec![];
++    for name in names {
++        match file_management::read_trajectory_file(&state.writing, name).await {
++            Ok(trajectory) => out.push(trajectory),
++            Err(e) => {
++                tracing::error!("{e}");
++                // Matches the desktop behavior: a too-new schema aborts the
++                // whole batch rather than silently dropping that trajectory.
++                if let ChoreoError::SchemaTooNew(..) = e {
++                    return Err(e.into());
++                }
++            }
++        }
++    }
++    Ok(Json(out))
++}
++
++pub async fn write_trajectory(
++    State(state): State<AppState>,
++    Json(trajectory): Json<TrajectoryFile>,
++) -> Result<(), ApiError> {
++    file_management::write_trajectory_file(&state.writing, &trajectory).await?;
++    Ok(())
++}
++
++#[derive(Deserialize)]
++pub struct RenameTrajectoryRequest {
++    pub old_trajectory: TrajectoryFile,
++    pub new_name: String,
++}
++
++pub async fn rename_trajectory(
++    State(state): State<AppState>,
++    Json(req): Json<RenameTrajectoryRequest>,
++) -> Result<(), ApiError> {
++    file_management::rename_trajectory_file(&state.writing, req.old_trajectory, req.new_name)
++        .await?;
++    Ok(())
++}
++
++pub async fn delete_trajectory(
++    State(state): State<AppState>,
++    Json(trajectory): Json<TrajectoryFile>,
++) -> Result<(), ApiError> {
++    file_management::delete_trajectory_file(&state.writing, trajectory).await?;
++    Ok(())
++}
++
++pub async fn trajectory_up_to_date(Json(trajectory): Json<TrajectoryFile>) -> Json<bool> {
++    Json(trajectory.up_to_date())
++}
++
++#[derive(Deserialize)]
++pub struct ConfigMatchesRequest {
++    pub config_1: RobotConfig<f64>,
++    pub config_2: RobotConfig<f64>,
++}
++
++pub async fn config_matches(Json(req): Json<ConfigMatchesRequest>) -> Json<bool> {
++    Json(req.config_1 == req.config_2)
++}
++
++#[derive(Deserialize)]
++pub struct GenerateRequest {
++    pub project: ProjectFile,
++    pub trajectory: TrajectoryFile,
++    pub handle: i64,
++}
++
++/// Runs the optimizer via the existing subprocess + `ipc-channel` mechanism
++/// in `choreo_core::generation::remote` - unmodified from the desktop build.
++/// It is already Tauri-agnostic: it re-execs this binary's own
++/// `current_exe()` with the remote-child argument convention, which the
++/// sidecar's own `main()` handles the same way `src-tauri`'s does.
++pub async fn generate(
++    State(state): State<AppState>,
++    Json(req): Json<GenerateRequest>,
++) -> JsonResult<TrajectoryFile> {
++    let trajectory =
++        remote_generate_parent(&state.remote, req.project, req.trajectory, req.handle).await?;
++    Ok(Json(trajectory))
++}
++
++#[derive(Deserialize)]
++pub struct CancelRequest {
++    pub handle: i64,
++}
++
++pub async fn cancel(
++    State(state): State<AppState>,
++    Json(req): Json<CancelRequest>,
++) -> Result<(), ApiError> {
++    state.remote.kill(req.handle)?;
++    Ok(())
++}
++
++pub async fn cancel_all(State(state): State<AppState>) {
++    state.remote.kill_all();
++}
++
++#[derive(Deserialize)]
++pub struct GenTrajDataRequest {
++    pub project: ProjectFile,
++    pub trajectories: Vec<TrajectoryFile>,
++}
++
++pub async fn gen_traj_data_file(
++    State(state): State<AppState>,
++    Json(req): Json<GenTrajDataRequest>,
++) -> Result<(), ApiError> {
++    if let Some(package_name) = java::codegen_package_name(&req.project)
++        && let Some(codegen_root) = req.project.codegen.get_root()
++    {
++        let deploy_root = state.writing.get_deploy_path().await?;
++        let file_path = deploy_root
++            .join(codegen_root)
++            .join(format!("{TRAJ_DATA_FILENAME}.java"));
++        tracing::debug!("Generating java file at {:?}.", file_path);
++        let content = java::traj_file_contents(
++            req.trajectories,
++            package_name,
++            req.project.codegen.use_choreo_lib,
++        );
++        fs::write(file_path, content).map_err(ChoreoError::from)?;
++    }
++    Ok(())
++}
++
++#[derive(Deserialize)]
++pub struct GenVarsRequest {
++    pub project: ProjectFile,
++}
++
++pub async fn gen_vars_file(
++    State(state): State<AppState>,
++    Json(req): Json<GenVarsRequest>,
++) -> Result<(), ApiError> {
++    if let Some(package_name) = java::codegen_package_name(&req.project)
++        && let Some(codegen_root) = req.project.codegen.get_root()
++    {
++        let deploy_root = state.writing.get_deploy_path().await?;
++        let file_path = deploy_root
++            .join(codegen_root)
++            .join(format!("{VARS_FILENAME}.java"));
++        tracing::debug!("Generating java file at {:?}.", file_path);
++        let content = java::vars_file_contents(&req.project, package_name);
++        fs::write(file_path, content).map_err(ChoreoError::from)?;
++    }
++    Ok(())
++}
++
++#[derive(Deserialize)]
++pub struct DeleteJavaFileRequest {
++    pub file_path: String,
++}
++
++pub async fn delete_java_file(Json(req): Json<DeleteJavaFileRequest>) -> Result<(), ApiError> {
++    if !req.file_path.contains(".java") {
++        return Err(ChoreoError::Io("Attempted to delete a non-Java file".to_string()).into());
++    }
++    if let Ok(exists) = fs::exists(&req.file_path)
++        && !exists
++    {
++        return Ok(());
++    }
++    fs::remove_file(&req.file_path).map_err(ChoreoError::from)?;
++    Ok(())
++}
++
++#[derive(Serialize)]
++pub struct Health {
++    ok: bool,
++    service: &'static str,
++}
++
++pub async fn healthz() -> Json<Health> {
++    Json(Health {
++        ok: true,
++        service: "choreo-server",
++    })
++}
++
++// Not ported (desktop-only, no browser equivalent needed):
++//   open_in_explorer, select_codegen_folder, select_field_json,
++//   get_field_json_image / make_field_image_src, open_project_dialog,
++//   open_diagnostic_file, requested_file, build_info, error_message.
++// Not ported (sidecar has a fixed, single-tenant deploy root instead):
++//   set_deploy_root, get_deploy_root.
+diff --git a/src-server/src/main.rs b/src-server/src/main.rs
+new file mode 100644
+index 0000000..9887e64
+--- /dev/null
++++ b/src-server/src/main.rs
+@@ -0,0 +1,133 @@
++//! HTTP sidecar that runs `choreo-core` inside a CodeRunner workspace
++//! container and exposes it over JSON, in place of the Tauri desktop shell
++//! (`src-tauri`). See `src-server/README.md` for the endpoint list and what
++//! was intentionally left out of this first port.
++
++mod error;
++mod handlers;
++mod state;
++mod ws;
++
++use std::{env, net::SocketAddr, path::PathBuf, thread};
++
++use axum::{
++    Router,
++    routing::{get, post, put},
++};
++use choreo_core::{
++    file_management::{self, WritingResources},
++    generation::{
++        generate::setup_progress_sender,
++        remote::{RemoteArgs, RemoteGenerationResources, remote_generate_child},
++    },
++};
++use state::AppState;
++
++fn main() {
++    // Mirrors src-tauri/src/main.rs: when re-invoked with a single JSON
++    // argument describing a generation request, run as the solver child
++    // process instead of starting the server. remote_generate_parent()
++    // (called from the /generate handler) re-execs this same binary via
++    // std::env::current_exe(), so this branch must keep working unchanged
++    // for cancellation (killing the child) to keep working.
++    let args = env::args().collect::<Vec<_>>();
++    if let Some(arg) = args.get(1) {
++        if let Ok(remote_args) = RemoteArgs::from_content(arg) {
++            tracing_subscriber::fmt()
++                .with_max_level(tracing::Level::ERROR)
++                .init();
++            remote_generate_child(remote_args);
++            return;
++        }
++        panic!("Unsupported arguments: {args:?}");
++    }
++
++    tracing_subscriber::fmt()
++        .with_env_filter(
++            env::var("RUST_LOG").unwrap_or_else(|_| "choreo_server=debug,choreo_core=info".into()),
++        )
++        .init();
++
++    tokio::runtime::Builder::new_multi_thread()
++        .enable_all()
++        .build()
++        .expect("failed to build tokio runtime")
++        .block_on(run_server());
++}
++
++async fn run_server() {
++    // Must run before RemoteGenerationResources::new() so the progress
++    // channel exists before any generator could start sending to it.
++    let progress_rx = setup_progress_sender();
++    let (progress_tx, _) = tokio::sync::broadcast::channel::<ws::ProgressMessage>(256);
++    let progress_tx_drain = progress_tx.clone();
++    thread::Builder::new()
++        .name("choreo-progress-drain".to_string())
++        .spawn(move || {
++            // Fans the solver's progress channel (std::sync::mpsc, drained on
++            // a plain thread same as the desktop build) out to every
++            // connected /ws/progress client.
++            for update in progress_rx {
++                let result = progress_tx_drain.send(ws::ProgressMessage {
++                    handle: update.handle,
++                    update: update.update,
++                });
++                tracing::debug!(?result, "progress broadcast send");
++            }
++        })
++        .expect("failed to spawn progress-drain thread");
++
++    let writing = WritingResources::new();
++    let deploy_root = env::var("CHOREO_DEPLOY_ROOT")
++        .map(PathBuf::from)
++        .unwrap_or_else(|_| PathBuf::from("/workspace/project/src/main/deploy/choreo"));
++    std::fs::create_dir_all(&deploy_root).expect("failed to create deploy root");
++    file_management::set_deploy_path(&writing, deploy_root.clone()).await;
++    tracing::info!(deploy_root = %deploy_root.display(), "deploy root set");
++
++    let state = AppState {
++        writing,
++        remote: RemoteGenerationResources::new(),
++        progress: progress_tx,
++    };
++
++    let app = Router::new()
++        .route("/healthz", get(handlers::healthz))
++        .route("/ws/progress", get(ws::progress_ws))
++        .route("/worker-count", get(handlers::worker_count))
++        .route("/intervals/guess", post(handlers::guess_intervals))
++        .route("/project/default", get(handlers::default_project))
++        .route("/project/{name}", get(handlers::read_project))
++        .route("/project", put(handlers::write_project))
++        .route("/trajectories", get(handlers::read_all_trajectory))
++        .route("/trajectory/{name}", get(handlers::read_trajectory))
++        .route("/trajectory", put(handlers::write_trajectory))
++        .route("/trajectory/rename", post(handlers::rename_trajectory))
++        .route("/trajectory/delete", post(handlers::delete_trajectory))
++        .route(
++            "/trajectory/up-to-date",
++            post(handlers::trajectory_up_to_date),
++        )
++        .route("/config/matches", post(handlers::config_matches))
++        .route("/generate", post(handlers::generate))
++        .route("/generate/cancel", post(handlers::cancel))
++        .route("/generate/cancel-all", post(handlers::cancel_all))
++        .route("/codegen/traj-data", post(handlers::gen_traj_data_file))
++        .route("/codegen/vars", post(handlers::gen_vars_file))
++        .route("/java-file/delete", post(handlers::delete_java_file))
++        .with_state(state);
++
++    let port: u16 = env::var("CHOREO_PORT")
++        .ok()
++        .and_then(|p| p.parse().ok())
++        .unwrap_or(5900);
++    let addr = SocketAddr::from(([127, 0, 0, 1], port));
++    tracing::info!(%addr, "choreo-server listening");
++
++    let listener = tokio::net::TcpListener::bind(addr)
++        .await
++        .expect("failed to bind listener");
++    axum::serve(listener, app)
++        .await
++        .expect("server error");
++}
+diff --git a/src-server/src/state.rs b/src-server/src/state.rs
+new file mode 100644
+index 0000000..5b5012e
+--- /dev/null
++++ b/src-server/src/state.rs
+@@ -0,0 +1,11 @@
++use choreo_core::{file_management::WritingResources, generation::remote::RemoteGenerationResources};
++use tokio::sync::broadcast;
++
++use crate::ws::ProgressMessage;
++
++#[derive(Clone)]
++pub struct AppState {
++    pub writing: WritingResources,
++    pub remote: RemoteGenerationResources,
++    pub progress: broadcast::Sender<ProgressMessage>,
++}
+diff --git a/src-server/src/ws.rs b/src-server/src/ws.rs
+new file mode 100644
+index 0000000..fee90e4
+--- /dev/null
++++ b/src-server/src/ws.rs
+@@ -0,0 +1,60 @@
++//! Streams live solver progress (the in-progress trajectory shape, as it
++//! converges) to the browser over a WebSocket. The desktop build emits these
++//! as Tauri events straight from the progress channel; the sidecar instead
++//! fans the same channel out to every connected `/ws/progress` client via a
++//! broadcast channel, since more than one browser tab could be watching.
++
++use axum::{
++    extract::{
++        State,
++        ws::{Message, WebSocket, WebSocketUpgrade},
++    },
++    response::Response,
++};
++use choreo_core::generation::generate::LocalProgressUpdate;
++use serde::Serialize;
++use tokio::sync::broadcast;
++
++use crate::state::AppState;
++
++/// Local stand-in for `choreo_core::generation::generate::HandledLocalProgressUpdate`,
++/// which derives neither `Clone` nor `Serialize` upstream (it only ever
++/// crossed a Tauri event boundary, which needed neither). Defined here
++/// instead of patching `choreo-core`.
++#[derive(Clone, Debug, Serialize)]
++pub struct ProgressMessage {
++    pub handle: i64,
++    pub update: LocalProgressUpdate,
++}
++
++pub async fn progress_ws(ws: WebSocketUpgrade, State(state): State<AppState>) -> Response {
++    let rx = state.progress.subscribe();
++    ws.on_upgrade(move |socket| handle_socket(socket, rx))
++}
++
++async fn handle_socket(mut socket: WebSocket, mut rx: broadcast::Receiver<ProgressMessage>) {
++    loop {
++        tokio::select! {
++            update = rx.recv() => {
++                match update {
++                    Ok(update) => {
++                        let Ok(text) = serde_json::to_string(&update) else { continue };
++                        if socket.send(Message::Text(text.into())).await.is_err() {
++                            break;
++                        }
++                    }
++                    // A slow client skipped some updates; newer ones still arrive.
++                    Err(broadcast::error::RecvError::Lagged(_)) => continue,
++                    Err(broadcast::error::RecvError::Closed) => break,
++                }
++            }
++            // Only here to notice the client closing the connection (or sending a
++            // ping we don't care about) so this task doesn't outlive the socket.
++            incoming = socket.recv() => {
++                if !matches!(incoming, Some(Ok(_))) {
++                    break;
++                }
++            }
++        }
++    }
++}

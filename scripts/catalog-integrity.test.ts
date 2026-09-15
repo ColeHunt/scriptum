@@ -23,19 +23,13 @@ describe("bundled lesson catalog", () => {
 
 		expect(catalog.schemaVersion).toBe(1);
 		const ids = catalog.modules.map((module) => module.id).sort();
-		expect(ids).toEqual([
-			"advantagescope-intro",
-			"git-basics",
-			"hello-world",
-			"java-arrays",
-			"java-classes-objects",
-			"java-conditions",
-			"java-loops",
-			"java-methods",
-			"java-operators",
-			"java-variables",
-			"robot-starter",
-		]);
+		// The bundled catalog is a minimal zero-config/offline demo, not the full
+		// curriculum - git-basics, the rest of the Java Basics track, and the
+		// advantagescope-intro/elastic-intro tool lessons live in the external
+		// lessons repo LESSONS_CATALOG_REPO points a real deployment at. See
+		// docs/decisions/029-lessons-and-modules.md and
+		// docs/decisions/044-remote-catalog-checkpoints.md.
+		expect(ids).toEqual(["hello-world", "robot-starter"]);
 	});
 
 	test("every module subdir exists and is non-empty", async () => {
@@ -77,31 +71,6 @@ describe("bundled lesson catalog", () => {
 		]);
 	});
 
-	test("git-basics ships a scenario folder + README for every checkpoint, plus its setup script", async () => {
-		const manifest = await Bun.file(
-			resolve(catalogRoot, "modules.json"),
-		).json();
-		const catalog = lessonCatalogSchema.parse(manifest);
-		const module = catalog.modules.find((m) => m.id === "git-basics");
-		expect(module).toBeTruthy();
-		expect(module?.kind).toBe("git");
-		expect(module?.checkpoints.length).toBeGreaterThan(0);
-		expect(module?.setupScript).toBeTruthy();
-
-		await expectCatalogFile(module!.setupScript!);
-
-		const scenarioDirs = [
-			"01-first-commit",
-			"02-feature-branch",
-			"03-merge",
-			"04-merge-conflict",
-			"05-rebase",
-		];
-		for (const dir of scenarioDirs) {
-			await expectCatalogFile(`modules/git-basics/${dir}/README.md`);
-		}
-	});
-
 	test("every checkpoint's verifier script exists and checkpoint ids are unique", async () => {
 		const manifest = await Bun.file(
 			resolve(catalogRoot, "modules.json"),
@@ -113,7 +82,6 @@ describe("bundled lesson catalog", () => {
 			expect(new Set(ids).size).toBe(ids.length);
 
 			for (const checkpoint of module.checkpoints) {
-				expect(checkpoint.verifier.type).toBe("script");
 				if (checkpoint.verifier.type === "script") {
 					await expectCatalogFile(checkpoint.verifier.path);
 					// Checkpoint scripts live outside the module subdir that gets
@@ -123,6 +91,10 @@ describe("bundled lesson catalog", () => {
 					expect(checkpoint.verifier.path.startsWith(`${module.subdir}/`)).toBe(
 						false,
 					);
+				} else if (checkpoint.verifier.type === "nt4-value") {
+					// Checked live against a running robot by the control plane -
+					// no file to check exists on disk.
+					expect(checkpoint.verifier.topic.length).toBeGreaterThan(0);
 				}
 			}
 		}

@@ -80,18 +80,49 @@ students:
 Make sure students understand that lesson work is scratch work. If they want to
 keep something, they should copy it out or move to an imported team project.
 
-## The two bundled demo modules
+## The bundled catalog
 
-The bundled catalog ships with two modules that exercise the main workflows:
+The bundled catalog is deliberately minimal — just **Hello, World**
+(`plain-java`, no robot simulation) and **Robot Starter** (`robot`, a minimal
+WPILib/AdvantageKit project run from the Driver Station). It exists so a
+zero-config or fully offline run has something to try immediately, not to be
+a full curriculum.
 
-- **Hello, World**: a bare-bones Java project to make sure everything works. 
-  The student uses the editor's **Run** button; no robot simulation is involved.
-- **Robot Starter**: a minimal WPILib command-based robot project. The student
-  can edit code, run a simulation, inspect telemetry, and open PathPlanner.
+![The bundled lesson catalog: Hello, World and Robot Starter](/img/screenshots/lesson-catalog-modules.png)
 
-![The bundled lesson catalog: Hello, World and Robot Starter modules](/img/screenshots/lesson-catalog-modules.png)
+The full Java-fundamentals-to-robot progression — Git basics, the rest of the
+Java Basics track (variables through classes/objects), AdvantageScope and
+Elastic Dashboard tool lessons — lives in
+[github.com/mathewdunne/coderunner-lessons](https://github.com/mathewdunne/coderunner-lessons),
+the maintainer's own team lessons repo, structured the way any
+[remote catalog](#remote-catalog-your-own-lessons-repo) is. Point your own
+deployment's `LESSONS_CATALOG_REPO` at it, or at your own repo written to the
+same schema, to get the full curriculum instead of just the two bundled
+modules.
 
-These two also illustrate the two lesson **kinds** (`plain-java` and `robot`)
-that you will use when authoring your own modules. See
-[Authoring Lesson Modules](./authoring-modules.md) for the difference and how to
-build each one.
+These two bundled modules still illustrate concepts you'll use if you write
+your own lessons, covered in full in
+[Authoring Lesson Modules](./authoring-modules.md):
+
+- **Three lesson kinds** — `plain-java` (bare Java, editor Run button, no
+  robot simulation), `robot` (a full WPILib/Gradle project run from the
+  Driver Station), and `git` (keeps its `.git` history, for lessons that
+  teach Git itself — not exercised by the bundled catalog, but core to the
+  external one's `git-basics` module).
+- **Tracks group modules in the menu; `requires` locks them.** A module's
+  `track` (for example `"Java Basics"`) is a cosmetic label — it just groups
+  related modules together in the Switch Project menu. `requires` is the
+  actual gate: a module listing another in `requires` stays locked until
+  every checkpoint in that prerequisite has passed. Don't confuse the two.
+  (Robot Starter's own `requires: ["git-basics"]` only bites when a remote
+  catalog actually has a `git-basics` module to resolve it against — against
+  the bundled catalog alone, an unresolvable prerequisite id is skipped
+  rather than treated as blocking, so it loads unlocked.)
+- **Checkpoints** are verifiable goals within a module — a script check
+  against the student's project, or a live NetworkTables value for `robot`
+  modules — and are what `requires` locking is actually built on.
+
+Checkpoints and hard prerequisites work identically whether a module comes
+from the bundled catalog or your own remote one — see
+[Authoring Lesson Modules](./authoring-modules.md#checkpoints-and-hard-prerequisites)
+for how that works for a remote catalog specifically.

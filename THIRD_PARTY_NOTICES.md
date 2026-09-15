@@ -12,7 +12,8 @@ endorse or are affiliated with CodeRunner.
 | Component | Version | License | Where it ships |
 | --- | --- | --- | --- |
 | [AdvantageScope](https://github.com/Mechanical-Advantage/AdvantageScope) (**modified**) | v26.0.2 | BSD-3-Clause | AS Lite assets compiled into the control image |
-| [PathPlanner](https://github.com/mjansen4857/pathplanner) (**modified**) | release artifact | MIT | web assets bundled into the control image |
+| [Choreo](https://github.com/SleipnirGroup/Choreo) (**modified**) | commit `6eccc5a` | BSD-3-Clause | web frontend compiled into the control image; `choreo-server` sidecar compiled into the workspace image |
+| [Elastic Dashboard](https://github.com/Gold872/elastic_dashboard) (**modified**) | v2026.1.2 | MIT | web assets bundled into the control image |
 | [VSCodium](https://github.com/VSCodium/vscodium) / Code – OSS (**modified**) | 1.126.04524 | MIT | `reh-web` build, base of the workspace image |
 | [linuxserver/vscodium-web](https://github.com/linuxserver/docker-vscodium-web) image | 1.126.04524-ls35 | GPL-3.0 | base image, unmodified |
 | [Eclipse Temurin JDK](https://adoptium.net/) | 17.0.15+6 and 21.0.12.1+1 | GPL-2.0 with Classpath Exception | project/simulation and JDT LS runtimes in the workspace image |
@@ -25,12 +26,13 @@ endorse or are affiliated with CodeRunner.
 | [GitHub CLI](https://github.com/cli/cli) | apt `stable` | MIT | installed in the workspace image |
 | [Docusaurus](https://github.com/facebook/docusaurus) | see `website/package.json` | MIT | documentation site only |
 
-Exact pinned versions live in [`containers/code/Dockerfile`](./containers/code/Dockerfile)
-and [`.gitmodules`](./.gitmodules). Runtime npm dependencies carry their own licenses, listed
-in `bun.lock` and the respective `package.json` files. AdvantageScope ships its own aggregated
-dependency license list as `ThirdPartyLicenses.txt` alongside the AS Lite bundle.
-The PathPlanner web bundle includes Flutter's generated dependency notices at
-`assets/NOTICES`.
+Exact pinned versions live in [`vendor/tools.json`](./vendor/tools.json) (AdvantageScope,
+Elastic Dashboard, Choreo), [`containers/code/Dockerfile`](./containers/code/Dockerfile)
+(everything else in the workspace image), and [`.gitmodules`](./.gitmodules). Runtime npm
+dependencies carry their own licenses, listed in `bun.lock` and the respective
+`package.json` files. AdvantageScope ships its own aggregated dependency license list as
+`ThirdPartyLicenses.txt` alongside the AS Lite bundle. The Elastic Dashboard web bundle
+includes Flutter's generated dependency notices at `assets/NOTICES`.
 
 ## Modifications
 
@@ -39,10 +41,19 @@ source level in [`patches/advantagescope/001-lite-nt4-endpoint-injection.patch`]
 and injects an NT4 endpoint so AS Lite can run embedded in the CodeRunner page
 (`/scope/?frcEndpoint=postMessage`).
 
-CodeRunner redistributes a **modified** PathPlanner web build from the
-[`mathewdunne/pathplanner-web`](https://github.com/mathewdunne/pathplanner-web)
-fork. It adds an embedded entry point and HTTP-backed project file access for
-CodeRunner. The upstream project remains copyright Michael Jansen.
+CodeRunner also redistributes a **modified** build of Choreo. The patches
+are kept at source level in
+[`patches/choreo/`](./patches/choreo/) (five patches, applied in order) and
+add, most notably, a `choreo-server` HTTP/WS sidecar replacing Choreo's
+native Tauri IPC boundary, and a frontend ported to talk to it instead. See
+[decision 045](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/045-choreo-submodule-migration.md)
+for the full list of changes.
+
+CodeRunner also redistributes a **modified** build of Elastic Dashboard. The
+patch is kept at source level in
+[`patches/elastic/001-coderunner-integration.patch`](./patches/elastic/) and
+adds embedded-mode NT4 endpoint injection and layout persistence to the
+student's project (`/elastic/?ws=<slug>`).
 
 CodeRunner also redistributes a **modified** VSCodium `reh-web` build. The
 workspace image rewrites the stale VS Code revision in
@@ -57,11 +68,45 @@ No other bundled component is modified.
 
 ---
 
-## PathPlanner
+## Choreo
+
+BSD 3-Clause License
+
+Copyright (c) Choreo contributors
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from this
+   software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+---
+
+## Elastic Dashboard
 
 MIT License
 
-Copyright (c) 2022 Michael Jansen
+Copyright (c) 2023-2026 Gold87 and other Elastic contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

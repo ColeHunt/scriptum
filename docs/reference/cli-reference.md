@@ -58,13 +58,17 @@ avoids needing either form for the first admin — see
 
 | Script | What it does |
 |--------|-------------|
-| `build` | Full production build: builds the React web shell, builds AdvantageScope Lite assets, downloads the PathPlanner web dist, then pulls the workspace Docker image from GHCR. Run this before `start` on a fresh checkout. Fails if the PathPlanner artifact cannot be downloaded — a production build ships every advertised feature. |
+| `build` | Full production build: builds the React web shell, AdvantageScope Lite, and Choreo's web frontend, then pulls the workspace Docker image from GHCR. Run this before `start` on a fresh checkout. Does **not** build Elastic Dashboard (see `build:elastic`) — a missing Elastic dist just leaves `/elastic/` serving a 503. |
 | `build:web` | Builds only the React web shell into `apps/web/dist`. |
-| `build:ascope` | Builds only the AdvantageScope Lite assets into `dist/advantagescope`. Requires emscripten and the AdvantageScope submodule. |
-| `fetch:dist` | Downloads the web shell and AdvantageScope from a CodeRunner release, plus an optional PathPlanner web build. Pass `--tag vX.Y.Z` (or set `DEMO_RELEASE_TAG`) to pin the CodeRunner release; set `DEMO_RELEASE_REPO` to use a fork. A missing PathPlanner artifact only warns here — `/pathplanner/` then serves a 503. |
-| `fetch:pathplanner` | Downloads only the PathPlanner web dist into `dist/pathplanner`, and fails if it is unavailable. Called by `build`. Override the source with `PATHPLANNER_RELEASE_REPO`/`PATHPLANNER_RELEASE_TAG`. |
+| `build:ascope` | Builds only the AdvantageScope Lite assets into `dist/advantagescope`. Requires emscripten and the AdvantageScope submodule. Applies `patches/advantagescope/` first. |
+| `build:choreo` | Builds only Choreo's web frontend into `dist/choreo`, cloning the pinned commit from `vendor/tools.json` and building it inline with Vite. Requires only Bun (no Flutter, no submodule). |
+| `build:elastic` | Builds only Elastic Dashboard's web assets into `dist/elastic`. Requires a local Flutter SDK — deliberately **not** part of `build`, since Flutter is otherwise absent from this repo's toolchain (see [decision 041](../decisions/041-elastic-dashboard-integration.md)). Applies `patches/elastic/` first. |
+| `apply:ascope-patches` | Applies `patches/advantagescope/*.patch` to the vendored submodule without building. |
+| `apply:elastic-patches` | Applies `patches/elastic/*.patch` to the vendored submodule without building. |
+| `check:vendor-manifest` | Cross-checks `vendor/tools.json` against `.gitmodules`, `THIRD_PARTY_NOTICES.md`, `.env.example`, `config.ts`, and each tool's Dockerfile build sites; fails if any have drifted apart. Part of `verify`. See [decision 043](../decisions/043-vendor-tool-manifest.md). |
+| `fetch:dist` | Downloads the web shell and AdvantageScope from a CodeRunner release, builds Choreo (same as `build:choreo`), and fetches an optional Elastic Dashboard web build. Pass `--tag vX.Y.Z` (or set `DEMO_RELEASE_TAG`) to pin the CodeRunner release; set `DEMO_RELEASE_REPO` to use a fork. A missing/failed Elastic fetch only warns here — `/elastic/` then serves a 503. |
 | `setup:demo` | One-step demo setup: pulls the workspace image, then runs `fetch:dist`. Pair with `demo`. |
-| `clean` | Deletes built output directories (`apps/web/dist`, `dist/advantagescope`, and `dist/pathplanner`). Does not touch runtime data under `data/`. |
+| `clean` | Deletes built output directories (`apps/web/dist`, `dist/advantagescope`, `dist/choreo`, and `dist/elastic`). Does not touch runtime data under `data/`. |
 
 ## Docs Site
 
@@ -88,7 +92,7 @@ avoids needing either form for the first admin — see
 |--------|-------------|
 | `docker:pull:workspace` | Pulls the workspace image (`${CODERUNNER_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${CODERUNNER_TAG:-latest}`) from the registry. Called automatically by `build`. |
 | `docker:build:workspace` | Builds the workspace image locally from `containers/code/Dockerfile`, tagged with the same canonical name the pull uses — so a rebuild is picked up directly by `docker compose up`. Use when iterating on the container itself; normal deployments pull the prebuilt image instead. |
-| `docker:build:control` | Builds the control-plane image locally. It builds the web shell and AdvantageScope, and makes a best-effort download of the latest prebuilt PathPlanner web artifact (release builds pass a pinned `PATHPLANNER_DIST_TAG` instead, which makes that download required). Normal deployments pull the published image instead. |
+| `docker:build:control` | Builds the control-plane image locally: web shell, AdvantageScope Lite (compiled in-image via emsdk), and Choreo's web frontend (cloned and built in-image) all come from source; Elastic Dashboard must already be built at `dist/elastic` (via `build:elastic` or `fetch:dist`) before running this, since the image has no Flutter toolchain. Choreo's repo/commit pin is passed explicitly from `vendor/tools.json`. Normal deployments pull the published image instead. |
 | `docker:cleanup` | Removes all stopped managed containers (those with the `frc-sim.managed=true` label). Safe to run while the control plane is up. Accepts `--dry-run` to preview what would be removed. |
 | `docker:rebuild-workspaces` | Removes all running and stopped managed V2 workspace containers and clears their database leases, forcing fresh containers on next login. Student project files are untouched; they are bind-mounted and survive container removal. Accepts `--dry-run`. Run this after updating the workspace image to force students into the new image on their next session. |
 

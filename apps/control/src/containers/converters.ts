@@ -94,7 +94,7 @@ export function upstreamEndpoints(
 			nt4: nt4Port,
 			vscode: vscodePort,
 			halsim: halsimPort,
-			// Not leased in port mode yet - see docs/decisions/040-choreo-integration.md.
+			// Not leased in port mode yet - see docs/decisions/042-choreo-integration.md.
 			choreo: null,
 		},
 		endpoints: {

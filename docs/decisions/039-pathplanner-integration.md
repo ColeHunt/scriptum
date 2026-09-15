@@ -1,6 +1,11 @@
 # 039 — PathPlanner integration
 
-Status: **Accepted** — 2026-08-30
+Status: **Superseded** — 2026-08-30, superseded 2026-09-14 by
+[042 — Choreo integration](./042-choreo-integration.md). PathPlanner was
+fully removed and replaced by Choreo for path/auto editing; nothing
+described below (the deploy-files API, `/pathplanner/` serving,
+`fetch-pathplanner-dist.ts`) exists in the codebase anymore. Kept for
+historical record only.
 
 ## Context
 

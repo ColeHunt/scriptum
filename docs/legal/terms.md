@@ -103,8 +103,8 @@ it or for the data on it.
 
 ## 10. Third-party software
 
-CodeRunner bundles third-party software, including AdvantageScope, PathPlanner, VSCodium,
-WPILib, and the Java toolchain, each under its own license. Your use of those components is subject to
+CodeRunner bundles third-party software, including AdvantageScope, Choreo, Elastic Dashboard,
+VSCodium, WPILib, and the Java toolchain, each under its own license. Your use of those components is subject to
 their terms. See [Licenses](./licenses.md). None of those projects endorse or are affiliated
 with CodeRunner.
 

@@ -16,9 +16,11 @@ see [Google Cloud Deployment](./gcloud.md).
 ## Prerequisites
 
 Install **Docker Engine 24+ with the Compose plugin** and **Git**. The published
-images include the control plane, web app, AdvantageScope Lite, PathPlanner,
-and student development environment, so you do not need Bun or the build
-toolchain.
+images include the control plane, web app, AdvantageScope Lite, Choreo, and
+student development environment, so you do not need Bun or the build
+toolchain. Elastic Dashboard is included when the published image was built
+with it (see [decision 041](../decisions/041-elastic-dashboard-integration.md));
+if missing, `/elastic/` just serves a 503 and nothing else is affected.
 
 For 3–5 students, plan for at least 4 CPU cores, 16 GB RAM, and 20 GB free disk.
 For larger groups, see [Capacity and Sizing](../operating/capacity.md). Both

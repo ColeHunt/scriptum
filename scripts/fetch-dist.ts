@@ -26,12 +26,30 @@ const tag =
 		? Bun.argv[tagArgIndex + 1]
 		: (Bun.env.DEMO_RELEASE_TAG ?? "");
 
-const artifacts = [
+const artifacts: Array<{
+	asset: string;
+	destDir: string;
+	optional: boolean;
+}> = [
 	{
 		asset: "ascope-dist.tar.gz",
 		destDir: resolve(repoRoot, "dist/advantagescope"),
+		optional: false,
 	},
-	{ asset: "web-dist.tar.gz", destDir: resolve(repoRoot, "apps/web/dist") },
+	{
+		asset: "web-dist.tar.gz",
+		destDir: resolve(repoRoot, "apps/web/dist"),
+		optional: false,
+	},
+	// Optional: Elastic's Flutter web build is deliberately kept out of this
+	// repo's own toolchain (docs/decisions/041-elastic-dashboard-integration.md),
+	// so unlike the two artifacts above there's no from-source fallback here -
+	// a missing/failed download just leaves /elastic/ serving a 503.
+	{
+		asset: "elastic-dist.tar.gz",
+		destDir: resolve(repoRoot, "dist/elastic"),
+		optional: true,
+	},
 ];
 
 function downloadUrl(asset: string): string {
@@ -52,6 +70,7 @@ async function main(): Promise<void> {
 					asset: artifact.asset,
 					url: downloadUrl(artifact.asset),
 					destDir: artifact.destDir,
+					optional: artifact.optional,
 					hint: `Check that release ${tag || "latest"} exists for ${repo} and includes this asset.`,
 				},
 				scratch,

@@ -5,6 +5,7 @@ import { ChoreoPane } from "@/components/ChoreoPane";
 import { DemoBanner } from "@/components/DemoBanner";
 import { DriverStation } from "@/components/DriverStation";
 import { EditorPane } from "@/components/EditorPane";
+import { ElasticPane } from "@/components/ElasticPane";
 import { IDELayout } from "@/components/IDELayout";
 import { PaneVisibilityRoot } from "@/components/PaneVisibility";
 import { ScopePane } from "@/components/ScopePane";
@@ -290,6 +291,7 @@ export function WorkspacePage() {
 					/>
 				}
 				choreo={<ChoreoPane key={reloadNonce} workspaceSlug={simSlug} />}
+				elastic={<ElasticPane workspaceSlug={simSlug} />}
 				driverStation={
 					<DriverStation
 						simulationStatus={simulation.status}

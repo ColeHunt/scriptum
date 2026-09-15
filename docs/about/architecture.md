@@ -6,9 +6,10 @@ title: Architecture
 # Architecture
 
 CodeRunner is a self-hosted web application that gives each student a full
-Java IDE, an FRC robot simulator, and PathPlanner in the browser. There is no
-software for students to install: they open a URL, sign in, write code, design
-paths, and click **Start** in the built-in Driver Station.
+Java IDE, an FRC robot simulator, and live telemetry/path-planning tools in
+the browser. There is no software for students to install: they open a URL,
+sign in, write code, plan autos, and click **Start** in the built-in Driver
+Station.
 
 At a high level there are three moving parts:
 
@@ -26,9 +27,10 @@ At a high level there are three moving parts:
    │  Web shell (React)                              │
    │  ├─ VS Code editor (iframe)                     │
    │  ├─ Driver Station controls                     │
-   │  └─ Tool tabs                                   │
+   │  └─ Tool tabs (each independently toggleable)   │
    │     ├─ AdvantageScope Lite telemetry (iframe)   │
-   │     └─ PathPlanner path editor (iframe)         │
+   │     ├─ Choreo path editor (iframe)              │
+   │     └─ Elastic Dashboard (iframe)                │
    └───────────────────────────────────────────────┘
                         │  HTTPS / WSS  (one port, default 4000)
                         ▼
@@ -37,7 +39,8 @@ At a high level there are three moving parts:
    │  ├─ Auth + sessions (OAuth, allowlist)          │
    │  ├─ Workspace orchestration (start/stop)        │
    │  ├─ Authenticated proxy → editor / sim / NT4    │
-   │  ├─ Authenticated PathPlanner file API          │
+   │  ├─ Authenticated proxy → choreo-server sidecar │
+   │  ├─ Elastic layout persistence API              │
    │  ├─ Run pipeline (build + simulate)             │
    │  └─ SQLite (users, sessions, leases, audit)     │
    └───────────────────────────────────────────────┘
@@ -63,9 +66,9 @@ packaging and the two ways it reaches student containers, below.
 Everything a browser talks to goes through **one HTTP/WebSocket port** on the
 control plane (default `4000`, set by the `PORT` environment variable). The web
 shell, embedded tool assets, editor traffic, Run commands, telemetry feeds,
-and PathPlanner file requests all share that port. Students never connect to a
-container directly. This is what makes CodeRunner safe to put behind a single
-reverse proxy and TLS certificate.
+and the Choreo/Elastic proxies all share that port. Students never connect to
+a container directly. This is what makes CodeRunner safe to put behind a
+single reverse proxy and TLS certificate.
 
 ## What the control plane does
 
@@ -86,8 +89,16 @@ The control plane is a single Bun process. Its responsibilities:
   channel, and the NetworkTables telemetry stream are reverse-proxied through
   authenticated routes scoped to the signing-in user's own workspace. A student
   cannot reach another student's container.
-- **Workspace file access.** PathPlanner uses an authenticated API to load and
-  save supported deploy files in the signed-in student's project.
+- **Choreo proxying.** `choreo-server` runs as a sidecar process inside each
+  student's own workspace container (unlike AdvantageScope/Elastic, it's a
+  live server with direct access to that container's filesystem, not just a
+  static asset bundle), and reads/writes trajectories directly under
+  `src/main/deploy/choreo/` in the student's project. The control plane
+  reverse-proxies `/u/<slug>/api/choreo/**` (HTTP and WebSocket) to it.
+- **Elastic layout persistence.** The Elastic Dashboard iframe's layout is
+  mirrored to `src/main/deploy/elastic-layout.json` in the student's project
+  via an authenticated `/u/<slug>/api/elastic-layout` route, so it travels
+  with the robot project in git like a real competition deploy.
 - **The Run pipeline.** When a student clicks Run, the control plane drives a
   Gradle build inside that student's container and then launches the simulated
   robot program, streaming build and program output back to the browser.
@@ -110,24 +121,36 @@ the build and for simulator startup (defaults: build `90s`, startup `30s`).
 ## How telemetry flows
 
 The running robot program publishes telemetry to its NetworkTables server
-inside the container. AdvantageScope Lite, embedded in the browser as an
-iframe, subscribes to that data over NT4. Because containers are never exposed
-to the browser, the NT4 stream is proxied through the control plane: the robot
-program's NT4 server (loopback) → control plane proxy → AdvantageScope in the
-browser. The student sees field positions, signals, and plots update in real
-time as their robot runs.
+inside the container. AdvantageScope Lite and Elastic Dashboard, each
+embedded in the browser as an independently-toggleable iframe, subscribe to
+that data over NT4. Because containers are never exposed to the browser, the
+NT4 stream is proxied through the control plane: the robot program's NT4
+server (loopback) → control plane proxy → the requesting dashboard in the
+browser. The proxy identifies which dashboard is connecting via an `?app=`
+query parameter (defaulting to AdvantageScope for backward compatibility) so
+both can hold independent NT4 identities upstream. The student sees field
+positions, signals, and plots update in real time as their robot runs.
 
-## How PathPlanner files flow
+## How Choreo and Elastic reach the browser
 
-The control plane serves the PathPlanner web app as static files at
-`/pathplanner/`. The embedded app then uses the signed-in student's
-`/u/<slug>/api/deploy-files/` routes to load and save project files. It can
-read and write `src/main/deploy/pathplanner/**`; it can also read
-`src/main/deploy/choreo/**`, but cannot change it.
+Unlike PathPlanner (removed — see
+[decision 042](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/042-choreo-integration.md)),
+Choreo and Elastic Dashboard don't share one file-access pattern:
 
-These requests operate on the host-mounted project directory, so PathPlanner
-needs no service or port in the workspace container. The iframe reloads after
-a project switch to read the replacement project's files.
+- **Choreo** runs `choreo-server`, a small Rust sidecar, inside each
+  student's own workspace container. It has direct filesystem access to that
+  container, so trajectory files under `src/main/deploy/choreo/` are read and
+  written locally by the sidecar itself — the control plane only proxies the
+  browser's HTTP/WebSocket traffic through to it (`/u/<slug>/api/choreo/**`),
+  the same way it proxies the editor and NT4.
+- **Elastic Dashboard** is a static web bundle (like AdvantageScope), so it
+  has no server-side file access of its own. Its dashboard layout is
+  hydrated from and saved to `src/main/deploy/elastic-layout.json` via a
+  small authenticated API (`/u/<slug>/api/elastic-layout`), so it rides along
+  with the robot project in git.
+
+Both iframes reload after a project switch to pick up the replacement
+project's files.
 
 ## Persistence and data layout
 
@@ -151,8 +174,8 @@ data/
 
 Each container bind-mounts that student's `project/` and `home/` directories,
 so a student's work survives the container being stopped, restarted, or
-recreated. PathPlanner paths and autos live inside `project/` with the rest of
-the student's code and can be committed to Git. See
+recreated. Choreo trajectories and the Elastic layout live inside `project/`
+with the rest of the student's code and can be committed to Git. See
 [The Workspace Container](./workspace-container.md) for the container side of
 this contract.
 

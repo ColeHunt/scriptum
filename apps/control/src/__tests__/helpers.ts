@@ -250,6 +250,22 @@ document.body.dataset.fakeChoreoLoads = String(loads);
 	return choreoDistDir;
 }
 
+export async function createElasticDist(root: string): Promise<string> {
+	const elasticDistDir = join(root, "elastic-dist");
+	await mkdir(elasticDistDir, { recursive: true });
+	await writeFile(
+		join(elasticDistDir, "index.html"),
+		'<!doctype html><html><head><script src="main.js" defer></script></head><body>Elastic test dist</body></html>',
+		"utf8",
+	);
+	await writeFile(
+		join(elasticDistDir, "main.js"),
+		"console.log('elastic main');\n",
+		"utf8",
+	);
+	return elasticDistDir;
+}
+
 export async function withApp<T>(
 	fn: (app: ControlApp, root: string) => Promise<T>,
 	options: Partial<ControlAppOptions> = {},
@@ -259,12 +275,27 @@ export async function withApp<T>(
 	const webDistDir = await createWebDist(root);
 	const advantageScopeDistDir = await createAdvantageScopeDist(root);
 	const choreoDistDir = await createChoreoDist(root);
+	const elasticDistDir = await createElasticDist(root);
 	const app = await createApp({
 		dataDir: join(root, "data"),
 		catalogDir,
+		// Empty string, not null/omitted: config.ts's resolution is
+		// `input.catalogRepo ?? Bun.env.LESSONS_CATALOG_REPO ?? null`, and `??`
+		// treats an explicit null exactly like "not provided" - it would still
+		// fall through to Bun.env.LESSONS_CATALOG_REPO. Bun auto-loads .env for
+		// every bun process including `bun test`, so a developer's real
+		// LESSONS_CATALOG_REPO in .env (for their own local deployment) would
+		// otherwise silently swap every test's catalog source from this
+		// fixture to a live network fetch of their real remote catalog. Empty
+		// string is falsy (createCatalogSource's `if (config.catalogRepo)`
+		// correctly treats it as "no repo", same as null) but not nullish, so
+		// it actually wins the `??` chain. Tests that want the remote path can
+		// still override via `options`, spread below.
+		catalogRepo: "",
 		webDistDir,
 		advantageScopeDistDir,
 		choreoDistDir,
+		elasticDistDir,
 		sessionSecret: "test-session-secret",
 		baseUrl: "http://localhost:4000",
 		idleStopMinutes: 30,

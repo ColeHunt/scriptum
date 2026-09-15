@@ -1,18 +1,24 @@
 # Shared by both image builds (context = repo root):
 #   containers/code/Dockerfile    needs containers/code/, catalog/
 #   containers/control/Dockerfile needs package.json, bun.lock, tsconfig*,
-#     apps/, packages/, scripts/, catalog/, vendor/, patches/, and the
+#     apps/, packages/, scripts/, catalog/, vendor/, patches/, the
 #     submodule gitdir .git/modules/vendor/AdvantageScope (for the
-#     AdvantageScope patch/symlink steps).
+#     AdvantageScope patch/symlink steps), and dist/elastic (a host-prebuilt
+#     Flutter output, only for a local build — CI supplies it via
+#     --build-context instead).
 
 # Git metadata, except the AdvantageScope submodule gitdir.
 .git
 !.git/modules/vendor/AdvantageScope
 
-# Dependencies and build outputs (regenerated inside the build stages).
+# Dependencies and build outputs (regenerated inside the build stages) —
+# except dist/elastic, which is the one exception that's genuine build INPUT,
+# not output: the elastic-dist stage copies a host-prebuilt Flutter web build
+# (no Flutter SDK in this Dockerfile's own toolchain — see decision 041).
 node_modules
 **/node_modules
 dist
+!dist/elastic
 apps/web/dist
 
 # Runtime and local-only data.

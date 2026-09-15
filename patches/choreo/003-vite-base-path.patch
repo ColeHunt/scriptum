@@ -1,0 +1,17 @@
+diff --git a/vite.config.ts b/vite.config.ts
+index f5089f0..793877a 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -20,6 +20,12 @@ export default defineConfig(async () => ({
+   // to make use of `TAURI_DEBUG` and other env variables
+   // https://tauri.studio/v1/api/config#buildconfig.beforedevcommand
+   envPrefix: ["VITE_", "TAURI_"],
++  // CodeRunner serves this build at /choreo/ (see
++  // docs/decisions/040-choreo-integration.md on the CodeRunner side), not
++  // site root - asset URLs need the prefix so they don't collide with
++  // CodeRunner's own /assets/*. Tauri desktop builds still want root-relative
++  // paths, hence the branch.
++  base: process.env.TAURI_PLATFORM ? "/" : "/choreo/",
+   build: {
+     // Tauri supports es2021
+     target: process.env.TAURI_PLATFORM == "windows" ? "chrome105" : "safari14",

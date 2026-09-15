@@ -41,25 +41,33 @@ telemetry.
 4. Click **Stop** when you are finished, or **Restart** to stop the code and re-run with any changes you've made.
 
 Build output and robot output appear in the **Console** tab. Use the top-bar
-**AdvantageScope** and **PathPlanner** tabs to switch the tool beside the editor.
-AdvantageScope opens by default, and switching tabs does not reload either tool.
+**AdvantageScope**, **Choreo**, and **Elastic Dashboard** tabs to switch tools
+beside the editor — each is independently toggleable, so you can show more
+than one at once. AdvantageScope opens by default, and switching tabs does
+not reload any of them.
 
-## PathPlanner
+## Choreo
 
-For robot lessons and imported projects, the **PathPlanner** tab opens the path
+For robot lessons and imported projects, the **Choreo** tab opens the path
 editor. For path and auto editing basics, see the
-[official PathPlanner guide](https://pathplanner.dev/gui-editing-paths-and-autos.html).
+[official Choreo guide](https://choreo.autos).
 
-![Pathplanner open alongside the editor, with a path being edited](/img/screenshots/pathplanner-overview.png)
+Choreo writes to `src/main/deploy/choreo/**` in the current project — it runs
+as its own process inside your workspace container, with direct access to
+those files. If you edit a Choreo file directly in VSCodium, refresh the
+CodeRunner page before looking for that change in Choreo. Switching or
+resetting the project reloads Choreo with the new project's files.
 
-PathPlanner writes to `src/main/deploy/pathplanner/**` in the current project.
-Files under `src/main/deploy/choreo/**` are visible but read-only.
-If you edit a PathPlanner file directly in VSCodium, refresh the CodeRunner page
-before looking for that change in PathPlanner. Switching or resetting the
-project reloads PathPlanner with the new project's files.
+Choreo's robot telemetry and hot reload are not connected. Use AdvantageScope
+or Elastic Dashboard for simulated robot telemetry.
 
-PathPlanner robot telemetry and hot reload are not connected. Use AdvantageScope
-for simulated robot telemetry.
+## Elastic Dashboard
+
+The **Elastic Dashboard** tab is an alternative to AdvantageScope for viewing
+live NetworkTables telemetry while a simulation runs. Its layout (which
+widgets you've added and how they're arranged) is saved automatically to
+`src/main/deploy/elastic-layout.json` in the current project, so it travels
+with your code and survives a project switch.
 
 ## Console lessons
 

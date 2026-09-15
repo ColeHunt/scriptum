@@ -122,6 +122,7 @@ const KNOWN_TOP_LEVEL: ReadonlySet<string> = new Set([
 	"/scope",
 	"/metrics",
 	"/choreo",
+	"/elastic",
 ]);
 
 const KNOWN_WORKSPACE_SUFFIXES: ReadonlySet<string> = new Set([
@@ -146,6 +147,7 @@ const KNOWN_WORKSPACE_SUFFIXES: ReadonlySet<string> = new Set([
 	"/api/checkpoints",
 	"/api/checkpoints/verify",
 	"/api/scope-log",
+	"/api/elastic-layout",
 	"/api/project/import",
 	"/api/heartbeat",
 	"/coderunner-icon.png",
@@ -157,6 +159,7 @@ export function templateRoute(path: string): string {
 	if (path.startsWith("/api/auth/")) return "/api/auth/*";
 	if (path.startsWith("/scope/")) return "/scope/*";
 	if (path.startsWith("/choreo/")) return "/choreo/*";
+	if (path.startsWith("/elastic/")) return "/elastic/*";
 	if (path.startsWith("/assets/")) return "/assets/*";
 	if (path.startsWith("/admin/")) return "/admin/*";
 

@@ -1,4 +1,4 @@
-import { Code, Gamepad2, Waypoints } from "lucide-react";
+import { Code, Gamepad2, LayoutDashboard, Waypoints } from "lucide-react";
 import type { ReactNode } from "react";
 import {
 	createContext,
@@ -10,12 +10,18 @@ import {
 import advantagescopeLogo from "@/assets/advantagescope-logo.png";
 import { cn } from "@/lib/utils";
 
-export type PaneKey = "editor" | "scope" | "choreo" | "driverStation";
+export type PaneKey =
+	| "editor"
+	| "scope"
+	| "choreo"
+	| "elastic"
+	| "driverStation";
 
 const PANE_KEYS: readonly PaneKey[] = [
 	"editor",
 	"scope",
 	"choreo",
+	"elastic",
 	"driverStation",
 ];
 
@@ -25,7 +31,12 @@ const PANE_KEYS: readonly PaneKey[] = [
 // Station isn't in this group: it's a full sibling row, and collapsing it
 // just lets the workbench row above grow to fill the freed space, which is
 // exactly the single-app-fullscreen behavior.
-const WORKBENCH_PANE_KEYS: readonly PaneKey[] = ["editor", "scope", "choreo"];
+const WORKBENCH_PANE_KEYS: readonly PaneKey[] = [
+	"editor",
+	"scope",
+	"choreo",
+	"elastic",
+];
 
 export type PaneVisibility = Record<PaneKey, boolean>;
 
@@ -34,6 +45,7 @@ const DEFAULT_VISIBILITY: PaneVisibility = {
 	editor: true,
 	scope: true,
 	choreo: false,
+	elastic: false,
 	driverStation: true,
 };
 
@@ -122,6 +134,7 @@ const PANE_LABELS: Record<PaneKey, string> = {
 	editor: "Editor",
 	scope: "AdvantageScope",
 	choreo: "Choreo",
+	elastic: "Elastic",
 	driverStation: "Driver Station",
 };
 
@@ -171,6 +184,10 @@ export function PaneToggleRow() {
 			<PaneToggleButton
 				paneKey="choreo"
 				icon={<Waypoints className="size-4 shrink-0" />}
+			/>
+			<PaneToggleButton
+				paneKey="elastic"
+				icon={<LayoutDashboard className="size-4 shrink-0" />}
 			/>
 			<PaneToggleButton
 				paneKey="driverStation"

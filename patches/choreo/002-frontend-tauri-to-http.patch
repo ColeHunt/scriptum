@@ -1,0 +1,1054 @@
+diff --git a/src-server/src/handlers.rs b/src-server/src/handlers.rs
+index b5e0420..44b5452 100644
+--- a/src-server/src/handlers.rs
++++ b/src-server/src/handlers.rs
+@@ -246,6 +246,36 @@ pub async fn delete_java_file(Json(req): Json<DeleteJavaFileRequest>) -> Result<
+     Ok(())
+ }
+ 
++#[derive(Deserialize)]
++pub struct DeleteCodegenFileRequest {
++    pub project: ProjectFile,
++    pub filename: String,
++}
++
++/// Deletes a generated codegen file (e.g. when a student turns off "generate
++/// vars file"). Resolves the path the same way gen_traj_data_file/
++/// gen_vars_file do - the frontend has no filesystem of its own to compute
++/// an absolute path with, unlike the desktop build (which used Tauri's own
++/// path APIs against getDeployRoot()).
++pub async fn delete_codegen_file(
++    State(state): State<AppState>,
++    Json(req): Json<DeleteCodegenFileRequest>,
++) -> Result<(), ApiError> {
++    if let Some(codegen_root) = req.project.codegen.get_root() {
++        let deploy_root = state.writing.get_deploy_path().await?;
++        let file_path = deploy_root
++            .join(codegen_root)
++            .join(format!("{}.java", req.filename));
++        if let Ok(exists) = fs::exists(&file_path)
++            && !exists
++        {
++            return Ok(());
++        }
++        fs::remove_file(file_path).map_err(ChoreoError::from)?;
++    }
++    Ok(())
++}
++
+ #[derive(Serialize)]
+ pub struct Health {
+     ok: bool,
+diff --git a/src-server/src/main.rs b/src-server/src/main.rs
+index 9887e64..d0d200e 100644
+--- a/src-server/src/main.rs
++++ b/src-server/src/main.rs
+@@ -115,6 +115,10 @@ async fn run_server() {
+         .route("/codegen/traj-data", post(handlers::gen_traj_data_file))
+         .route("/codegen/vars", post(handlers::gen_vars_file))
+         .route("/java-file/delete", post(handlers::delete_java_file))
++        .route(
++            "/codegen/delete",
++            post(handlers::delete_codegen_file),
++        )
+         .with_state(state);
+ 
+     let port: u16 = env::var("CHOREO_PORT")
+diff --git a/src/AppMenu.tsx b/src/AppMenu.tsx
+index 21dac46..a7bf56b 100644
+--- a/src/AppMenu.tsx
++++ b/src/AppMenu.tsx
+@@ -18,8 +18,6 @@ import {
+ } from "@mui/material";
+ import IconButton from "@mui/material/IconButton";
+ import Tooltip from "@mui/material/Tooltip";
+-import { path } from "@tauri-apps/api";
+-import { ask } from "@tauri-apps/plugin-dialog";
+ import { observer } from "mobx-react";
+ import { Component } from "react";
+ import {
+@@ -39,13 +37,11 @@ type Props = object;
+ type State = object;
+ 
+ class AppMenu extends Component<Props, State> {
++  // The browser IDE's project directory is always a POSIX path inside a
++  // Linux container - no need for Tauri's path.sep() to learn the
++  // separator.
+   private convertToRelative(filePath: string): string {
+-    return filePath.replace(
+-      RegExp(
+-        `^(?:C:)?\\${path.sep()}(Users|home)\\${path.sep()}[a-zA-Z]+\\${path.sep()}`
+-      ),
+-      "~" + path.sep()
+-    );
++    return filePath.replace(RegExp("^(?:C:)?/(Users|home)/[a-zA-Z]+/"), "~/");
+   }
+ 
+   CopyToClipboardButton({ data, tooltip }: { data: any; tooltip: string }) {
+@@ -163,10 +159,7 @@ class AppMenu extends Component<Props, State> {
+               onClick={async () => {
+                 if (
+                   uiState.hasSaveLocation ||
+-                  !(await ask("Do you want to save this project first?", {
+-                    title: "Choreo",
+-                    kind: "warning"
+-                  }))
++                  !window.confirm("Do you want to save this project first?")
+                 ) {
+                   await newProject();
+                 } else {
+@@ -249,7 +242,7 @@ class AppMenu extends Component<Props, State> {
+     return (
+       (relativeFormat
+         ? this.convertToRelative(uiState.projectDir as string)
+-        : uiState.projectDir) + path.sep()
++        : uiState.projectDir) + "/"
+     );
+   }
+ }
+diff --git a/src/components/sidebar/PathSelector.tsx b/src/components/sidebar/PathSelector.tsx
+index fd05f21..d4facaf 100644
+--- a/src/components/sidebar/PathSelector.tsx
++++ b/src/components/sidebar/PathSelector.tsx
+@@ -7,7 +7,6 @@ import {
+ } from "@mui/icons-material";
+ import DeleteIcon from "@mui/icons-material/Delete";
+ import { IconButton, TextField, Tooltip } from "@mui/material";
+-import { confirm } from "@tauri-apps/plugin-dialog";
+ import { observer } from "mobx-react";
+ import React, { Component } from "react";
+ import { toast } from "react-toastify";
+@@ -279,11 +278,9 @@ class PathSelectorOption extends Component<OptionProps, OptionState> {
+               className={styles.SidebarRightIcon}
+               onClick={(e) => {
+                 e.stopPropagation();
+-                confirm(`Delete "${this.getPath().name}"?`).then((result) => {
+-                  if (result) {
+-                    deletePath(this.props.uuid);
+-                  }
+-                });
++                if (window.confirm(`Delete "${this.getPath().name}"?`)) {
++                  deletePath(this.props.uuid);
++                }
+               }}
+             >
+               <DeleteIcon></DeleteIcon>
+diff --git a/src/document/CodeGenStore.ts b/src/document/CodeGenStore.ts
+index fca709a..3ae1230 100644
+--- a/src/document/CodeGenStore.ts
++++ b/src/document/CodeGenStore.ts
+@@ -1,6 +1,5 @@
+ import { types } from "mobx-state-tree";
+ import { CodeGenConfig } from "./schema/DocumentTypes";
+-import { path } from "@tauri-apps/api";
+ import { toast } from "react-toastify";
+ 
+ const PATH_SEP_REGEX = /[/\\\\]/g;
+@@ -25,7 +24,7 @@ export const CodeGenStore = types
+       if (!self.root) {
+         return null;
+       }
+-      const splitPath = self.root.split(path.sep() + "java" + path.sep());
++      const splitPath = self.root.split("/java/");
+       if (splitPath.length === 1) {
+         toast.error(
+           'Invalid path: make sure your code generation root points to a "java" directory.'
+diff --git a/src/document/DocumentManager.ts b/src/document/DocumentManager.ts
+index 9cf7753..ff84308 100644
+--- a/src/document/DocumentManager.ts
++++ b/src/document/DocumentManager.ts
+@@ -1,6 +1,3 @@
+-import { path, window as tauriWindow } from "@tauri-apps/api";
+-import { ask, save } from "@tauri-apps/plugin-dialog";
+-import { TauriEvent, UnlistenFn } from "@tauri-apps/api/event";
+ import { DocumentStore, SelectableItemTypes } from "./DocumentModel";
+ 
+ import hotkeys from "hotkeys-js";
+@@ -287,9 +284,7 @@ async function removeCodegenFile(name: string) {
+   if (!doc.codegen.root) {
+     return;
+   }
+-  const deployRoot = await Commands.getDeployRoot();
+-  const dir = await path.join(deployRoot, doc.codegen.root);
+-  await Commands.deleteJavaFile(dir + "/" + name + ".java");
++  await Commands.deleteCodegenFile(doc.serializeChor(), name);
+ }
+ 
+ let pathNamesReactionDisposer: IReactionDisposer | null = null;
+@@ -340,7 +335,7 @@ export async function openProjectFile() {
+ 
+   if (cliRequestedProject) {
+     const fileDirectory: OpenFilePayload = cliRequestedProject;
+-    const filePath = fileDirectory.dir + path.sep() + fileDirectory.name;
++    const filePath = fileDirectory.dir + "/" + fileDirectory.name;
+     tracing.info(`Attempting to open: ${filePath}`);
+     return openProject(fileDirectory).catch((err) => {
+       tracing.error(
+@@ -354,7 +349,7 @@ export async function openProjectFile() {
+     const fileDirectory: OpenFilePayload = JSON.parse(
+       lastOpenedFileEventPayload
+     );
+-    const filePath = fileDirectory.dir + path.sep() + fileDirectory.name;
++    const filePath = fileDirectory.dir + "/" + fileDirectory.name;
+     tracing.info(`Attempting to open: ${filePath}`);
+     return openProject(fileDirectory).catch((err) => {
+       tracing.error(
+@@ -424,29 +419,12 @@ export async function setupEventListeners() {
+     }
+   });
+ 
+-  // Save files on closing
+-  tauriWindow
+-    .getCurrentWindow()
+-    .listen(TauriEvent.WINDOW_CLOSE_REQUESTED, async () => {
+-      if (!(await canSave())) {
+-        if (
+-          await ask("Save project?", {
+-            title: "Choreo",
+-            kind: "warning"
+-          })
+-        ) {
+-          if (!(await saveProjectDialog())) {
+-            return;
+-          }
+-        }
+-      }
+-      await tauriWindow.getCurrentWindow().destroy();
+-    })
+-    .then((unlisten: UnlistenFn) => {
+-      window.addEventListener("unload", () => {
+-        unlisten();
+-      });
+-    });
++  // Desktop build intercepted the native window-close event to offer a
++  // save-before-quit prompt. That has no clean equivalent embedded in an
++  // iframe (beforeunload dialogs are unreliable there, and browsers ignore
++  // any custom message anyway) - the autosave reaction right below already
++  // persists every change on a 50ms debounce, which covers most of the same
++  // ground without needing to intercept anything.
+   let autoSaveDebounce: ReturnType<typeof setTimeout> | undefined = undefined;
+   const performAutoSave = () => {
+     if (uiState.hasSaveLocation) {
+@@ -629,19 +607,23 @@ export async function setupEventListeners() {
+ export async function openProjectSelectFeedback() {
+   if (
+     !uiState.hasSaveLocation &&
+-    (await ask("Do you want to save this project first?", {
+-      title: "Choreo",
+-      kind: "warning"
+-    }))
++    window.confirm("Do you want to save this project first?")
+   ) {
+     await saveProjectDialog();
+   }
+-  await Commands.openProjectDialog().then((filepath) =>
+-    openProject(filepath).catch((err) => {
+-      tracing.error(`Failed to open Choreo file '${filepath.name}': ${err}`);
+-      toast.error(`Failed to open Choreo file '${filepath.name}': ${err}`);
+-    })
+-  );
++  await Commands.openProjectDialog()
++    .then((filepath) =>
++      openProject(filepath).catch((err) => {
++        tracing.error(`Failed to open Choreo file '${filepath.name}': ${err}`);
++        toast.error(`Failed to open Choreo file '${filepath.name}': ${err}`);
++      })
++    )
++    .catch((err) => {
++      // openProjectDialog is a native file-picker stub - not yet supported
++      // in the browser IDE (see tauriCommands.ts).
++      tracing.error("Failed to open project dialog:", err);
++      toast.error(err?.content ?? "Opening a project file is not supported here.");
++    });
+ }
+ 
+ export async function openProject(projectPath: OpenFilePayload) {
+@@ -780,7 +762,7 @@ export async function newProject(promptForCodegen: boolean = true) {
+     Choreo can generate Java files (more information: https://choreo.autos/usage/editing-paths/).
+     Select a folder to enable this feature?
+     `;
+-  if (await ask(msg, { title: "Choreo", kind: "warning" })) {
++  if (window.confirm(msg)) {
+     await codeGenDialog();
+   }
+ }
+@@ -791,8 +773,12 @@ export function hover(item: SelectableItemTypes) {
+   doc.setHoveredSidebarItem(item);
+ }
+ 
++// The desktop build used this to detect an unsaved new project (no deploy
++// root chosen yet via File > Save As). The browser IDE has no such state -
++// CHOREO_DEPLOY_ROOT is fixed for the life of the sidecar process, one per
++// student workspace - so there is always somewhere to save to.
+ export async function canSave(): Promise<boolean> {
+-  return (await Commands.getDeployRoot()).length > 0;
++  return true;
+ }
+ 
+ export async function renamePath(uuid: string, newName: string) {
+@@ -901,61 +887,40 @@ export async function genJavaFiles() {
+   });
+ }
+ 
+-function getRelativePath(from: string, to: string): string {
+-  const fromParts = from.split(path.sep());
+-  const toParts = to.split(path.sep());
+-  let i = 0;
+-  while (
+-    i < fromParts.length &&
+-    i < toParts.length &&
+-    fromParts[i] === toParts[i]
+-  ) {
+-    i++;
+-  }
+-  const backSteps = fromParts.slice(i).map(() => "..");
+-  const forwardSteps = toParts.slice(i);
+-  return [...backSteps, ...forwardSteps].join(path.sep());
+-}
+-
++// Not ported: choosing a codegen folder needs a native directory picker.
++// Codegen always writes under the project's existing deploy tree instead
++// (see gen_traj_data_file/gen_vars_file server-side) - there is no separate
++// folder to select in the browser IDE yet.
+ export async function codeGenDialog() {
+-  const newRoot = await Commands.selectCodegenFolder();
+-  await Promise.allSettled([
+-    removeCodegenFile(VARS_FILENAME),
+-    removeCodegenFile(TRAJ_DATA_FILENAME)
+-  ]);
+-  doc.codegen.setRoot(getRelativePath(await Commands.getDeployRoot(), newRoot));
+-  await saveProject();
+-  toast.success("Choreo code geneneration was enabled.");
++  try {
++    await Commands.selectCodegenFolder();
++  } catch (err) {
++    tracing.error("Failed to select codegen folder:", err);
++    toast.error("Choosing a codegen folder is not supported here.");
++  }
+ }
+ 
++// Desktop build let you pick an arbitrary save location via a native file
++// dialog; the browser IDE's deploy root is fixed, so "Save As" here just
++// renames the project rather than relocating it.
+ export async function saveProjectDialog() {
+-  const filePath = await save({
+-    title: "Save Document",
+-    filters: [
+-      {
+-        name: "Choreo Document",
+-        extensions: ["chor"]
+-      }
+-    ]
+-  });
+-  if (filePath === null) {
++  const name = window.prompt(
++    "Save project as (name, no extension):",
++    doc.name
++  );
++  if (!name) {
+     return false;
+   }
+-  const dir = await path.dirname(filePath);
+-  const name = (await path.basename(filePath)).split(".")[0];
+ 
+-  tracing.info("Saving to", dir, name);
++  tracing.info("Saving as", name);
+ 
+   localStorage.setItem(
+     LocalStorageKeys.LAST_OPENED_FILE_LOCATION,
+-    JSON.stringify({ dir, name })
++    JSON.stringify({ dir: "", name })
+   );
+ 
+   doc.setName(name);
+-
+-  await Commands.setDeployRoot(dir).catch(tracing.error);
+-
+-  uiState.setSaveFileDir(dir);
++  uiState.setSaveFileDir("");
+   uiState.setProjectName(name);
+ 
+   await saveProject();
+diff --git a/src/document/DocumentModel.tsx b/src/document/DocumentModel.tsx
+index a59be6e..f8858c7 100644
+--- a/src/document/DocumentModel.tsx
++++ b/src/document/DocumentModel.tsx
+@@ -1,10 +1,8 @@
+-import { Event, UnlistenFn, listen } from "@tauri-apps/api/event";
+ import { Instance, getParent, types } from "mobx-state-tree";
+ import { UndoManager } from "mst-middlewares";
+ import { toast } from "react-toastify";
+ import {
+   DifferentialSample,
+-  ProgressUpdate,
+   Project,
+   PROJECT_SCHEMA_VERSION,
+   SampleType,
+@@ -20,6 +18,7 @@ import {
+ } from "./HolonomicWaypointStore";
+ import { PathListStore } from "./PathListStore";
+ import { RobotConfigStore } from "./RobotConfigStore";
++import { subscribeToProgress } from "./progressSocket";
+ import { Commands } from "./tauriCommands";
+ import { tracing } from "./tauriTracing";
+ import { CodeGenStore } from "./CodeGenStore";
+@@ -228,28 +227,25 @@ export const DocumentStore = types
+         m.from.setTrajectoryTargetIndex(m.from.getTargetIndex());
+       });
+       const handle = pathStore.handle;
+-      let unlisten: UnlistenFn = () => {};
++      let unlisten: () => void = () => {};
+       pathStore.ui.setIterationNumber(0);
+-      await listen(`solver-status-${handle}`, async (rawEvent) => {
+-        const event: Event<ProgressUpdate> = rawEvent as Event<ProgressUpdate>;
++      await subscribeToProgress(handle, (update) => {
+         // Currently, generation can't be cancelled until the child is spawned,
+         // so we wait for feedback before marking the path as generating.
+         pathStore.ui.setGenerating(true);
+         if (
+-          event.payload!.type === "swerveTrajectory" ||
+-          event.payload!.type === "differentialTrajectory"
++          update.type === "swerveTrajectory" ||
++          update.type === "differentialTrajectory"
+         ) {
+-          const samples = event.payload.update as
+-            | SwerveSample[]
+-            | DifferentialSample[];
++          const samples = update.update as SwerveSample[] | DifferentialSample[];
+           pathStore.ui.setInProgressTrajectory(samples);
+           pathStore.ui.setIterationNumber(
+             pathStore.ui.generationIterationNumber + 1
+           );
+-        } else if (event.payload!.type === "diagnosticText") {
++        } else if (update.type === "diagnosticText") {
+           /**/
+-        } else if (event.payload!.type === "intervalCounts") {
+-          (event.payload.update as number[]).forEach((c, i) =>
++        } else if (update.type === "intervalCounts") {
++          (update.update as number[]).forEach((c, i) =>
+             pathStore.params.waypoints[i].setIntervals(c)
+           );
+         }
+diff --git a/src/document/UIStateStore.tsx b/src/document/UIStateStore.tsx
+index 19ada92..4d747b6 100644
+--- a/src/document/UIStateStore.tsx
++++ b/src/document/UIStateStore.tsx
+@@ -1,5 +1,4 @@
+-import { window as tauriWindow } from "@tauri-apps/api";
+-import { getVersion } from "@tauri-apps/api/app";
++import { version } from "../util/version";
+ import { Instance, types } from "mobx-state-tree";
+ import {
+   PathGradient,
+@@ -17,7 +16,6 @@ import {
+   navbarIndexToConstraintDefinition,
+   navbarIndexToConstraintKey
+ } from "./UIData";
+-import { tracing } from "./tauriTracing";
+ import { CustomFieldData } from "./schema/DocumentTypes";
+ import { defaultFieldData } from "../components/field/svg/fields/JSONFieldImage";
+ 
+@@ -111,13 +109,11 @@ export const UIStateStore = types
+           return [];
+         });
+       },
+-      async updateWindowTitle() {
+-        await tauriWindow
+-          .getCurrentWindow()
+-          .setTitle(
+-            `Choreo ${await getVersion()} - ${self.projectName ?? "Untitled"}`
+-          )
+-          .catch(tracing.error);
++      // Sets this document's own title, not a native window titlebar -
++      // harmless either way, since CodeRunner's shell owns the real browser
++      // tab title when this runs inside its iframe.
++      updateWindowTitle() {
++        document.title = `Choreo ${version} - ${self.projectName ?? "Untitled"}`;
+       }
+     };
+   })
+diff --git a/src/document/apiBase.ts b/src/document/apiBase.ts
+new file mode 100644
+index 0000000..462df49
+--- /dev/null
++++ b/src/document/apiBase.ts
+@@ -0,0 +1,10 @@
++// CodeRunner iframes this app at /choreo/?ws=<slug> (mirrors how PathPlanner's
++// web build reads its own ?ws= param - see
++// docs/decisions/040-choreo-integration.md on the CodeRunner side). The
++// session cookie on that same origin authenticates every request; the slug
++// only selects which workspace's choreo-server the control plane proxies to.
++const workspaceSlug = new URLSearchParams(window.location.search).get("ws");
++
++export const API_BASE = workspaceSlug
++  ? `/u/${workspaceSlug}/api/choreo`
++  : "";
+diff --git a/src/document/progressSocket.ts b/src/document/progressSocket.ts
+new file mode 100644
+index 0000000..de2c607
+--- /dev/null
++++ b/src/document/progressSocket.ts
+@@ -0,0 +1,78 @@
++// Replaces the desktop build's Tauri event listener (`listen("solver-status-
++// ${handle}", ...)`, emitted from the progress channel in src-tauri/src/
++// tauri.rs) with a WebSocket to choreo-server's /ws/progress, which the
++// control plane proxies the same way it proxies codium-server and HALSim.
++// choreo-server broadcasts every active generation's updates to all
++// connected clients tagged with {handle, update}; this module is the one
++// place that demultiplexes by handle, so call sites keep the same shape
++// (subscribe, get an unlisten function back) that `listen()` had.
++import { API_BASE } from "./apiBase";
++import { ProgressUpdate } from "./schema/DocumentTypes";
++
++type ProgressMessage = { handle: number; update: ProgressUpdate };
++
++let socket: WebSocket | null = null;
++const listenersByHandle = new Map<number, Set<(update: ProgressUpdate) => void>>();
++
++function ensureSocket(): WebSocket {
++  if (
++    socket &&
++    (socket.readyState === WebSocket.OPEN ||
++      socket.readyState === WebSocket.CONNECTING)
++  ) {
++    return socket;
++  }
++  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
++  const ws = new WebSocket(
++    `${proto}//${window.location.host}${API_BASE}/ws/progress`
++  );
++  ws.addEventListener("message", (event) => {
++    if (typeof event.data !== "string") return;
++    let parsed: ProgressMessage;
++    try {
++      parsed = JSON.parse(event.data);
++    } catch {
++      return;
++    }
++    listenersByHandle.get(parsed.handle)?.forEach((cb) => cb(parsed.update));
++  });
++  ws.addEventListener("close", () => {
++    if (socket === ws) socket = null;
++  });
++  socket = ws;
++  return ws;
++}
++
++/**
++ * Subscribes to progress updates for one generation handle. Resolves once
++ * the connection is actually open, matching `listen()`'s contract that the
++ * listener is registered before the caller starts the generation it's
++ * watching - otherwise early updates could arrive before anyone is
++ * listening and be silently dropped (broadcast channels don't buffer for
++ * late subscribers).
++ */
++export function subscribeToProgress(
++  handle: number,
++  callback: (update: ProgressUpdate) => void
++): Promise<() => void> {
++  return new Promise((resolve) => {
++    const ws = ensureSocket();
++    let set = listenersByHandle.get(handle);
++    if (!set) {
++      set = new Set();
++      listenersByHandle.set(handle, set);
++    }
++    set.add(callback);
++    const unlisten = () => {
++      set?.delete(callback);
++      if (set && set.size === 0) {
++        listenersByHandle.delete(handle);
++      }
++    };
++    if (ws.readyState === WebSocket.OPEN) {
++      resolve(unlisten);
++    } else {
++      ws.addEventListener("open", () => resolve(unlisten), { once: true });
++    }
++  });
++}
+diff --git a/src/document/tauriCommands.ts b/src/document/tauriCommands.ts
+index 316e5bf..15f73ea 100644
+--- a/src/document/tauriCommands.ts
++++ b/src/document/tauriCommands.ts
+@@ -1,4 +1,3 @@
+-import { invoke } from "@tauri-apps/api/core";
+ import {
+   CustomFieldData,
+   Expr,
+@@ -7,16 +6,53 @@ import {
+   Trajectory
+ } from "./schema/DocumentTypes";
+ import { OpenFilePayload } from "./DocumentManager";
++import { API_BASE } from "./apiBase";
++
+ export type ChoreoError = { type: string; content: string };
+ export type ChoreoResult<T> = T | ChoreoError;
++
++// Every choreo-server error response is the same {type, content} shape
++// (see src-server/src/error.rs), unlike the desktop build, which splits
++// between that shape and a bare string depending on the command (compare
++// ChoreoError's derived Serialize in src-core/src/error.rs against
++// TauriChoreoError's in src-tauri/src/tauri.rs). Call sites expecting a bare
++// string from the latter set will see an object instead - a deliberate
++// simplification, not an oversight; see docs/decisions/040-choreo-integration.md
++// on the CodeRunner side.
++async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
++  const response = await fetch(`${API_BASE}${path}`, {
++    ...init,
++    headers: { "content-type": "application/json", ...(init?.headers ?? {}) }
++  });
++  if (response.status === 204) {
++    return undefined as T;
++  }
++  const text = await response.text();
++  const body = text.length > 0 ? JSON.parse(text) : null;
++  if (!response.ok) {
++    throw (body ?? { type: "Io", content: response.statusText });
++  }
++  return body as T;
++}
++
++function unsupported(feature: string): Promise<never> {
++  return Promise.reject({
++    type: "Io",
++    content: `${feature} is not available in the browser IDE.`
++  });
++}
++
+ export const Commands = {
+   guessIntervals: (config: RobotConfig<Expr>, trajectory: Trajectory) =>
+-    invoke<number[]>("guess_control_interval_counts", { config, trajectory }),
++    apiFetch<number[]>("/intervals/guess", {
++      method: "POST",
++      body: JSON.stringify({ config, trajectory })
++    }),
+ 
+   /**
+    * @returns The estimate of available parallelism from Rust's std::thread
+    */
+-  getWorkerCount: () => invoke<number>("get_worker_count"),
++  getWorkerCount: () => apiFetch<number>("/worker-count"),
+ 
+   /**
+    * Generates a `Trajectory` using the specified `Project` and `Trajectory`.
+@@ -28,14 +64,18 @@ export const Commands = {
+    * @returns The generated `Trajectory`.
+    */
+   generate: (project: Project, trajectory: Trajectory, handle: number) =>
+-    invoke<Trajectory>("generate_remote", { project, trajectory, handle }),
++    apiFetch<Trajectory>("/generate", {
++      method: "POST",
++      body: JSON.stringify({ project, trajectory, handle })
++    }),
+ 
+   /**
+    * Cancels all of the generators that are currently running.
+    *
+    * @returns `void`
+    */
+-  cancelAll: () => invoke<void>("cancel_all_remote_generators"),
++  cancelAll: () =>
++    apiFetch<void>("/generate/cancel-all", { method: "POST" }),
+ 
+   /**
+    * Cancels the generator with the specified handle.
+@@ -44,47 +84,46 @@ export const Commands = {
+    * @returns `void`
+    */
+   cancel: (handle: number) =>
+-    invoke<void>("cancel_remote_generator", { handle }),
++    apiFetch<void>("/generate/cancel", {
++      method: "POST",
++      body: JSON.stringify({ handle })
++    }),
+ 
+   /**
+-   * Opens the specified directory in the system's file explorer.
+-   *
+-   * @param path The path of the directory to open.
+-   * @returns `void`
++   * Not available in the browser IDE - there is no local filesystem to open
++   * an explorer window onto.
+    */
+-  openInExplorer: (path: string) => invoke<void>("open_in_explorer", { path }),
++  openInExplorer: (_path: string) => unsupported("Opening a file explorer"),
+   /**
+-   * Opens a file dialog for the user to select a file to open, only permits `.chor` files.
+-   *
+-   * @returns The path of the file that the user selected, or `null` if the user canceled the dialog.
++   * Not available in the browser IDE - use CodeRunner's own project/file
++   * browser instead of a native file dialog.
+    */
+-  openProjectDialog: () => invoke<OpenFilePayload>("open_project_dialog"),
++  openProjectDialog: (): Promise<OpenFilePayload> =>
++    unsupported("The native file picker"),
+ 
+   /**
+-   * Sets an application-wide directory path that will be used as the root for all file operations.
+-   *
+-   * @param dir The directory path to set as the root.
+-   * @returns `void`
++   * No-op: the sidecar's deploy root is fixed for the life of the process
++   * (CHOREO_DEPLOY_ROOT), one per student workspace.
+    */
+-  setDeployRoot: (dir: string) => invoke<void>("set_deploy_root", { dir }),
++  setDeployRoot: (_dir: string) => Promise.resolve(),
+   /**
+-   * Gets the application-wide directory path that is used as the root for all file operations.
+-   *
+-   * @returns The directory path that is set as the root.
++   * Always empty: see setDeployRoot. The real path only makes sense inside
++   * the student's container and the browser has no use for it.
+    */
+-  getDeployRoot: () => invoke<string>("get_deploy_root"),
++  getDeployRoot: () => Promise.resolve(""),
+ 
+   /**
+    * @returns The default `Project` that is loaded when a new `Project` is created.
+    */
+-  defaultProject: () => invoke<Project>("default_project"),
++  defaultProject: () => apiFetch<Project>("/project/default"),
+   /**
+    * Reads the `Project` with the specified name from the deploy root directory.
+    *
+    * @param name The name of the `Project` to read without the `.chor` extension.
+    * @returns The `Project` that was read.
+    */
+-  readProject: (name: string) => invoke<Project>("read_project", { name }),
++  readProject: (name: string) =>
++    apiFetch<Project>(`/project/${encodeURIComponent(name)}`),
+   /**
+    * Writes the specified `Project` to the deploy root directory.
+    *
+@@ -92,7 +131,10 @@ export const Commands = {
+    * @returns a `ChoreoResult<void>`
+    */
+   writeProject: (project: Project) =>
+-    invoke<ChoreoResult<void>>("write_project", { project }),
++    apiFetch<ChoreoResult<void>>("/project", {
++      method: "PUT",
++      body: JSON.stringify(project)
++    }),
+ 
+   /**
+    * Reads the `Trajectory` with the specified name from the deploy root directory.
+@@ -101,13 +143,13 @@ export const Commands = {
+    * @returns The `Trajectory` that was read.
+    */
+   readTrajectory: (name: string) =>
+-    invoke<Trajectory>("read_trajectory", { name }),
++    apiFetch<Trajectory>(`/trajectory/${encodeURIComponent(name)}`),
+   /**
+    * Scans the deploy root directory for all of the `Trajectory` files and returns them.
+    *
+    * @returns All of the `Trajectory` files in the deploy root directory.
+    */
+-  readAllTrajectory: () => invoke<Trajectory[]>("read_all_trajectory"),
++  readAllTrajectory: () => apiFetch<Trajectory[]>("/trajectories"),
+   /**
+    * Writes the specified `Trajectory` to the deploy root directory.
+    *
+@@ -115,7 +157,10 @@ export const Commands = {
+    * @returns a `ChoreoResult<void>`
+    */
+   writeTrajectory: (trajectory: Trajectory) =>
+-    invoke<ChoreoResult<void>>("write_trajectory", { trajectory }),
++    apiFetch<ChoreoResult<void>>("/trajectory", {
++      method: "PUT",
++      body: JSON.stringify(trajectory)
++    }),
+   /**
+    * Renames the specified `Trajectory` to the specified name.
+    *
+@@ -124,7 +169,10 @@ export const Commands = {
+    * @returns `void`
+    */
+   renameTrajectory: (oldTrajectory: Trajectory, newName: string) =>
+-    invoke<void>("rename_trajectory", { oldTrajectory, newName }),
++    apiFetch<void>("/trajectory/rename", {
++      method: "POST",
++      body: JSON.stringify({ old_trajectory: oldTrajectory, new_name: newName })
++    }),
+   /**
+    * Deletes the specified `Trajectory` from the deploy root directory.
+    *
+@@ -132,7 +180,10 @@ export const Commands = {
+    * @returns `void`
+    */
+   deleteTrajectory: (trajectory: Trajectory) =>
+-    invoke<void>("delete_trajectory", { trajectory }),
++    apiFetch<void>("/trajectory/delete", {
++      method: "POST",
++      body: JSON.stringify(trajectory)
++    }),
+ 
+   /**
+    * Returns if the `Trajectory` parameters and snapshot are equivalent.
+@@ -140,7 +191,10 @@ export const Commands = {
+    * @returns true if the parameters and snapshots are equivalent, false if not.
+    */
+   trajectoryUpToDate: (trajectory: Trajectory) =>
+-    invoke<boolean>("trajectory_up_to_date", { trajectory }),
++    apiFetch<boolean>("/trajectory/up-to-date", {
++      method: "POST",
++      body: JSON.stringify(trajectory)
++    }),
+ 
+   /**
+    * Returns if the `Trajectory` robot config snapshot is are equivalent.
+@@ -149,43 +203,74 @@ export const Commands = {
+    * @returns true if the parameters and snapshots are equivalent, false if not.
+    */
+   configMatches: (config1: RobotConfig<number>, config2: RobotConfig<number>) =>
+-    invoke<boolean>("config_matches", { config1, config2 }),
++    apiFetch<boolean>("/config/matches", {
++      method: "POST",
++      body: JSON.stringify({ config_1: config1, config_2: config2 })
++    }),
+ 
+   /**
+-   * If the application was opened via CLI and a file was specified, this will return the path of that file.
+-   *
+-   * @returns The path of the file that was opened via CLI, or `null` if no file was specified.
++   * The browser IDE has no CLI-opened-file concept; always null.
+    */
+-  requestedProject: () => invoke<OpenFilePayload | null>("requested_file"),
++  requestedProject: (): Promise<OpenFilePayload | null> => Promise.resolve(null),
+ 
+   /**
+-   * Opens the platforms file explorer to the directory holding a newly generated diagnostic zip file.
++   * Not available in the browser IDE - diagnostic zips have no native file
++   * explorer to reveal themselves in.
+    */
+-  openDiagnosticZip: (project: Project, trajectories: Trajectory[]) =>
+-    invoke<void>("open_diagnostic_file", { project, trajectories }),
++  openDiagnosticZip: (_project: Project, _trajectories: Trajectory[]) =>
++    unsupported("Diagnostic zip export"),
+ 
+   /**
+    * Deletes Java file content from a specified path.
+    */
+   deleteJavaFile: (filePath: string) =>
+-    invoke<void>("delete_java_file", { filePath }),
++    apiFetch<void>("/java-file/delete", {
++      method: "POST",
++      body: JSON.stringify({ file_path: filePath })
++    }),
++
++  /**
++   * Deletes a generated codegen file (e.g. ChoreoVars.java) by resolving its
++   * path against the project's codegen root server-side - the browser has
++   * no filesystem of its own to build an absolute path with.
++   */
++  deleteCodegenFile: (project: Project, filename: string) =>
++    apiFetch<void>("/codegen/delete", {
++      method: "POST",
++      body: JSON.stringify({ project, filename })
++    }),
+ 
+   /**
+-   * Sets the directory path to push generated Java files to.
++   * Not available in the browser IDE - codegen always writes under the
++   * project's existing deploy tree; there is no separate folder to pick.
+    */
+-  selectCodegenFolder: () => invoke<string>("select_codegen_folder"),
++  selectCodegenFolder: (): Promise<string> =>
++    unsupported("Choosing a codegen folder"),
+ 
+   /**
+    * Generates a file containing the start pose, end pose,
+    * total time, and name of every Choreo trajectory as a static constant.
+    */
+   genTrajDataFile: (project: Project, trajectories: Trajectory[]) =>
+-    invoke<void>("gen_traj_data_file", { project, trajectories }),
++    apiFetch<void>("/codegen/traj-data", {
++      method: "POST",
++      body: JSON.stringify({ project, trajectories })
++    }),
+ 
+   /**
+    * Generates a file containing every variable defined within Choreo's GUI.
+    */
+-  genVarsFile: (project: Project) => invoke<void>("gen_vars_file", { project }),
++  genVarsFile: (project: Project) =>
++    apiFetch<void>("/codegen/vars", {
++      method: "POST",
++      body: JSON.stringify({ project })
++    }),
+ 
+-  selectFieldJSON: () => invoke<CustomFieldData>("select_field_json")
++  /**
++   * Not available in the browser IDE yet - custom field backgrounds need a
++   * browser file upload in place of the native file picker. Bundled/default
++   * fields are unaffected.
++   */
++  selectFieldJSON: (): Promise<CustomFieldData> =>
++    unsupported("Selecting a custom field JSON")
+ };
+diff --git a/src/document/tauriTracing.ts b/src/document/tauriTracing.ts
+index e5af8e9..53e3119 100644
+--- a/src/document/tauriTracing.ts
++++ b/src/document/tauriTracing.ts
+@@ -1,95 +1,18 @@
+-import { invoke } from "@tauri-apps/api/core";
+-
+-type Location = {
+-  file: string;
+-  function: string | undefined;
+-};
+-
+-function parseStack(stack: string | undefined): Location {
+-  if (!stack) {
+-    return { file: "unknown", function: undefined };
+-  }
+-
+-  try {
+-    if (stack.includes("at ")) {
+-      //parse v8 stack
+-      const caller: string = stack.split("\n")[2];
+-      const callerParts: string[] = caller.split(" ");
+-      const inter: string | undefined = callerParts[callerParts.length - 1]
+-        .split("/")
+-        .pop();
+-      const callerFile: string =
+-        inter?.split(":")[0].split("?")[0] ?? "unknown";
+-      let callerFunc: string | undefined = callerParts[callerParts.length - 2];
+-      if (callerFunc === "Object.<anonymous>") {
+-        callerFunc = undefined;
+-      } else if (callerFunc === "at") {
+-        callerFunc = undefined;
+-      }
+-      return { file: callerFile, function: callerFunc };
+-    } else {
+-      // parse spidermonkey / jscore stack
+-      const caller: string = stack.split("\n")[1];
+-      const callerParts: string[] = caller.split("@");
+-      const callerFunc: string = callerParts[0];
+-      const callerFile: string = callerParts[1].split(":")[0];
+-      return { file: callerFile, function: callerFunc };
+-    }
+-  } catch (e) {
+-    console.error("Failed to parse stack", e);
+-    return { file: "unknown", function: undefined };
+-  }
+-}
+-
+-function trace(level: string, stack: Error, ...data: any[]): void {
+-  const location = parseStack(stack.stack);
+-  invoke("tracing_frontend", {
+-    level: level,
+-    msg: data.map((p) => p.toString()).join(" "),
+-    file: location.file,
+-    function: location.function
+-  });
+-}
+-
++// Desktop build forwarded these to the Rust tracing pipeline via
++// invoke("tracing_frontend", ...); choreo-server has no equivalent
++// endpoint, and the browser console is already visible to whoever needs
++// these logs, so this is just a thin console wrapper now.
+ export const tracing = {
+-  /**
+-   * A console.log substitute that logs the value to the native tracing pipeline.
+-   *
+-   * @param message The message to be logged. This will be converted to a string.
+-   * @param optionalParams Additional parameters to be logged.
+-   */
+   debug: (message: any, ...optionalParams: any[]) => {
+     console.log(message, optionalParams);
+-    trace("debug", new Error(), message, ...optionalParams);
+   },
+-  /**
+-   * A console.log substitute that logs the value to the native tracing pipeline.
+-   *
+-   * @param message The message to be logged. This will be converted to a string.
+-   * @param optionalParams Additional parameters to be logged.
+-   */
+   info: (message: any, ...optionalParams: any[]) => {
+     console.log(message, optionalParams);
+-    trace("info", new Error(), message, ...optionalParams);
+   },
+-  /**
+-   * A console.warn substitute that logs the warning to the native tracing pipeline.
+-   *
+-   * @param message The message to be logged. This will be converted to a string.
+-   * @param optionalParams Additional parameters to be logged.
+-   */
+   warn: (message: any, ...optionalParams: any[]) => {
+     console.warn(message, optionalParams);
+-    trace("warn", new Error(), message, ...optionalParams);
+   },
+-  /**
+-   * A console.error substitute that logs the error to the native tracing pipeline.
+-   *
+-   * @param message The message to be logged. This will be converted to a string.
+-   * @param optionalParams Additional parameters to be logged.
+-   */
+   error: (message: any, ...optionalParams: any[]) => {
+     console.error(message, optionalParams);
+-    trace("error", new Error(), message, ...optionalParams);
+   }
+ };
+diff --git a/src/util/BuildInfo.ts b/src/util/BuildInfo.ts
+index c3d43e4..cad435e 100644
+--- a/src/util/BuildInfo.ts
++++ b/src/util/BuildInfo.ts
+@@ -1,5 +1,3 @@
+-import { invoke } from "@tauri-apps/api/core";
+-
+ export interface BuildInfo {
+   ciPlatform: string | null;
+   pkgName: string;
+@@ -26,6 +24,35 @@ export interface BuildInfo {
+   gitBranch: string | null;
+ }
+ 
++// Not ported: this described the Tauri binary's own build (rustc version,
++// target triple, etc.), which has no equivalent for a server-rendered
++// browser IDE. Currently unused by any component; stubbed rather than
++// removed so re-adding a "Choreo" info panel later doesn't need this file
++// back.
+ export function getBuildInfo(): Promise<BuildInfo> {
+-  return invoke<BuildInfo>("build_info");
++  return Promise.resolve({
++    ciPlatform: null,
++    pkgName: "choreo",
++    pkgVersion: "unknown",
++    pkgVersionMajor: "",
++    pkgVersionMinor: "",
++    pkgVersionPatch: "",
++    pkgVersionPre: "",
++    target: "web",
++    host: "web",
++    profile: "release",
++    rustc: "",
++    optLevel: "",
++    debug: false,
++    features: [],
++    rustcVersion: "",
++    arch: "",
++    endian: "",
++    toolchain_env: "",
++    osFamily: "",
++    os: "",
++    buildTime: "",
++    gitHash: null,
++    gitBranch: null
++  });
+ }
+diff --git a/src/util/version.ts b/src/util/version.ts
+index 9431499..8c063b9 100644
+--- a/src/util/version.ts
++++ b/src/util/version.ts
+@@ -1,5 +1,5 @@
+-import { getVersion } from "@tauri-apps/api/app";
+-
+-export let version: string = "unknown";
+-
+-getVersion().then((v) => (version = v));
++// The desktop build's app version came from Tauri's own bundle metadata;
++// the browser IDE has no bundle to ask, so this tracks the Cargo workspace
++// version by hand. Keep in sync with Cargo.toml's [workspace.package]
++// version if it drifts.
++export const version: string = "2027.0.0-alpha.3";

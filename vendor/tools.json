@@ -1,0 +1,50 @@
+{
+	"schemaVersion": 1,
+	"tools": [
+		{
+			"id": "advantagescope",
+			"displayName": "AdvantageScope",
+			"kind": "submodule",
+			"repoUrl": "https://github.com/Mechanical-Advantage/AdvantageScope.git",
+			"pin": "v26.0.2",
+			"submodulePath": "vendor/AdvantageScope",
+			"patchesDir": "patches/advantagescope",
+			"license": "BSD-3-Clause",
+			"distDirEnvVar": "FRC_ASCOPE_DIST_DIR",
+			"imageDistPath": "dist/advantagescope",
+			"buildScript": "scripts/build-ascope-lite.ts",
+			"buildSites": ["containers/control/Dockerfile"],
+			"docsDecisionRef": "docs/decisions/archive/002-advantagescope-lite-hosting.md"
+		},
+		{
+			"id": "elastic",
+			"displayName": "Elastic Dashboard",
+			"kind": "submodule",
+			"repoUrl": "https://github.com/Gold872/elastic_dashboard.git",
+			"pin": "v2026.1.2",
+			"submodulePath": "vendor/elastic_dashboard",
+			"patchesDir": "patches/elastic",
+			"license": "MIT",
+			"distDirEnvVar": "FRC_ELASTIC_DIST_DIR",
+			"imageDistPath": "dist/elastic",
+			"buildScript": "scripts/build-elastic.ts",
+			"buildSites": ["containers/control/Dockerfile"],
+			"docsDecisionRef": "docs/decisions/041-elastic-dashboard-integration.md"
+		},
+		{
+			"id": "choreo",
+			"displayName": "Choreo",
+			"kind": "submodule",
+			"repoUrl": "https://github.com/SleipnirGroup/Choreo.git",
+			"pin": "6eccc5afc978d2fce36125f476cea85ecbfd3052",
+			"submodulePath": "vendor/Choreo",
+			"patchesDir": "patches/choreo",
+			"license": "BSD-3-Clause",
+			"distDirEnvVar": "FRC_CHOREO_DIST_DIR",
+			"imageDistPath": "dist/choreo",
+			"buildScript": "scripts/build-choreo.ts",
+			"buildSites": ["containers/control/Dockerfile", "containers/code/Dockerfile"],
+			"docsDecisionRef": "docs/decisions/045-choreo-submodule-migration.md"
+		}
+	]
+}

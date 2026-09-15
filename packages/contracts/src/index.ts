@@ -394,16 +394,30 @@ export const lessonModuleSubdirSchema = z
 	);
 
 /**
- * A checkpoint's verifier says how to check it. Only "script" exists today: a
- * shell script baked into the image under `checkpoints/`, run as the
- * workspace user against the student's project and expected to exit 0 (pass)
- * or non-zero (fail). `path` is a catalog-root-relative subdir, resolved the
- * same way `lessonModuleSubdirSchema` resolves a module's own subdir.
+ * A checkpoint's verifier says how to check it.
+ * - "script": a shell script baked into the image under `checkpoints/`, run
+ *   as the workspace user against the student's project and expected to
+ *   exit 0 (pass) or non-zero (fail). `path` is a catalog-root-relative
+ *   subdir, resolved the same way `lessonModuleSubdirSchema` resolves a
+ *   module's own subdir.
+ * - "nt4-value": checked directly by the control plane against a live NT4
+ *   topic (via the already-connected auto-chooser NT4 bridge), for a
+ *   `robot`-kind module whose student code can't be compiled against by a
+ *   hidden checkpoint class the way plain-java lessons can. "range" checks
+ *   every sample falls within [min, max]; "changes" checks at least two
+ *   distinct values were observed (catches a frozen number OR boolean).
  */
 export const lessonCheckpointVerifierSchema = z.discriminatedUnion("type", [
 	z.object({
 		type: z.literal("script"),
 		path: lessonModuleSubdirSchema,
+	}),
+	z.object({
+		type: z.literal("nt4-value"),
+		topic: z.string().min(1),
+		check: z.enum(["range", "changes"]),
+		min: z.number().optional(),
+		max: z.number().optional(),
 	}),
 ]);
 

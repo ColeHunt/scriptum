@@ -146,9 +146,10 @@ export type CatalogLoadContext = {
 	subdir: string;
 	kind: LessonModuleKind;
 	/** Catalog-root-relative script, run once after the files are copied in
-	 * (the `git` kind uses this to build its scenario repos). Bundled only —
-	 * a remote catalog's setup script would require fetching it separately,
-	 * which isn't implemented. */
+	 * (the `git` kind uses this to build its scenario repos). For a remote
+	 * catalog, its checkpoints/<id>/ dir is sparse-checked-out alongside the
+	 * module subdir in the same clone so this resolves there too - see
+	 * docs/decisions/044-remote-catalog-checkpoints.md. */
 	setupScript?: string | null;
 	remote: { cloneUrl: string; branch: string } | null;
 	send: ImportSend;
@@ -318,15 +319,19 @@ export class ImportManager {
 		await this.ensureRunning(workspace.id);
 
 		let projectRoot: string;
+		let remoteSourceDir: string | null = null;
 		try {
 			if (remote) {
-				// Remote: sparse shallow clone of just this module's subdir.
+				// Remote: sparse shallow clone of just this module's subdir (plus
+				// its checkpoints/<id>/ dir, when a setupScript needs it - see
+				// below). One clone, no extra network round trip.
 				send({
 					type: "progress",
 					stage: "cloning",
 					detail: `Fetching lesson "${moduleId}"…`,
 				});
 				const sourceDir = `/workspace/${stagingName}/source`;
+				remoteSourceDir = sourceDir;
 				await this.cloneOrThrow(
 					workspace.id,
 					[
@@ -344,13 +349,16 @@ export class ImportManager {
 					],
 					send,
 				);
+				const sparsePaths = ctx.setupScript
+					? [subdir, `checkpoints/${moduleId}`]
+					: [subdir];
 				const sparseResult = await this.runtimeExec(workspace.id, [
 					"git",
 					"-C",
 					sourceDir,
 					"sparse-checkout",
 					"set",
-					subdir,
+					...sparsePaths,
 				]);
 				if (sparseResult.exitCode !== 0) {
 					const detail =
@@ -418,7 +426,10 @@ export class ImportManager {
 					stage: "materializing",
 					detail: "Preparing lesson scenarios…",
 				});
-				const setupPath = `${IMAGE_CATALOG_DIR}/${safeCatalogSubdir(ctx.setupScript)}`;
+				// remoteSourceDir already has checkpoints/<id>/ sparse-checked-out
+				// above, alongside the module subdir, specifically so this resolves.
+				const setupRoot = remoteSourceDir ?? IMAGE_CATALOG_DIR;
+				const setupPath = `${setupRoot}/${safeCatalogSubdir(ctx.setupScript)}`;
 				const setupResult = await this.runtimeProvider.exec(
 					workspace.id,
 					["bash", setupPath],

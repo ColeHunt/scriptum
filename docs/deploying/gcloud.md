@@ -273,15 +273,20 @@ The **Release** workflow (`.github/workflows/release.yml`) runs automatically:
    `ghcr.io/<owner>/coderunner-control:<tag>` (both `:latest` too) to GHCR as
    **multi-arch images** (`linux/amd64` + `linux/arm64`), built on native
    runners per architecture and merged into one manifest per tag. The control
-   image builds the web shell and AdvantageScope Lite (emsdk runs inside a
-   build stage), then downloads the prebuilt PathPlanner web artifact at the
-   release tag pinned in `PATHPLANNER_DIST_TAG`. That download is required:
-   if it fails the release fails, rather than publishing a control image whose
-   `/pathplanner/` serves a 503. Nothing is compiled on a plain runner, and
-   nothing is built on the VM.
-4. Extracts `web-dist.tar.gz` + `ascope-dist.tar.gz` from the built control
-   image and uploads them to the CodeRunner GitHub Release. PathPlanner remains
-   an external artifact from the `pathplanner-web` release.
+   image builds the web shell, AdvantageScope Lite (emsdk runs inside a build
+   stage), and Choreo's web frontend (cloned and built inline from the commit
+   pinned in `vendor/tools.json`) from source on each architecture's own
+   runner. A separate `build-elastic` job (on a Flutter-equipped runner)
+   builds Elastic Dashboard once and feeds its dist into both architectures'
+   control image builds, since Flutter never enters `containers/control/Dockerfile`
+   itself — see [decision 041](../decisions/041-elastic-dashboard-integration.md).
+   If `build-elastic` fails, the whole release fails rather than publishing a
+   control image with a broken Elastic dist.
+4. Extracts `web-dist.tar.gz`, `ascope-dist.tar.gz`, and `elastic-dist.tar.gz`
+   from the build and uploads them to the CodeRunner GitHub Release (used by
+   `bun run fetch:dist`, the demo/quick-start path). Choreo has no separate
+   release artifact — it's only ever built inline as part of the control
+   image, never extracted or re-downloaded.
 
 **2. Deploy** — dispatch the deploy workflow against the published tag:
 

@@ -1,6 +1,6 @@
 import { cp, rm, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { applyAdvantageScopePatches } from "./apply-ascope-patches";
+import { applyVendorPatches } from "./apply-vendor-patches";
 
 const repoRoot = resolve(import.meta.dirname, "..");
 const ascopeRoot = resolve(repoRoot, "vendor", "AdvantageScope");
@@ -222,7 +222,7 @@ async function runPostinstallForLite(): Promise<void> {
 
 async function main(): Promise<void> {
 	await ensureSubmodule();
-	await applyAdvantageScopePatches();
+	await applyVendorPatches("advantagescope");
 	const emsdkRoot = await ensureEmscripten();
 
 	console.log(`Building AdvantageScope Lite from ${ascopeRoot}`);

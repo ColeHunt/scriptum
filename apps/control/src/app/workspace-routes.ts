@@ -1,5 +1,5 @@
-import { readdir, stat } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import {
 	autoChooserPatchSchema,
 	driverStationPatchSchema,
@@ -61,6 +61,12 @@ import type {
 } from "./types";
 
 const log = getLogger("workspace");
+
+const ELASTIC_LAYOUT_MAX_BYTES = 2 * 1024 * 1024;
+
+function elasticLayoutPath(workspace: { project_path: string }): string {
+	return resolve(workspace.project_path, "src/main/deploy/elastic-layout.json");
+}
 
 // Single entry point for every WebSocket upgrade in this file. It bakes in the
 // origin/CSRF check so a new WS route cannot silently skip it — reviewers should
@@ -605,6 +611,50 @@ export async function handleWorkspaceRoute(
 		return new Response(Bun.file(logPath), {
 			headers: { "content-type": "text/csv" },
 		});
+	}
+
+	// --- Elastic Dashboard layout: mirrors the browser-local layout to
+	// src/main/deploy/elastic-layout.json in the student's project, so it
+	// rides along with their robot code in git like a real competition
+	// deploy. See patches/elastic/README.md and
+	// docs/decisions/041-elastic-dashboard-integration.md. ---
+	if (suffix === "/api/elastic-layout" && request.method === "GET") {
+		const layoutPath = elasticLayoutPath(auth.workspace);
+		try {
+			const contents = await readFile(layoutPath, "utf8");
+			return new Response(contents, {
+				headers: { "content-type": "application/json; charset=utf-8" },
+			});
+		} catch {
+			return jsonResponse({ error: "No saved layout yet." }, { status: 404 });
+		}
+	}
+
+	if (suffix === "/api/elastic-layout" && request.method === "PUT") {
+		const body = await request.text();
+		if (body.length > ELASTIC_LAYOUT_MAX_BYTES) {
+			return jsonResponse({ error: "Layout is too large." }, { status: 413 });
+		}
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(body);
+		} catch {
+			return jsonResponse({ error: "Invalid JSON." }, { status: 400 });
+		}
+		if (
+			typeof parsed !== "object" ||
+			parsed === null ||
+			Array.isArray(parsed)
+		) {
+			return jsonResponse(
+				{ error: "Layout must be a JSON object." },
+				{ status: 400 },
+			);
+		}
+		const layoutPath = elasticLayoutPath(auth.workspace);
+		await mkdir(dirname(layoutPath), { recursive: true });
+		await writeFile(layoutPath, body, "utf8");
+		return jsonResponse({ ok: true });
 	}
 
 	// --- Import endpoints ---

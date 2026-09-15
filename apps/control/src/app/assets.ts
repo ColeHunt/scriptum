@@ -265,11 +265,24 @@ export async function scopeResponse(
 	return staticFileResponse(storage.config.advantageScopeDistDir, assetPath);
 }
 
-export async function choreoWebAssetResponse(
-	storage: AppStorage,
+/**
+ * Serves a vendored tool's built static dist under a fixed URL mount prefix
+ * (e.g. `/choreo/`, `/elastic/`) — every such tool is served identically
+ * (SPA-style, index.html fallback, a friendly 503 while the dist is
+ * missing/not yet built). Only AdvantageScope (`scopeResponse`, above) is
+ * genuinely different, since it also serves a walked bundled-assets
+ * manifest — everything else should go through this one helper rather than
+ * growing another copy-pasted per-tool function. See
+ * docs/decisions/043-vendor-tool-manifest.md.
+ */
+export async function vendorDistAssetResponse(
+	distDir: string,
+	mountPrefix: string,
 	pathname: string,
+	notBuiltMessage: string,
 ): Promise<Response> {
-	let suffix = pathname === "/choreo" ? "" : pathname.slice("/choreo/".length);
+	let suffix =
+		pathname === mountPrefix ? "" : pathname.slice(`${mountPrefix}/`.length);
 	if (suffix === "" || suffix === "/") {
 		suffix = "index.html";
 	}
@@ -278,24 +291,43 @@ export async function choreoWebAssetResponse(
 	try {
 		assetPath = decodeURIComponent(suffix);
 	} catch {
-		return new Response("Invalid Choreo asset path.", { status: 400 });
+		return new Response(`Invalid ${mountPrefix} asset path.`, { status: 400 });
 	}
 	const safePath = safeRelativeAssetPath(assetPath);
 	if (!safePath) {
-		return new Response("Invalid Choreo asset path.", { status: 400 });
+		return new Response(`Invalid ${mountPrefix} asset path.`, { status: 400 });
 	}
 
-	const response = await staticFileResponse(
-		storage.config.choreoDistDir,
-		safePath,
-	);
+	const response = await staticFileResponse(distDir, safePath);
 	if (response.status === 404 && safePath === "index.html") {
-		return htmlResponse(
-			"Choreo has not been built yet. Rebuild the control image to install the Choreo web dist.",
-			{ status: 503 },
-		);
+		return htmlResponse(notBuiltMessage, { status: 503 });
 	}
 	return response;
+}
+
+export async function choreoWebAssetResponse(
+	storage: AppStorage,
+	pathname: string,
+): Promise<Response> {
+	return vendorDistAssetResponse(
+		storage.config.choreoDistDir,
+		"/choreo",
+		pathname,
+		"Choreo has not been built yet. Rebuild the control image to install the Choreo web dist.",
+	);
+}
+
+export async function elasticWebAssetResponse(
+	storage: AppStorage,
+	pathname: string,
+): Promise<Response> {
+	return vendorDistAssetResponse(
+		storage.config.elasticDistDir,
+		"/elastic",
+		pathname,
+		"Elastic Dashboard has not been built yet. Run `bun run build:elastic` " +
+			"or `bun run fetch:dist` before starting the control plane.",
+	);
 }
 
 export function userAssetsPath(workspace: {

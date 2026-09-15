@@ -55,9 +55,10 @@ one-off operator commands, not for day-to-day use.
 ## Single entry point
 
 The control plane is the only process that listens on a public port (default
-`4000`, set by `PORT`). Web shell, AdvantageScope, and PathPlanner static assets
-are public. Workspace-specific editor traffic, commands, telemetry, gamepad
-input, and file requests require a session and enter through that same port.
+`4000`, set by `PORT`). Web shell, AdvantageScope, Choreo, and Elastic
+Dashboard static assets are public. Workspace-specific editor traffic,
+commands, telemetry, the Choreo proxy, the Elastic layout API, gamepad input,
+and file requests require a session and enter through that same port.
 
 How workspace container ports are exposed depends on deployment mode. In
 **port mode** (the host dev loop, `bun run dev:control`) each container's
@@ -107,12 +108,20 @@ a `403`. An unauthenticated request is redirected to the login page for browser
 requests or returns `401` for API requests. There is no mechanism for a student
 to reach another student's editor, simulator, or files through normal routes.
 
-PathPlanner's app files under `/pathplanner/` contain no student data and are
-served publicly, like AdvantageScope's `/scope/` assets. Its deploy-files API
-is under `/u/<slug>/api/deploy-files/`, so the ownership check above applies.
-The API exposes only `src/main/deploy/pathplanner/**` and
-`src/main/deploy/choreo/**`; writes and deletes are limited to the PathPlanner
-subtree.
+Choreo's and Elastic Dashboard's app files (`/choreo/`, `/elastic/`) contain
+no student data and are served publicly, like AdvantageScope's `/scope/`
+assets. Their per-student traffic sits under the same ownership-checked
+`/u/<slug>/` prefix as everything else:
+
+- Choreo's `/u/<slug>/api/choreo/**` is a reverse proxy to `choreo-server`
+  running inside that student's own workspace container — the sidecar reads
+  and writes `src/main/deploy/choreo/**` directly on that container's local
+  filesystem, so there is no separate file-access API surface to reason
+  about beyond the container isolation described below.
+- Elastic's `/u/<slug>/api/elastic-layout` is a small `GET`/`PUT` API,
+  ownership-checked like the rest of `/u/<slug>/*`, capped at 2 MB, and
+  validated as a JSON object before being written to
+  `src/main/deploy/elastic-layout.json`.
 
 ## Container isolation
 

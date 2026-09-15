@@ -8,7 +8,7 @@ import TabItem from '@theme/TabItem';
 
 # Quick Start (Installation)
 
-Run CodeRunner locally in demo mode to try the editor, Advantagescope telemetry, and PathPlanner without setting up OAuth.
+Run CodeRunner locally in demo mode to try the editor, AdvantageScope/Elastic Dashboard telemetry, and Choreo without setting up OAuth.
 
 :::danger[Do not expose demo mode to the internet]
 
@@ -16,7 +16,7 @@ Demo mode bypasses authentication. Every visitor shares the same admin account, 
 
 :::
 
-{/* TODO(pathplanner-docs): Recapture this with the PathPlanner tab visible. */}
+{/* TODO(tool-tabs-docs): Recapture this with the Choreo/Elastic tabs visible. */}
 ![Landing in the editor in demo mode, ready to pick a lesson](/img/screenshots/demo-mode-landing.png)
 
 ## Prerequisites

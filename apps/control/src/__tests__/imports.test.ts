@@ -494,4 +494,89 @@ describe("ImportManager — remote catalog load", () => {
 			expect(sparseCall!.command).toContain("modules/closest-distance");
 		});
 	});
+
+	test("does not fetch checkpoints/<id> when the module has no setupScript", async () => {
+		await withApp(async (app) => {
+			await login(app, "alice");
+			const workspace = workspaceBySlug(app, "alice");
+
+			const mock = new MockWorkspaceRuntimeProvider([
+				runningRuntime(workspace.id),
+			]);
+			const manager = new ImportManager(app.storage, mock);
+			await manager.run({
+				source: "catalog",
+				workspace,
+				userId: workspace.user_id,
+				moduleId: "hello-world",
+				subdir: "modules/hello-world",
+				kind: "plain-java",
+				remote: {
+					cloneUrl: "https://github.com/owner/lessons.git",
+					branch: "main",
+				},
+				send: () => {},
+			});
+
+			const sparseCall = mock.execCalls.find(
+				(c) =>
+					c.command[0] === "git" &&
+					c.command.includes("sparse-checkout") &&
+					c.command.includes("set"),
+			);
+			expect(sparseCall!.command).toContain("modules/hello-world");
+			expect(sparseCall!.command).not.toContain("checkpoints/hello-world");
+		});
+	});
+
+	test("fetches checkpoints/<id> alongside the module subdir, and runs setupScript from there, when the module has a setupScript", async () => {
+		await withApp(async (app) => {
+			await login(app, "alice");
+			const workspace = workspaceBySlug(app, "alice");
+
+			const mock = new MockWorkspaceRuntimeProvider([
+				runningRuntime(workspace.id),
+			]);
+			const manager = new ImportManager(app.storage, mock);
+			await manager.run({
+				source: "catalog",
+				workspace,
+				userId: workspace.user_id,
+				moduleId: "git-basics",
+				subdir: "modules/git-basics",
+				kind: "git",
+				setupScript: "checkpoints/git-basics/setup.sh",
+				remote: {
+					cloneUrl: "https://github.com/owner/lessons.git",
+					branch: "main",
+				},
+				send: () => {},
+			});
+
+			const sparseCall = mock.execCalls.find(
+				(c) =>
+					c.command[0] === "git" &&
+					c.command.includes("sparse-checkout") &&
+					c.command.includes("set"),
+			);
+			expect(sparseCall!.command).toContain("modules/git-basics");
+			expect(sparseCall!.command).toContain("checkpoints/git-basics");
+
+			// The setup script must run from inside the fetched remote source
+			// dir (not IMAGE_CATALOG_DIR, which is only populated for bundled
+			// catalogs) - find the "bash <path>" exec whose path ends with the
+			// setup script and assert it's rooted under the staging clone.
+			const setupCall = mock.execCalls.find(
+				(c) =>
+					c.command[0] === "bash" &&
+					typeof c.command[1] === "string" &&
+					c.command[1]!.endsWith("checkpoints/git-basics/setup.sh"),
+			);
+			expect(setupCall).toBeTruthy();
+			expect(setupCall!.command[1]).not.toContain("/opt/frc-catalog");
+			expect(setupCall!.command[1]).toContain(
+				"/source/checkpoints/git-basics/setup.sh",
+			);
+		});
+	});
 });

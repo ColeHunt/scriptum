@@ -13,9 +13,10 @@ Record active architecture decisions here.
 - [`036-vscodium-web-migration.md`](036-vscodium-web-migration.md) — the workspace editor moves from the abandoned openvscode-server to VSCodium `reh-web` via `linuxserver/vscodium-web`; chosen over `code-server` because `codium-server` keeps `--server-base-path`, so the pass-through proxy contract survives unchanged.
 - [`037-gradle-wrapper-alias-and-extension-pins.md`](037-gradle-wrapper-alias-and-extension-pins.md) — shares the primed Gradle distribution across wrapper layouts, enforces the pinned extension manifest, and disables workspace trust in the hosted workbench.
 - [`038-java-tooling-compatibility-and-smoke.md`](038-java-tooling-compatibility-and-smoke.md) — runs JDT LS on Java 21 while preserving the Java 17 WPILib path, reconciles managed extension pins, and adds a real-container Java smoke.
-- [`039-pathplanner-integration.md`](039-pathplanner-integration.md) — serves the PathPlanner web app in a tab beside AdvantageScope and syncs its project files through an ownership-checked deploy-files API.
+- [`039-pathplanner-integration.md`](039-pathplanner-integration.md) — **superseded by `042-choreo-integration.md`** — served the PathPlanner web app in a tab beside AdvantageScope and synced its project files through an ownership-checked deploy-files API.
 
 - [`040-selinux-container-mounts.md`](040-selinux-container-mounts.md) — exempts the control plane from SELinux labeling and relabels student bind mounts for shared access while preserving demo named volumes.
+- [`041-elastic-dashboard-integration.md`](041-elastic-dashboard-integration.md) — serves Elastic Dashboard as an independently-toggleable pane beside AdvantageScope and Choreo; vendors and source-patches it like AdvantageScope, but builds its Flutter web bundle outside this repo's own Docker/CI, unlike AdvantageScope's in-image emsdk stage.
 
 ## Archive
 

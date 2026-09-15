@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
 
 // Builds Choreo's frontend (plain Vite/React/TS - this repo's own stack,
-// unlike PathPlanner's Flutter) from a pinned commit of its own fork. The
-// same commit is what containers/control/Dockerfile's choreo-web-build
-// stage builds and containers/code/Dockerfile's choreo-builder stage builds
-// the Rust sidecar from - see docs/decisions/040-choreo-integration.md.
+// unlike PathPlanner's Flutter) from the pinned vendor/Choreo submodule,
+// patched the same way AdvantageScope/Elastic are - see
+// docs/decisions/045-choreo-submodule-migration.md. The same submodule/pin
+// is what containers/code/Dockerfile's choreo-builder stage builds the Rust
+// sidecar from.
 //
 // Used by `bun run build` (prod build from source) and `fetch:dist` (the
 // demo/quick-start path). Unlike PathPlanner's prebuilt-release-artifact
@@ -12,22 +13,36 @@
 // Vite, both already required for this repo's own build:web step, so
 // building it inline is no heavier a dependency than the thing it replaces.
 
-import { mkdir, rm } from "node:fs/promises";
+import { cp, mkdir, rm, stat } from "node:fs/promises";
 import { resolve } from "node:path";
-import { withScratch } from "./dist-download";
+import { applyVendorPatches } from "./apply-vendor-patches";
+import { getVendorTool } from "./vendor-manifest";
 
 const repoRoot = resolve(import.meta.dirname, "..");
+const choreoRoot = resolve(repoRoot, "vendor", "Choreo");
+const destDir = resolve(repoRoot, "dist", "choreo");
 
-// Overridable so forks can point at their own Choreo fork/commit.
-const repo = Bun.env.CHOREO_REPO ?? "https://github.com/ColeHunt/Choreo.git";
-const commit =
-	Bun.env.CHOREO_COMMIT ?? "0f5f366574dfa4b76eeed636d0d2d246d618fe21";
-const destDir = resolve(repoRoot, "dist/choreo");
+async function exists(path: string): Promise<boolean> {
+	try {
+		await stat(path);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+async function ensureSubmodule(): Promise<void> {
+	if (!(await exists(resolve(choreoRoot, "package.json")))) {
+		throw new Error(
+			"vendor/Choreo/package.json not found. Run git submodule update --init --recursive.",
+		);
+	}
+}
 
 async function run(
 	command: string,
 	args: string[],
-	cwd: string = repoRoot,
+	cwd: string = choreoRoot,
 ): Promise<void> {
 	const subprocess = Bun.spawn([command, ...args], {
 		cwd,
@@ -44,18 +59,20 @@ async function run(
 }
 
 export async function buildChoreo(): Promise<void> {
-	console.log(`Building Choreo's frontend from ${repo} @ ${commit}`);
-	await withScratch(async (scratch) => {
-		const checkout = resolve(scratch, "choreo");
-		await run("git", ["clone", repo, checkout]);
-		await run("git", ["-C", checkout, "checkout", commit]);
-		await run("bun", ["install"], checkout);
-		await run("bunx", ["vite", "build"], checkout);
+	await ensureSubmodule();
+	const choreoTool = await getVendorTool("choreo");
+	console.log(
+		`Building Choreo's frontend from ${choreoRoot} @ ${choreoTool.pin}`,
+	);
 
-		await rm(destDir, { recursive: true, force: true });
-		await mkdir(destDir, { recursive: true });
-		await run("cp", ["-a", `${resolve(checkout, "dist")}/.`, destDir]);
-	});
+	await applyVendorPatches("choreo");
+	await run("bun", ["install"]);
+	await run("bunx", ["vite", "build"]);
+
+	await rm(destDir, { recursive: true, force: true });
+	await mkdir(destDir, { recursive: true });
+	await cp(resolve(choreoRoot, "dist"), destDir, { recursive: true });
+
 	console.log(`\nChoreo web dist ready at ${destDir}`);
 }
 

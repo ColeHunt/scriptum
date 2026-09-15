@@ -157,18 +157,28 @@ host ports for workspace containers, so exhaustion here means
 
 ---
 
-## PathPlanner does not load or misses external edits
+## Choreo or Elastic Dashboard does not load
 
-**PathPlanner shows a 503.** Its web artifact is missing. In a source checkout,
-run `bun run fetch:pathplanner`, which downloads it and reports why if it
-cannot. Published control images always carry it — the release build fails
-rather than shipping without it — so in a Compose deployment pull and recreate
-the control container. A locally built image can legitimately be missing it:
-`bun run docker:build:control` downloads the artifact best-effort, so rebuild
-once the external PathPlanner release is reachable again.
+**Choreo shows a 503 with "Choreo is not running" or "Choreo upstream did not
+become ready."** The `choreo-server` sidecar inside that student's workspace
+container either isn't running yet or didn't answer `/healthz` within 30
+seconds of the control plane probing it. Restarting the workspace container
+(**Admin → Workspaces → Restart Code**) is usually enough; if it recurs for
+every student, check that the workspace image actually has `choreo-server`
+built in (`bun run docker:build:workspace`, or pull the published image).
 
-**An edit made in VSCodium does not appear.** Reload the page. 
-External file changes are not synchronized into an open PathPlanner session.
+**Elastic Dashboard shows a 503: "Elastic Dashboard has not been built yet."**
+Its web dist is missing. In a source checkout, run `bun run build:elastic`
+(needs a local Flutter SDK) or `bun run fetch:dist` (downloads a prebuilt
+`elastic-dist.tar.gz` if one exists for that release, and just warns if it
+doesn't — Elastic is optional, unlike AdvantageScope/Choreo). For a Compose
+deployment, this means the image it pulled or built doesn't include Elastic;
+rebuild with `dist/elastic` populated first, or pull a release image built
+with the `build-elastic` CI job.
+
+**An edit made in VSCodium does not appear in Choreo.** Reload the page.
+External file changes are not synchronized into an open Choreo session — it
+only re-reads the project on load.
 
 ---
 

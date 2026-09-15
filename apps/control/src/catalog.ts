@@ -28,6 +28,11 @@ export interface CatalogSource {
 	readonly kind: "remote" | "bundled";
 	getManifest(): Promise<CatalogManifest>;
 	resolveModule(moduleId: string): Promise<LessonModule>;
+	/** Set for "remote" sources only - lets checkpoints.ts fetch a module's
+	 * checkpoints/<id>/ tree on demand, the same way imports.ts fetches its
+	 * modules/<id>/ tree. */
+	readonly cloneUrl?: string;
+	readonly branchName?: string;
 }
 
 function sortByOrder(modules: LessonModule[]): LessonModule[] {

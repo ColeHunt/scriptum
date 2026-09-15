@@ -1,0 +1,213 @@
+diff --git a/lib/pages/dashboard/dashboard_page_layouts.dart b/lib/pages/dashboard/dashboard_page_layouts.dart
+index 6f412a3..bb84c82 100644
+--- a/lib/pages/dashboard/dashboard_page_layouts.dart
++++ b/lib/pages/dashboard/dashboard_page_layouts.dart
+@@ -9,6 +9,7 @@ import 'package:dot_cast/dot_cast.dart';
+ import 'package:file_selector/file_selector.dart';
+ 
+ import 'package:elastic_dashboard/pages/dashboard_page.dart';
++import 'package:elastic_dashboard/services/coderunner_embed.dart';
+ import 'package:elastic_dashboard/services/elastic_layout_downloader.dart';
+ import 'package:elastic_dashboard/services/hotkey_manager.dart';
+ import 'package:elastic_dashboard/services/log.dart';
+@@ -21,11 +22,13 @@ mixin DashboardPageLayouts on DashboardPageViewModel {
+   @override
+   Future<void> saveLayout() async {
+     Map<String, dynamic> jsonData = toJson();
++    String encoded = jsonEncode(jsonData);
+ 
+-    bool successful = await preferences.setString(
+-      PrefKeys.layout,
+-      jsonEncode(jsonData),
+-    );
++    bool successful = await preferences.setString(PrefKeys.layout, encoded);
++    // CodeRunner embed: mirror the layout to the student's project
++    // (src/main/deploy/elastic-layout.json) so it rides along with their
++    // robot code in git. No-op when running standalone.
++    coderunnerPersistLayout(encoded);
+     await saveWindowPosition();
+ 
+     if (successful) {
+diff --git a/lib/pages/dashboard_page.dart b/lib/pages/dashboard_page.dart
+index 151a1f2..5cc57bd 100644
+--- a/lib/pages/dashboard_page.dart
++++ b/lib/pages/dashboard_page.dart
+@@ -22,6 +22,7 @@ import 'package:elastic_dashboard/pages/dashboard/dashboard_page_settings.dart';
+ import 'package:elastic_dashboard/pages/dashboard/dashboard_page_tabs.dart';
+ import 'package:elastic_dashboard/pages/dashboard/dashboard_page_window.dart';
+ import 'package:elastic_dashboard/services/app_distributor.dart';
++import 'package:elastic_dashboard/services/coderunner_embed.dart';
+ import 'package:elastic_dashboard/services/elastic_layout_downloader.dart';
+ import 'package:elastic_dashboard/services/elasticlib_listener.dart';
+ import 'package:elastic_dashboard/services/hotkey_manager.dart';
+@@ -146,7 +147,7 @@ abstract class DashboardPageViewModel extends ChangeNotifier {
+     return {'version': 1.0, 'grid_size': gridSize, 'tabs': gridData};
+   }
+ 
+-  void init() {
++  Future<void> init() async {
+     robotNotificationListener = ElasticLibListener(
+       ntConnection: ntConnection,
+       onTabSelected: (tabIdentifier) {
+@@ -230,6 +231,15 @@ abstract class DashboardPageViewModel extends ChangeNotifier {
+       notifyListeners();
+     });
+ 
++    // CodeRunner embed: hydrate the saved layout from the student's project
++    // (src/main/deploy/elastic-layout.json) before loading it, falling back
++    // to the normal SharedPreferences-backed layout on any failure. No-op
++    // when running standalone (isCoderunnerEmbedded is false).
++    String? coderunnerLayout = await coderunnerFetchLayout();
++    if (coderunnerLayout != null) {
++      await preferences.setString(PrefKeys.layout, coderunnerLayout);
++    }
++
+     loadLayout();
+ 
+     if (!isWPILib) {
+diff --git a/lib/services/coderunner_embed.dart b/lib/services/coderunner_embed.dart
+new file mode 100644
+index 0000000..6cd5a1b
+--- /dev/null
++++ b/lib/services/coderunner_embed.dart
+@@ -0,0 +1,69 @@
++// CodeRunner integration point.
++//
++// When Elastic is embedded in the CodeRunner browser IDE, it is loaded as
++// `/elastic/?ws=<workspaceSlug>` (see apps/web/src/components/ElasticPane.tsx
++// in the CodeRunner repo). That query parameter is the only signal this file
++// looks at: its presence means NT4 and layout persistence should go through
++// the control plane's authenticated per-workspace routes instead of a LAN
++// robot connection and local browser storage. Standalone desktop/web usage
++// (no `ws` param) is completely unaffected.
++//
++// See patches/elastic/README.md and
++// docs/decisions/041-elastic-dashboard-integration.md in the CodeRunner repo.
++import 'package:http/http.dart' as http;
++
++/// The workspace slug CodeRunner embedded this instance with, or null when
++/// running standalone.
++String? get coderunnerWorkspaceSlug => Uri.base.queryParameters['ws'];
++
++bool get isCoderunnerEmbedded => coderunnerWorkspaceSlug != null;
++
++String _coderunnerOrigin() {
++  Uri base = Uri.base;
++  return '${base.scheme}://${base.authority}';
++}
++
++/// Full NT4 WebSocket URL proxied through the control plane
++/// (`/u/<slug>/sim/nt4`), authenticated by the session cookie that loaded
++/// this page. The `app` query parameter tells the proxy which upstream NT4
++/// client identity to use, so Elastic doesn't share AdvantageScope Lite's.
++String? coderunnerNt4Endpoint() {
++  String? slug = coderunnerWorkspaceSlug;
++  if (slug == null) return null;
++  String scheme = Uri.base.scheme == 'https' ? 'wss' : 'ws';
++  return '$scheme://${Uri.base.authority}/u/$slug/sim/nt4?app=Elastic';
++}
++
++/// Fetches the student's saved layout from their project
++/// (`src/main/deploy/elastic-layout.json`), or null when running standalone,
++/// nothing has been saved yet, or the request fails - callers should fall
++/// back to the normal SharedPreferences-backed layout in every null case.
++Future<String?> coderunnerFetchLayout() async {
++  String? slug = coderunnerWorkspaceSlug;
++  if (slug == null) return null;
++  try {
++    http.Response response = await http
++        .get(Uri.parse('${_coderunnerOrigin()}/u/$slug/api/elastic-layout'))
++        .timeout(const Duration(seconds: 5));
++    if (response.statusCode != 200) return null;
++    return response.body;
++  } catch (_) {
++    return null;
++  }
++}
++
++/// Mirrors a saved layout to the student's project so it rides along with
++/// their robot code in git, same as a real competition deploy. Fire-and-
++/// forget: a network hiccup here should never block the local save the
++/// student already sees succeed via SharedPreferences.
++void coderunnerPersistLayout(String layoutJson) {
++  String? slug = coderunnerWorkspaceSlug;
++  if (slug == null) return;
++  http
++      .put(
++        Uri.parse('${_coderunnerOrigin()}/u/$slug/api/elastic-layout'),
++        headers: {'content-type': 'application/json'},
++        body: layoutJson,
++      )
++      .catchError((_) => http.Response('', 0));
++}
+diff --git a/lib/services/nt4_client.dart b/lib/services/nt4_client.dart
+index 85c4720..c7a2687 100644
+--- a/lib/services/nt4_client.dart
++++ b/lib/services/nt4_client.dart
+@@ -12,6 +12,7 @@ import 'package:dot_cast/dot_cast.dart';
+ import 'package:msgpack_dart/msgpack_dart.dart';
+ import 'package:web_socket_channel/web_socket_channel.dart';
+ 
++import 'package:elastic_dashboard/services/coderunner_embed.dart';
+ import 'package:elastic_dashboard/services/log.dart';
+ import 'package:elastic_dashboard/services/nt4_type.dart';
+ import 'package:elastic_dashboard/services/struct_schemas/nt_struct.dart';
+@@ -687,7 +688,9 @@ class NT4Client {
+ 
+     _clientId = Random().nextInt(99999999);
+ 
+-    String mainServerAddr = 'ws://$serverBaseAddress:5810/nt/Elastic';
++    String? coderunnerEndpoint = coderunnerNt4Endpoint();
++    String mainServerAddr =
++        coderunnerEndpoint ?? 'ws://$serverBaseAddress:5810/nt/Elastic';
+ 
+     WebSocketChannel connectionAttempt;
+     try {
+@@ -706,7 +709,8 @@ class NT4Client {
+       // When changing IP addresses we ignore any current connection attempts
+       // since the handshake can take a long time, this will avoid logging information
+       // that is from an old connection attempt
+-      if (mainServerAddr.contains(serverBaseAddress)) {
++      if (coderunnerEndpoint != null ||
++          mainServerAddr.contains(serverBaseAddress)) {
+         logger.info(
+           'Failed to connect to network tables, attempting to reconnect in 500 ms',
+         );
+@@ -719,7 +723,8 @@ class NT4Client {
+       logger.trace('Connection failed with error', e);
+       return;
+     }
+-    if (!mainServerAddr.contains(serverBaseAddress)) {
++    if (coderunnerEndpoint == null &&
++        !mainServerAddr.contains(serverBaseAddress)) {
+       logger.info('IP Address changed while connecting, aborting connection');
+ 
+       // We don't set attempting connection to false here since we're assuming
+@@ -802,7 +807,9 @@ class NT4Client {
+     }
+     _attemptingRTTConnection = true;
+ 
+-    String rttServerAddr = 'ws://$serverBaseAddress:5810/nt/Elastic';
++    String? coderunnerEndpoint = coderunnerNt4Endpoint();
++    String rttServerAddr =
++        coderunnerEndpoint ?? 'ws://$serverBaseAddress:5810/nt/Elastic';
+ 
+     Uri? rttUri = Uri.tryParse(rttServerAddr);
+ 
+@@ -824,12 +831,14 @@ class NT4Client {
+         'Failed to connect to RTT Network Tables protocol, attempting to reconnect in 500 ms',
+       );
+       // Only reset connection attempt if the address hasn't changed, see explanation above
+-      if (rttServerAddr.contains(serverBaseAddress)) {
++      if (coderunnerEndpoint != null ||
++          rttServerAddr.contains(serverBaseAddress)) {
+         _attemptingRTTConnection = false;
+       }
+       return;
+     }
+-    if (!rttServerAddr.contains(serverBaseAddress)) {
++    if (coderunnerEndpoint == null &&
++        !rttServerAddr.contains(serverBaseAddress)) {
+       logger.info(
+         'IP Addressed changed while connecting to RTT, aborting RTT connection',
+       );

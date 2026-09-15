@@ -12,7 +12,7 @@ import {
 // choreo-server has no base-path awareness of its own (unlike codium-server,
 // which is launched with --server-base-path): the control plane strips the
 // /u/<slug>/api/choreo prefix before forwarding. Port mode does not lease a
-// choreo port yet (docs/decisions/040-choreo-integration.md), so these run
+// choreo port yet (docs/decisions/042-choreo-integration.md), so these run
 // in network mode, same as network-mode.test.ts.
 
 describe("choreo proxy", () => {

@@ -2,13 +2,15 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { WorkspaceId } from "@frc-coderunner/contracts";
-import { BundledCatalogSource } from "../catalog";
+import type { LessonModule, WorkspaceId } from "@frc-coderunner/contracts";
+import { BundledCatalogSource, type CatalogSource } from "../catalog";
 import {
 	CheckpointManager,
 	CheckpointVerifyBusyError,
 	CheckpointVerifyError,
 } from "../checkpoints";
+import type { Nt4AutoChooserBridge } from "../nt4-auto";
+import type { RunManager, RunSnapshot } from "../runs";
 import type { WorkspaceRow } from "../storage";
 import { login, MockWorkspaceRuntimeProvider, withApp } from "./helpers";
 
@@ -76,6 +78,211 @@ function runningRuntime(workspaceId: WorkspaceId) {
 		error: null,
 	} as never;
 }
+
+// --- "nt4-value" checkpoints - evaluated live against the control plane's
+// own NT4 auto-chooser bridge rather than an exec'd script. ---
+
+const NT4_MANIFEST = {
+	schemaVersion: 1,
+	modules: [
+		{
+			id: "nt4-demo",
+			title: "NT4 Demo",
+			description: "",
+			subdir: "modules/nt4-demo",
+			kind: "robot",
+			order: 1,
+			checkpoints: [
+				{
+					id: "range-check",
+					title: "Range check",
+					description: "",
+					verifier: {
+						type: "nt4-value",
+						topic: "/AdvantageKit/RealOutputs/ClimberSpeed",
+						check: "range",
+						min: 0,
+						max: 1,
+					},
+				},
+				{
+					id: "changes-check",
+					title: "Changes check",
+					description: "",
+					verifier: {
+						type: "nt4-value",
+						topic: "/AdvantageKit/RealOutputs/GamePieceLoaded",
+						check: "changes",
+					},
+				},
+			],
+		},
+	],
+};
+
+async function makeNt4CatalogDir(): Promise<string> {
+	const dir = await mkdtemp(join(tmpdir(), "frc-nt4-catalog-"));
+	await writeFile(
+		join(dir, "modules.json"),
+		JSON.stringify(NT4_MANIFEST),
+		"utf8",
+	);
+	return dir;
+}
+
+/** Minimal stand-in for `RunManager` - only `getWorkspaceSnapshot` is used. */
+class FakeRunManager {
+	status: RunSnapshot["status"] = "running";
+	getWorkspaceSnapshot(_workspaceId: WorkspaceId): RunSnapshot {
+		return {
+			status: this.status,
+			runId: this.status === "running" ? "run_fake" : null,
+		};
+	}
+}
+
+/**
+ * Minimal stand-in for `Nt4AutoChooserBridge` - only `ensureConnected` and
+ * `getValue` are used by `checkNt4Value`. Each topic gets a fixed sequence of
+ * samples; once exhausted, the last value repeats (mirrors a value that
+ * settled).
+ */
+class FakeNt4AutoChooserBridge {
+	private readonly sequences = new Map<string, unknown[]>();
+	ensureConnectCalls = 0;
+
+	setSequence(topic: string, values: unknown[]): void {
+		this.sequences.set(topic, values);
+	}
+
+	ensureConnected(_workspaceId: WorkspaceId, _wsUrl: string): unknown {
+		this.ensureConnectCalls++;
+		return undefined;
+	}
+
+	getValue(_workspaceId: WorkspaceId, topicName: string): unknown {
+		const queue = this.sequences.get(topicName);
+		if (!queue || queue.length === 0) return undefined;
+		return queue.length > 1 ? queue.shift() : queue[0];
+	}
+}
+
+async function withNt4Manager(
+	fn: (deps: {
+		manager: CheckpointManager;
+		workspace: WorkspaceRow;
+		nt4Auto: FakeNt4AutoChooserBridge;
+		runs: FakeRunManager;
+	}) => Promise<void>,
+): Promise<void> {
+	await withApp(async (app) => {
+		await login(app, "alice");
+		const workspace = app.storage.db
+			.query("SELECT * FROM workspaces WHERE slug = ?")
+			.get("alice") as WorkspaceRow;
+		const catalogDir = await makeNt4CatalogDir();
+		try {
+			const mock = new MockWorkspaceRuntimeProvider([
+				runningRuntime(workspace.id),
+			]);
+			const nt4Auto = new FakeNt4AutoChooserBridge();
+			const runs = new FakeRunManager();
+			const manager = new CheckpointManager(
+				app.storage,
+				mock,
+				new BundledCatalogSource(catalogDir),
+				nt4Auto as unknown as Nt4AutoChooserBridge,
+				runs as unknown as RunManager,
+			);
+			await fn({ manager, workspace, nt4Auto, runs });
+		} finally {
+			await rm(catalogDir, { recursive: true, force: true });
+		}
+	});
+}
+
+describe("CheckpointManager — nt4-value checkpoints", () => {
+	test("fails with a friendly message when no run is active", async () => {
+		await withNt4Manager(async ({ manager, workspace, runs }) => {
+			runs.status = "idle";
+			const state = await manager.verify(workspace.id, "nt4-demo", [
+				"range-check",
+			]);
+			const byId = new Map(state.checkpoints.map((c) => [c.id, c]));
+			expect(byId.get("range-check")?.result).toMatchObject({
+				status: "failed",
+				message: "Run your robot code first, then click Verify again.",
+			});
+		});
+	});
+
+	test("range check passes when every sample is within bounds", async () => {
+		await withNt4Manager(async ({ manager, workspace, nt4Auto }) => {
+			nt4Auto.setSequence(
+				"/AdvantageKit/RealOutputs/ClimberSpeed",
+				[0.1, 0.2, 0.3, 0.4, 0.5],
+			);
+			const state = await manager.verify(workspace.id, "nt4-demo", [
+				"range-check",
+			]);
+			const byId = new Map(state.checkpoints.map((c) => [c.id, c]));
+			expect(byId.get("range-check")?.result).toMatchObject({
+				status: "passed",
+			});
+			expect(nt4Auto.ensureConnectCalls).toBeGreaterThan(0);
+		});
+	});
+
+	test("range check fails when a sample falls outside bounds", async () => {
+		await withNt4Manager(async ({ manager, workspace, nt4Auto }) => {
+			nt4Auto.setSequence(
+				"/AdvantageKit/RealOutputs/ClimberSpeed",
+				[0.1, 0.2, 1.5, 0.4, 0.5],
+			);
+			const state = await manager.verify(workspace.id, "nt4-demo", [
+				"range-check",
+			]);
+			const byId = new Map(state.checkpoints.map((c) => [c.id, c]));
+			expect(byId.get("range-check")?.result).toMatchObject({
+				status: "failed",
+			});
+			expect(byId.get("range-check")?.result?.message).toContain("1.5");
+		});
+	});
+
+	test("changes check passes when distinct values are observed", async () => {
+		await withNt4Manager(async ({ manager, workspace, nt4Auto }) => {
+			nt4Auto.setSequence("/AdvantageKit/RealOutputs/GamePieceLoaded", [
+				false,
+				false,
+				true,
+				true,
+				false,
+			]);
+			const state = await manager.verify(workspace.id, "nt4-demo", [
+				"changes-check",
+			]);
+			const byId = new Map(state.checkpoints.map((c) => [c.id, c]));
+			expect(byId.get("changes-check")?.result).toMatchObject({
+				status: "passed",
+			});
+		});
+	});
+
+	test("changes check fails when the value looks constant", async () => {
+		await withNt4Manager(async ({ manager, workspace, nt4Auto }) => {
+			nt4Auto.setSequence("/AdvantageKit/RealOutputs/GamePieceLoaded", [false]);
+			const state = await manager.verify(workspace.id, "nt4-demo", [
+				"changes-check",
+			]);
+			const byId = new Map(state.checkpoints.map((c) => [c.id, c]));
+			expect(byId.get("changes-check")?.result).toMatchObject({
+				status: "failed",
+				message: expect.stringContaining("looks constant"),
+			});
+		});
+	});
+});
 
 describe("CheckpointManager", () => {
 	test("getState reports unavailable when no lesson is loaded", async () => {
@@ -292,6 +499,148 @@ describe("CheckpointManager", () => {
 			} finally {
 				await rm(catalogDir, { recursive: true, force: true });
 			}
+		});
+	});
+});
+
+// --- Remote catalog: "script" checkpoints have nowhere persistent to live
+// in the container (unlike bundled, baked into the image), so they're
+// fetched fresh on every verify - see docs/decisions/044-remote-catalog-checkpoints.md ---
+
+class FakeRemoteCatalogSource implements CatalogSource {
+	readonly kind = "remote" as const;
+	readonly cloneUrl = "https://github.com/owner/lessons.git";
+	readonly branchName = "main";
+
+	constructor(private readonly modules: LessonModule[]) {}
+
+	async getManifest() {
+		return { modules: this.modules, error: null };
+	}
+
+	async resolveModule(moduleId: string): Promise<LessonModule> {
+		const found = this.modules.find((m) => m.id === moduleId);
+		if (!found) throw new Error(`Unknown lesson module "${moduleId}".`);
+		return found;
+	}
+}
+
+describe("CheckpointManager — remote catalog", () => {
+	test("getState reports available for a remote-sourced module with checkpoints", async () => {
+		await withApp(async (app) => {
+			await login(app, "alice");
+			const workspace = app.storage.db
+				.query("SELECT * FROM workspaces WHERE slug = ?")
+				.get("alice") as WorkspaceRow;
+			const mock = new MockWorkspaceRuntimeProvider([
+				runningRuntime(workspace.id),
+			]);
+			const manager = new CheckpointManager(
+				app.storage,
+				mock,
+				new FakeRemoteCatalogSource(
+					MANIFEST.modules as unknown as LessonModule[],
+				),
+			);
+
+			const state = await manager.getState(workspace.id, "checkpoint-demo");
+			expect(state.available).toBe(true);
+		});
+	});
+
+	test("verify fetches checkpoints/<id> fresh, runs the script from there, and cleans up", async () => {
+		await withApp(async (app) => {
+			await login(app, "alice");
+			const workspace = app.storage.db
+				.query("SELECT * FROM workspaces WHERE slug = ?")
+				.get("alice") as WorkspaceRow;
+			const mock = new MockWorkspaceRuntimeProvider([
+				runningRuntime(workspace.id),
+			]);
+			const manager = new CheckpointManager(
+				app.storage,
+				mock,
+				new FakeRemoteCatalogSource(
+					MANIFEST.modules as unknown as LessonModule[],
+				),
+			);
+
+			const state = await manager.verify(workspace.id, "checkpoint-demo", [
+				"always-pass",
+			]);
+			expect(
+				state.checkpoints.find((c) => c.id === "always-pass")?.result,
+			).toMatchObject({ status: "passed" });
+
+			const cloneCallIndex = mock.execCalls.findIndex(
+				(c) => c.command[0] === "git" && c.command[1] === "clone",
+			);
+			expect(cloneCallIndex).toBeGreaterThanOrEqual(0);
+			expect(mock.execCalls[cloneCallIndex]!.command).toContain("--sparse");
+
+			const sparseCallIndex = mock.execCalls.findIndex(
+				(c) =>
+					c.command[0] === "git" &&
+					c.command.includes("sparse-checkout") &&
+					c.command.includes("set"),
+			);
+			expect(sparseCallIndex).toBeGreaterThan(cloneCallIndex);
+			expect(mock.execCalls[sparseCallIndex]!.command).toContain(
+				"checkpoints/checkpoint-demo",
+			);
+
+			const scriptCallIndex = mock.execCalls.findIndex(
+				(c) => c.command[0] === "bash" && c.command[1]?.endsWith("pass.sh"),
+			);
+			expect(scriptCallIndex).toBeGreaterThan(sparseCallIndex);
+			expect(mock.execCalls[scriptCallIndex]!.command[1]).not.toContain(
+				"/opt/frc-catalog",
+			);
+
+			// Cleanup runs after the script, against the same staging dir the
+			// clone was made into.
+			const cleanupCallIndex = mock.execCalls.findIndex(
+				(c) => c.command[0] === "rm" && c.command.includes("-rf"),
+			);
+			expect(cleanupCallIndex).toBeGreaterThan(scriptCallIndex);
+			const stagingDirArg = mock.execCalls[cleanupCallIndex]!.command.at(-1)!;
+			expect(mock.execCalls[cloneCallIndex]!.command.at(-1)).toContain(
+				stagingDirArg,
+			);
+		});
+	});
+
+	test("verifying only nt4-value checkpoints never fetches from the remote repo", async () => {
+		await withApp(async (app) => {
+			await login(app, "alice");
+			const workspace = app.storage.db
+				.query("SELECT * FROM workspaces WHERE slug = ?")
+				.get("alice") as WorkspaceRow;
+			const mock = new MockWorkspaceRuntimeProvider([
+				runningRuntime(workspace.id),
+			]);
+			const nt4Auto = new FakeNt4AutoChooserBridge();
+			nt4Auto.setSequence("/AdvantageKit/RealOutputs/ClimberSpeed", [0.5]);
+			nt4Auto.setSequence("/AdvantageKit/RealOutputs/GamePieceLoaded", [
+				true,
+				false,
+			]);
+			const manager = new CheckpointManager(
+				app.storage,
+				mock,
+				new FakeRemoteCatalogSource(
+					NT4_MANIFEST.modules as unknown as LessonModule[],
+				),
+				nt4Auto as unknown as Nt4AutoChooserBridge,
+			);
+
+			await manager.verify(workspace.id, "nt4-demo");
+
+			expect(
+				mock.execCalls.some(
+					(c) => c.command[0] === "git" && c.command[1] === "clone",
+				),
+			).toBe(false);
 		});
 	});
 });

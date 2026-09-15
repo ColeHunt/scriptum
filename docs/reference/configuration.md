@@ -30,15 +30,16 @@ These rarely need changing in a standard deployment. Override them only if you n
 | `FRC_MIGRATIONS_DIR` | auto-detected from source | Path to DB migration files. Leave unset unless you are running a non-standard layout. |
 | `FRC_WEB_DIST_DIR` | `apps/web/dist` | Built React web shell assets. Must exist before starting; run `bun run build:web` first. |
 | `FRC_ASCOPE_DIST_DIR` | `dist/advantagescope` | Built AdvantageScope Lite assets. Populated by `bun run build:ascope`. |
-| `FRC_PATHPLANNER_DIST_DIR` | `dist/pathplanner` | Prebuilt PathPlanner web assets. Populated by `bun run fetch:pathplanner` (part of `bun run build`) or `bun run fetch:dist`. |
+| `FRC_CHOREO_DIST_DIR` | `dist/choreo` | Built Choreo web frontend assets. Populated by `bun run build:choreo` or `bun run fetch:dist`. |
+| `FRC_ELASTIC_DIST_DIR` | `dist/elastic` | Built Elastic Dashboard web assets. Populated by `bun run build:elastic` (needs the Flutter SDK — see [decision 041](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/041-elastic-dashboard-integration.md)) or `bun run fetch:dist`. Optional: when missing, `/elastic/` serves a 503 and nothing else is affected. |
 
-`fetch:dist` gets the web shell and AdvantageScope from the CodeRunner release.
-It gets `pathplanner-dist.tar.gz` separately from `PATHPLANNER_RELEASE_REPO`
-(default `mathewdunne/pathplanner-web`) and `PATHPLANNER_RELEASE_TAG` (default:
-latest release). PathPlanner is optional there — a missing artifact only warns,
-and `/pathplanner/` serves a 503. `fetch:pathplanner` reads the same two
-variables but treats a missing artifact as an error, which is why `bun run
-build` uses it.
+`fetch:dist` gets the web shell, AdvantageScope, and Choreo from the CodeRunner
+release. It also fetches `elastic-dist.tar.gz` from the same release, but
+treats it as optional (a missing/failed download only warns) — see
+[decision 041](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/041-elastic-dashboard-integration.md).
+Every vendored tool's repo/pin is single-sourced from
+[`vendor/tools.json`](https://github.com/mathewdunne/CodeRunner/blob/main/vendor/tools.json) —
+see [decision 043](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/043-vendor-tool-manifest.md).
 
 ## Lessons Catalog
 

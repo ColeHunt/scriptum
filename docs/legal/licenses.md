@@ -29,7 +29,8 @@ copyright notice and permission notice are included. It comes with no warranty.
 | Component | License | Where it ships |
 | --- | --- | --- |
 | [AdvantageScope](https://github.com/Mechanical-Advantage/AdvantageScope) (**modified**) | BSD-3-Clause | Telemetry view, compiled into the control image |
-| [PathPlanner](https://github.com/mjansen4857/pathplanner) (**modified**) | MIT | Path and auto editor, bundled into the control image |
+| [Choreo](https://github.com/SleipnirGroup/Choreo) (fork, unmodified) | BSD-3-Clause | Path and auto editor: web frontend in the control image, `choreo-server` sidecar in the workspace image |
+| [Elastic Dashboard](https://github.com/Gold872/elastic_dashboard) (**modified**) | MIT | Telemetry view, bundled into the control image |
 | [VSCodium](https://github.com/VSCodium/vscodium) / Code – OSS (**modified**) | MIT | The editor (`reh-web` build), base of the workspace image |
 | [linuxserver/vscodium-web](https://github.com/linuxserver/docker-vscodium-web) image | GPL-3.0 | Workspace base image, unmodified |
 | [Eclipse Temurin JDK 17 and 21](https://adoptium.net/) | GPL-2.0 with Classpath Exception | Project/simulation and JDT LS runtimes in the workspace image |
@@ -43,10 +44,12 @@ copyright notice and permission notice are included. It comes with no warranty.
 | [Docusaurus](https://github.com/facebook/docusaurus) | MIT | This documentation site |
 
 Exact pinned versions are in
-[`containers/code/Dockerfile`](https://github.com/mathewdunne/CodeRunner/blob/main/containers/code/Dockerfile).
-AdvantageScope ships its own aggregated dependency license list as `ThirdPartyLicenses.txt`
-alongside the bundled telemetry view.
-PathPlanner ships Flutter's generated dependency notices as `assets/NOTICES`.
+[`vendor/tools.json`](https://github.com/mathewdunne/CodeRunner/blob/main/vendor/tools.json)
+(AdvantageScope, Choreo, Elastic Dashboard) and
+[`containers/code/Dockerfile`](https://github.com/mathewdunne/CodeRunner/blob/main/containers/code/Dockerfile)
+(everything else). AdvantageScope ships its own aggregated dependency license list as
+`ThirdPartyLicenses.txt` alongside the bundled telemetry view. Elastic Dashboard ships
+Flutter's generated dependency notices as `assets/NOTICES`.
 
 ## Modifications
 
@@ -55,9 +58,16 @@ source-level patch in
 [`patches/advantagescope/`](https://github.com/mathewdunne/CodeRunner/tree/main/patches/advantagescope)
 and injects an NT4 endpoint so the telemetry view can run embedded in the CodeRunner page.
 
-CodeRunner also redistributes a **modified** PathPlanner web build. The
-[`mathewdunne/pathplanner-web`](https://github.com/mathewdunne/pathplanner-web)
-fork adds CodeRunner's browser file-sync interface and embedded entry point.
+CodeRunner also redistributes Choreo's web frontend and `choreo-server` sidecar from the
+[`ColeHunt/Choreo`](https://github.com/ColeHunt/Choreo) fork, pinned to a specific commit.
+Unlike AdvantageScope and Elastic Dashboard, no source patch is applied — the fork is built
+as-is, and embedding support lives entirely in CodeRunner's own proxy/routing code.
+
+CodeRunner also redistributes a **modified** build of Elastic Dashboard. The change is kept
+as a source-level patch in
+[`patches/elastic/`](https://github.com/mathewdunne/CodeRunner/tree/main/patches/elastic)
+and adds embedded-mode NT4 endpoint injection and layout persistence to the student's
+project.
 
 The workspace image also ships a **modified** VSCodium build: it rewrites one stale VS Code
 revision string in the editor's webview configuration so extension webviews can load their
@@ -74,9 +84,9 @@ No other bundled component is modified.
   disclaimer to travel with both source and binary redistributions — including container
   images.
 - **Naming.** The BSD-3-Clause components carry a no-endorsement clause. You may describe
-  AdvantageScope, WPILib, or AdvantageKit factually as components you bundle, but may not use
-  the names of Littleton Robotics, FRC 6328, FIRST, WPILib, or their contributors to promote a
-  derived product without written permission.
+  AdvantageScope, Choreo, WPILib, or AdvantageKit factually as components you bundle, but may
+  not use the names of Littleton Robotics, FRC 6328, Choreo's copyright holders, FIRST, WPILib,
+  or their contributors to promote a derived product without written permission.
 
 ## Lesson content
 

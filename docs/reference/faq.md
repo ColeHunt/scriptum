@@ -29,12 +29,19 @@ No. Each student gets an isolated workspace container with their own VSCodium in
 
 Yes, if they are working on a team-imported project. When a student uses the **Switch Project** surface to import a repository from a GitHub team, the workspace retains the `.git` directory and the student can push changes using the VS Code source control panel or the `gh` CLI bundled in the container. Bundled catalog lessons do not have a Git remote attached.
 
-### Where does PathPlanner save changes?
+### Where does Choreo save changes?
 
-PathPlanner writes to `src/main/deploy/pathplanner/` in the current project.
-Those files appear in VSCodium and can be committed normally. Choreo files under
-`src/main/deploy/choreo/` are visible in PathPlanner but read-only there. This is
-the same behavior as the desktop PathPlanner app.
+Choreo writes to `src/main/deploy/choreo/` in the current project. Those files
+appear in VSCodium and can be committed normally — Choreo's server runs inside
+your own workspace container, with direct filesystem access, so there's no
+separate sync step.
+
+### Where does Elastic Dashboard save its layout?
+
+Elastic Dashboard's layout (which widgets you've added and how they're
+arranged) is saved to `src/main/deploy/elastic-layout.json` in the current
+project via an authenticated API, so it travels with your code and survives a
+project switch.
 
 ### What WPILib and Java version does CodeRunner use?
 

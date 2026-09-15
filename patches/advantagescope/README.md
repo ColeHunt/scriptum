@@ -16,6 +16,7 @@ submodule before building AdvantageScope Lite.
   sentinel path, and acknowledges with `frc-sim:log-ready` or
   `frc-sim:log-error`.
 
-Run `bun run apply:ascope-patches` to apply patches without rebuilding, or
+Run `bun run apply:ascope-patches` (or `bun scripts/apply-vendor-patches.ts
+--tool=advantagescope` directly) to apply patches without rebuilding, or
 `bun run build:ascope` to apply patches, rebuild the Lite bundle, and stage it
 under `dist/advantagescope/`.

@@ -23,21 +23,16 @@ RUN apt-get update -qq \
 
 # choreo-server is a small Rust HTTP/WS sidecar wrapping choreo-core's
 # trajectory editor/optimizer directly (no Tauri dependency) - see
-# docs/decisions/040-choreo-integration.md. Built from a pinned commit of
-# the fork below; release.yml builds each arch on a native runner (no
-# QEMU), so this stage only ever compiles natively, never cross-compiles.
-# GCC 14 is required: Sleipnir (the optimizer Choreo vendors) uses <format>
-# (GCC 13+) and <print> (GCC 14+), neither available on this stage's
-# default toolchain.
+# docs/decisions/045-choreo-submodule-migration.md (which superseded 042's
+# original clone-at-build-time approach). Built from the pinned vendor/Choreo
+# submodule, patched the same way AdvantageScope is - patches applied via
+# plain `git apply` here rather than apply-vendor-patches.ts, since this
+# stage has no Bun/Node toolchain to run it with (Rust/GCC only).
+# release.yml builds each arch on a native runner (no QEMU), so this stage
+# only ever compiles natively, never cross-compiles. GCC 14 is required:
+# Sleipnir (the optimizer Choreo vendors) uses <format> (GCC 13+) and
+# <print> (GCC 14+), neither available on this stage's default toolchain.
 FROM ubuntu:24.04 AS choreo-builder
-
-# Defaulted here, not before the Dockerfile's first FROM: an ARG's default
-# only carries into a later stage's bare re-declaration if the ARG was
-# declared before that *first* FROM (spotless-builder's, above) - declaring
-# it in between stages, as this originally did, scopes the default to the
-# stage it was declared in and silently drops it for every later one.
-ARG CHOREO_REPO=https://github.com/ColeHunt/Choreo.git
-ARG CHOREO_COMMIT=0f5f366574dfa4b76eeed636d0d2d246d618fe21
 
 RUN apt-get update -qq \
     && apt-get install -y --no-install-recommends \
@@ -51,9 +46,15 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
         | sh -s -- -y --default-toolchain stable --profile minimal
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-RUN git clone "${CHOREO_REPO}" /choreo \
-    && git -C /choreo checkout "${CHOREO_COMMIT}" \
-    && cd /choreo \
+WORKDIR /repo
+COPY .git/modules/vendor/Choreo/ .git/modules/vendor/Choreo/
+COPY vendor/Choreo/ vendor/Choreo/
+COPY patches/choreo/ patches/choreo/
+RUN git config --global --add safe.directory '*' \
+    && for p in patches/choreo/*.patch; do \
+         echo "Applying $p" && git -C vendor/Choreo apply "$p" || exit 1; \
+       done \
+    && cd vendor/Choreo \
     && cargo build --release -p choreo-server
 
 # V2 merged code container
@@ -129,7 +130,7 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # choreo-server: loopback port and deploy root (matches the student project's
 # WORKDIR below - src/main/deploy/choreo is this image's side of the
-# deploy-files contract documented in docs/decisions/040-choreo-integration.md).
+# deploy-files contract documented in docs/decisions/042-choreo-integration.md).
 ENV CHOREO_PORT=5900
 ENV CHOREO_DEPLOY_ROOT=/workspace/project/src/main/deploy/choreo
 
@@ -185,10 +186,10 @@ COPY --from=spotless-builder /tmp/vscode-spotless-gradle.vsix /tmp/exts/vscode-s
 
 # ── Choreo server ────────────────────────────────────────────────────
 # choreo-server (a small HTTP/WS sidecar) replaces PathPlanner - see
-# docs/decisions/040-choreo-integration.md. Built in a separate stage near
+# docs/decisions/042-choreo-integration.md. Built in a separate stage near
 # the top of this file; the Rust/C++ toolchain stays out of the runtime
 # image, same reasoning as spotless-builder.
-COPY --from=choreo-builder /choreo/target/release/choreo-server /usr/local/bin/choreo-server
+COPY --from=choreo-builder /repo/vendor/Choreo/target/release/choreo-server /usr/local/bin/choreo-server
 
 # Do not resolve extension packs or dependencies from the gallery; every required
 # Java extension is installed explicitly below.

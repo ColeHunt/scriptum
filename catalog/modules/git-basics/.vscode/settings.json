@@ -1,7 +1,0 @@
-{
-	"git.autoRepositoryDetection": "subFolders",
-	"git.repositoryScanMaxDepth": 2,
-	"git.openRepositoryInParentFolders": "never",
-	"git.confirmSync": false,
-	"git.suggestSmartCommit": false
-}

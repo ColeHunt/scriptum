@@ -18,6 +18,7 @@ export type ControlConfig = {
 	webDistDir: string;
 	advantageScopeDistDir: string;
 	choreoDistDir: string;
+	elasticDistDir: string;
 	sessionSecret: string;
 	baseUrl: string;
 	githubClientId: string | null;
@@ -319,6 +320,11 @@ export function loadControlConfig(
 			input.choreoDistDir ??
 				Bun.env.FRC_CHOREO_DIST_DIR ??
 				resolve(repoRoot, "dist", "choreo"),
+		),
+		elasticDistDir: resolve(
+			input.elasticDistDir ??
+				Bun.env.FRC_ELASTIC_DIST_DIR ??
+				resolve(repoRoot, "dist", "elastic"),
 		),
 		sessionSecret:
 			input.sessionSecret ??

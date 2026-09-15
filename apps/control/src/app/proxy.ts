@@ -447,6 +447,27 @@ export async function nt4AliveResponse(
 	}
 }
 
+const NT4_APP_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/u;
+const NT4_APP_NAME_DEFAULT = "AdvantageScopeLite";
+
+/**
+ * The upstream NT4 endpoint's `wsUrl` always ends in `/nt/<name>` (see
+ * containers/converters.ts). Swapping that trailing segment per-request lets
+ * more than one browser-side NT4 client (AdvantageScope Lite, Elastic) share
+ * one proxied route without pinning every connection to the same upstream
+ * client identity.
+ */
+export function withNt4AppName(
+	wsUrl: string,
+	requestedAppName: string | null,
+): string {
+	const appName =
+		requestedAppName && NT4_APP_NAME_PATTERN.test(requestedAppName)
+			? requestedAppName
+			: NT4_APP_NAME_DEFAULT;
+	return wsUrl.replace(/\/nt\/[^/]+$/u, `/nt/${appName}`);
+}
+
 export async function nt4WebSocketResponse(
 	storage: AppStorage,
 	runtimeProvider: WorkspaceRuntimeProvider,
@@ -474,11 +495,15 @@ export async function nt4WebSocketResponse(
 		});
 	}
 
+	const requestUrl = new URL(request.url);
 	const protocols = requestedProtocols(request);
 	const upgradeOptions: { data: SocketData; headers?: HeadersInit } = {
 		data: {
 			kind: "nt4",
-			upstreamUrl: runtime.endpoints.nt4.wsUrl,
+			upstreamUrl: withNt4AppName(
+				runtime.endpoints.nt4.wsUrl,
+				requestUrl.searchParams.get("app"),
+			),
 			protocols,
 			upstreamOpen: false,
 			pendingMessages: [],
