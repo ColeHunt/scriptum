@@ -2,12 +2,7 @@
 
 ## Status
 
-Accepted. The `allowlist`/`users promote`/`CODERUNNER_ADMIN_EMAIL` admin-bootstrap
-mechanism described in "Admin bootstrap" below was removed by decision 046 —
-admin access is now a Legion group membership with no local bootstrap step at
-all. The rest of this doc (image layering, `coderunner` CLI dispatch,
-self-inspection, non-root uid:gid handling) is current. See 046 and
-[Legion Setup](../deploying/legion-setup.md).
+Accepted.
 
 ## Context
 
@@ -66,7 +61,7 @@ image build — the runner no longer installs emsdk.
 > dependencies live in `node_modules/.bun/` and resolve through per-workspace
 > `apps/control/node_modules/` symlinks. A manifests-only install populates the
 > store but never creates those workspace links, so the runtime cannot resolve
-> `@logtape`/`better-auth`/`prom-client`. Installing with the workspace source
+> `@logtape`/`prom-client`. Installing with the workspace source
 > in place is what creates the links. (Discovered the hard way — the first build
 > booted to `Cannot find module '@logtape/logtape'`.)
 
@@ -200,7 +195,7 @@ exposing script filenames as the operator-facing interface.
 dispatching by subcommand to the same underlying scripts (which are still
 baked into the image and inherit `FRC_DATA_DIR=/data`): `serve` (default;
 migrate then exec the server, unchanged PID-1/SIGTERM semantics), `backup`,
-`restore` (takes a backup directory **inside** `/data`), `allowlist`, `users`,
+`restore` (takes a backup directory **inside** `/data`), `users`,
 `audit-prune`, `rebuild-workspaces`, `cleanup`, `migrate`, `help`, and a
 passthrough for anything else (e.g. `coderunner bash` for a shell).
 
@@ -218,33 +213,13 @@ Two invocation styles both work from this one script, for different reasons:
 The `bun run <name>` aliases in `package.json` remain the equivalent for a
 from-source host checkout.
 
-### Admin bootstrap: `CODERUNNER_ADMIN_EMAIL`
-
-A real deployment previously needed two exec steps before anyone could reach
-the admin panel: allowlist an email, then `users promote` it after that
-person's first sign-in. `CODERUNNER_ADMIN_EMAIL` (comma-separated) collapses
-that to zero exec steps. At startup (`AppStorage.seedBootstrapAdmins`,
-`storage.ts`), once the allowlist and better-auth's `user` table are ready,
-each configured email is:
-
-1. Added to the allowlist (`addAllowlistEntry`, made idempotent as part of
-   this — no duplicate entries across repeat startups).
-2. Promoted to `admin` if a `user` row with that email already exists and
-   isn't already admin, via the same `UPDATE` `scripts/users.ts promote` runs.
-   This rescues a coach who signed in as a plain student before the env var
-   was set.
-
-For an email with no existing account, `createAuth`'s `user.create.before`
-hook (`auth.ts`) sets `role: "admin"` at signup for any address in
-`config.adminEmails`, instead of always defaulting new users to `"student"`.
-
 ## Consequences
 
-- **Deploy is "pull and up," including the first admin.** `docker compose
-  pull && docker compose up -d`, then recycle student containers with
-  `coderunner rebuild-workspaces`. No checkout, no bun install, no tarball
-  juggling — and, with `CODERUNNER_ADMIN_EMAIL` set before first boot, no exec
-  step to reach the admin panel either.
+- **Deploy is "pull and up."** `docker compose pull && docker compose up -d`,
+  then recycle student containers with `coderunner rebuild-workspaces`. No
+  checkout, no bun install, no tarball juggling. Reaching the admin panel is
+  entirely a Legion-side step (grant the `coderunner-admin` group) rather
+  than anything done here.
 - **The compose file's `environment:` block is down to `CODE_IMAGE` and the
   demo passthrough.** The workspace network name, host data path, and
   workspace uid:gid are derived at container startup instead of hand-wired;
@@ -290,7 +265,7 @@ hook (`auth.ts`) sets `role: "admin"` at signup for any address in
 
 The control container originally ran as **root** (the image had no `USER`
 directive). Every file it wrote to the bind-mounted `./data` (`app.db`,
-`allowlist.json`, `users/…`) landed `root:root` on the host, so dropping into
+`users/…`) landed `root:root` on the host, so dropping into
 the host dev loop (`bun run dev:control`, uid 1000) hit `SQLITE_READONLY` on the
 first write to `app.db` — and, per the consequence above, a control-plane RCE
 was container-escape-trivial.

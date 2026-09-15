@@ -2,7 +2,7 @@
 
 Status: **Accepted (implementation)** — 2026-08-13
 
-Extends [`028-demo-mode.md`](./028-demo-mode.md) and
+Extends the demo-mode Docker/filesystem setup covered by
 [`033-workspace-disk-read-limit.md`](./033-workspace-disk-read-limit.md).
 
 ## Context
