@@ -9,10 +9,20 @@ export async function runDockerCli(
 	dockerPath: string,
 	args: string[],
 	options: ExecOptions = {},
+	/**
+	 * Extra env vars for the `docker` CLI subprocess itself (e.g. DOCKER_HOST
+	 * to target a remote worker's daemon over SSH - see fleet/). Distinct from
+	 * ExecOptions.env, which sets `docker exec -e` flags for the *container's*
+	 * environment. Merged onto the inherited parent env; omitted entirely
+	 * (Bun.spawn's default) when not given, so every existing caller is
+	 * unaffected.
+	 */
+	dockerEnv?: Record<string, string>,
 ): Promise<DockerCommandResult> {
 	const subprocess = Bun.spawn([dockerPath, ...args], {
 		stdout: "pipe",
 		stderr: "pipe",
+		...(dockerEnv ? { env: { ...process.env, ...dockerEnv } } : {}),
 	});
 	let timedOut = false;
 	let timeout: ReturnType<typeof setTimeout> | null = null;
