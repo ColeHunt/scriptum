@@ -172,13 +172,13 @@ export function Dashboard() {
 				</Card>
 			</div>
 
-			<Card>
+			<Card className="pb-0">
 				<CardHeader>
 					<CardTitle>Workspaces</CardTitle>
 				</CardHeader>
-				<CardContent>
+				<CardContent className="p-0">
 					{data.workspaces.length === 0 ? (
-						<p className="text-muted-foreground">No workspaces yet.</p>
+						<p className="text-muted-foreground p-4 pt-0">No workspaces yet.</p>
 					) : (
 						<table className="w-full text-sm">
 							<AdminTableHead>

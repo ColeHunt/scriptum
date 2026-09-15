@@ -67,10 +67,10 @@ export function Users() {
 					Legion's own <code className="font-mono">/admin/groups</code>.
 				</p>
 			</div>
-			<Card>
-				<CardContent className="pt-6">
+			<Card className="py-0">
+				<CardContent className="p-0">
 					{!users || users.length === 0 ? (
-						<p className="text-muted-foreground">No users yet.</p>
+						<p className="text-muted-foreground p-4">No users yet.</p>
 					) : (
 						<table className="w-full text-sm">
 							<AdminTableHead>

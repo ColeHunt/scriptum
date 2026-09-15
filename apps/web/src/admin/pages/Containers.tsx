@@ -53,10 +53,10 @@ export function Containers() {
 	return (
 		<div className="space-y-6">
 			<h2 className="text-xl font-semibold">Containers</h2>
-			<Card>
-				<CardContent className="pt-6">
+			<Card className="py-0">
+				<CardContent className="p-0">
 					{!data || data.length === 0 ? (
-						<p className="text-muted-foreground">No managed containers.</p>
+						<p className="text-muted-foreground p-4">No managed containers.</p>
 					) : (
 						<table className="w-full text-sm">
 							<AdminTableHead>

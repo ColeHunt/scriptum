@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { AdminTableHead, AdminTh } from "../components/AdminTableHead";
 import { useAdminPoll } from "../hooks/useAdminPoll";
 
@@ -48,91 +48,98 @@ export function AuditLog() {
 
 	return (
 		<div className="space-y-6">
-			<h2 className="text-xl font-semibold">Audit Log</h2>
-
-			<div className="flex flex-wrap gap-3 text-sm">
-				<input
-					placeholder="Filter actor email…"
-					className="rounded border border-border bg-muted px-3 py-1.5"
-					value={actorFilter}
-					onChange={(e) => {
-						setActorFilter(e.target.value);
-						setBeforeId(undefined);
-					}}
-				/>
-				<input
-					placeholder="Action prefix…"
-					className="rounded border border-border bg-muted px-3 py-1.5"
-					value={actionFilter}
-					onChange={(e) => {
-						setActionFilter(e.target.value);
-						setBeforeId(undefined);
-					}}
-				/>
-				<input
-					placeholder="Last N days…"
-					type="number"
-					min={1}
-					className="w-28 rounded border border-border bg-muted px-3 py-1.5"
-					value={daysFilter}
-					onChange={(e) => {
-						setDaysFilter(e.target.value);
-						setBeforeId(undefined);
-					}}
-				/>
-				{beforeId !== undefined && (
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => setBeforeId(undefined)}
-					>
-						← Back to latest
-					</Button>
-				)}
+			<div className="flex flex-wrap items-baseline justify-between gap-2">
+				<h2 className="text-xl font-semibold">
+					Audit Log
+					{data && (
+						<span className="ml-2 text-sm font-normal text-muted-foreground">
+							({entries.length} entr{entries.length === 1 ? "y" : "ies"}
+							{beforeId !== undefined ? ", older" : ""})
+						</span>
+					)}
+				</h2>
+				<div className="flex flex-wrap items-center gap-2 text-sm">
+					<input
+						placeholder="Filter actor email…"
+						className="rounded border border-border bg-muted px-2 py-1"
+						value={actorFilter}
+						onChange={(e) => {
+							setActorFilter(e.target.value);
+							setBeforeId(undefined);
+						}}
+					/>
+					<input
+						placeholder="Action prefix…"
+						className="rounded border border-border bg-muted px-2 py-1"
+						value={actionFilter}
+						onChange={(e) => {
+							setActionFilter(e.target.value);
+							setBeforeId(undefined);
+						}}
+					/>
+					<input
+						placeholder="Last N days…"
+						type="number"
+						min={1}
+						className="w-24 rounded border border-border bg-muted px-2 py-1"
+						value={daysFilter}
+						onChange={(e) => {
+							setDaysFilter(e.target.value);
+							setBeforeId(undefined);
+						}}
+					/>
+					{beforeId !== undefined && (
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => setBeforeId(undefined)}
+						>
+							← Back to latest
+						</Button>
+					)}
+				</div>
 			</div>
 
 			{loading && !data && <p className="text-muted-foreground">Loading…</p>}
 			{error && <p className="text-destructive">Error: {error}</p>}
 
 			{data && (
-				<Card>
-					<CardHeader>
-						<CardTitle>Events</CardTitle>
-					</CardHeader>
-					<CardContent>
+				<Card className="py-0">
+					<CardContent className="p-0">
 						{entries.length === 0 ? (
-							<p className="text-muted-foreground">No audit events found.</p>
+							<p className="text-muted-foreground p-4">
+								No audit events found.
+							</p>
 						) : (
-							<>
-								<table className="w-full text-sm">
-									<AdminTableHead>
-										<AdminTh>Time</AdminTh>
-										<AdminTh>Actor</AdminTh>
-										<AdminTh>Action</AdminTh>
-										<AdminTh>Target</AdminTh>
-										<AdminTh>Details</AdminTh>
-									</AdminTableHead>
-									<tbody>
-										{entries.map((entry) => (
-											<AuditRow key={entry.id} entry={entry} />
-										))}
-									</tbody>
-								</table>
-								{entries.length >= 50 && lastId !== undefined && (
-									<div className="mt-4 text-center">
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={() => setBeforeId(lastId)}
-										>
-											Load older →
-										</Button>
-									</div>
-								)}
-							</>
+							<table className="w-full text-sm">
+								<AdminTableHead>
+									<AdminTh>Time</AdminTh>
+									<AdminTh>Actor</AdminTh>
+									<AdminTh>Action</AdminTh>
+									<AdminTh>Target</AdminTh>
+									<AdminTh>Details</AdminTh>
+								</AdminTableHead>
+								<tbody>
+									{entries.map((entry) => (
+										<AuditRow key={entry.id} entry={entry} />
+									))}
+								</tbody>
+							</table>
 						)}
 					</CardContent>
 				</Card>
+			)}
+
+			{data && entries.length >= 50 && lastId !== undefined && (
+				<div className="text-center">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setBeforeId(lastId)}
+					>
+						Load older →
+					</Button>
+				</div>
 			)}
 		</div>
 	);

@@ -210,10 +210,10 @@ export function Lessons() {
 				</CardContent>
 			</Card>
 
-			<Card>
-				<CardContent className="pt-6">
+			<Card className="py-0">
+				<CardContent className="p-0">
 					{!assignments || assignments.length === 0 ? (
-						<p className="text-muted-foreground">
+						<p className="text-muted-foreground p-4">
 							No assignments — every module and track is visible to everyone.
 						</p>
 					) : (

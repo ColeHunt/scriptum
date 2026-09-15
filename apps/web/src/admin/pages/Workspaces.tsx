@@ -76,10 +76,10 @@ export function Workspaces() {
 	return (
 		<div className="space-y-6">
 			<h2 className="text-xl font-semibold">Workspaces</h2>
-			<Card>
-				<CardContent className="pt-6">
+			<Card className="py-0">
+				<CardContent className="p-0">
 					{!data || data.workspaces.length === 0 ? (
-						<p className="text-muted-foreground">No workspaces yet.</p>
+						<p className="text-muted-foreground p-4">No workspaces yet.</p>
 					) : (
 						<table className="w-full text-sm">
 							<AdminTableHead>
