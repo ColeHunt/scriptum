@@ -1,0 +1,39 @@
+#cloud-config
+# NFS storage node first-boot provisioning (decision 048, design point #5).
+# Rendered by terraform/storage.tf's templatefile() call. Runs once, on the
+# storage droplet's first boot - this node is long-lived, not part of the
+# dynamic worker fleet, so unlike the worker cloud-init there's no repeated
+# per-instance execution to keep minimal.
+#
+# Serves data/users/<workspaceId>/{project,home} over NFSv4 to every worker
+# on the private VPC, backed by a DigitalOcean Volume (independent of any
+# droplet's lifecycle - see decision 048's "Data persistence" answer).
+
+package_update: true
+packages:
+  - nfs-kernel-server
+
+runcmd:
+  # The attached Volume shows up at a predictable by-id path derived from its
+  # name (DigitalOcean's own documented convention) - format it once,
+  # idempotently (skip if already formatted, so a reboot never re-formats
+  # live data).
+  - |
+    VOLUME_DEV="/dev/disk/by-id/scsi-0DO_Volume_${volume_name}"
+    MOUNT_POINT="${mount_point}"
+    if ! blkid "$VOLUME_DEV" >/dev/null 2>&1; then
+      mkfs.ext4 -F "$VOLUME_DEV"
+    fi
+    mkdir -p "$MOUNT_POINT"
+    if ! grep -q "$MOUNT_POINT" /etc/fstab; then
+      echo "$VOLUME_DEV $MOUNT_POINT ext4 defaults,nofail,discard 0 2" >> /etc/fstab
+    fi
+    mount -a
+  - mkdir -p ${mount_point}/users
+  - |
+    if ! grep -q "${mount_point}/users" /etc/exports; then
+      echo "${mount_point}/users ${worker_subnet_cidr}(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+    fi
+  - exportfs -ra
+  - systemctl enable --now nfs-kernel-server
+  - touch /var/log/coderunner-storage-bootstrap-done

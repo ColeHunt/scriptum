@@ -1,0 +1,24 @@
+#cloud-config
+# Worker droplet first-boot provisioning (decision 048, design point #9).
+# Passed as `user_data` on every droplet-create call by
+# DigitalOceanFleetProvisioner - re-runs on EVERY new worker (unlike the
+# storage node's cloud-init, which runs once ever), so it is deliberately
+# minimal: Docker and the workspace image are already baked into the golden
+# snapshot this droplet boots from (see bake-golden-image.sh), so the only
+# thing left to do on first boot is mount the shared NFS storage. Every extra
+# step here is a step that can flake on every single scale-up event.
+#
+# Placeholders (${storage_private_ip}, ${mount_point}) are filled in by
+# whatever renders this template before passing it as
+# DigitalOceanFleetProvisionerOptions.userData - a plain string substitution,
+# not a Terraform templatefile() call, since this runs on demand from the
+# head's own code, not from a one-time apply.
+
+runcmd:
+  - mkdir -p ${mount_point}
+  - |
+    if ! grep -q "${mount_point}" /etc/fstab; then
+      echo "${storage_private_ip}:${remote_export_path} ${mount_point} nfs4 _netdev,noatime 0 0" >> /etc/fstab
+    fi
+  - mount -a
+  - touch /var/log/coderunner-worker-ready
