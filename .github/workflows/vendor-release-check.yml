@@ -1,0 +1,90 @@
+name: Vendor Release Check
+
+# Checks whether AdvantageScope or Elastic Dashboard have a newer tagged
+# GitHub release than what's pinned in vendor/tools.json, and opens (or
+# comments on) a tracking issue when one exists. See docs/decisions/043 for
+# the manifest this reads and docs/decisions/041/archive/002 for why each
+# tool is vendored the way it is.
+#
+# Choreo is deliberately excluded here - it's watched by Dependabot instead
+# (.github/dependabot.yml) since, per decision 045, it's intentionally
+# pinned to a commit on upstream main rather than a tag, which is exactly
+# what Dependabot's gitsubmodule support already tracks. AdvantageScope and
+# Elastic are tag-pinned, which Dependabot's gitsubmodule support has no
+# concept of - hence this separate, release-aware check.
+#
+# Opens an issue only, never a PR: both tools are source-patched
+# (patches/advantagescope, patches/elastic) - a version bump needs a human
+# to re-run scripts/apply-vendor-patches.ts and verify the tool still builds
+# and behaves correctly, not something safe to auto-merge on green CI alone.
+
+on:
+  schedule:
+    - cron: "0 14 * * 1" # Monday 14:00 UTC, roughly matching Dependabot's weekly cadence
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check AdvantageScope and Elastic for newer releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          check_tool() {
+            id="$1"
+            tool="$(jq -c --arg id "$id" '.tools[] | select(.id == $id)' vendor/tools.json)"
+            display_name="$(jq -r '.displayName' <<<"$tool")"
+            pinned="$(jq -r '.pin' <<<"$tool")"
+            repo_url="$(jq -r '.repoUrl' <<<"$tool")"
+            repo="$(echo "$repo_url" | sed -E 's#https://github.com/##; s#\.git$##')"
+            submodule_path="$(jq -r '.submodulePath' <<<"$tool")"
+            patches_dir="$(jq -r '.patchesDir' <<<"$tool")"
+
+            release="$(gh api "repos/$repo/releases/latest")"
+            latest="$(jq -r '.tag_name' <<<"$release")"
+            url="$(jq -r '.html_url' <<<"$release")"
+
+            if [ "$pinned" = "$latest" ]; then
+              echo "$id: up to date ($pinned)"
+              return
+            fi
+            echo "$id: pinned $pinned, latest $latest"
+
+            title="Vendor update available: $display_name $latest (pinned: $pinned)"
+            body_file="$(mktemp)"
+            {
+              echo "A newer release of **$display_name** is available upstream."
+              echo ""
+              echo "- Currently pinned: \`$pinned\` ($submodule_path)"
+              echo "- Latest release: [\`$latest\`]($url)"
+              echo ""
+              echo "$display_name is source-patched (\`$patches_dir\`) - before bumping the pin,"
+              echo "verify the patches still apply (\`bun scripts/apply-vendor-patches.ts --tool=$id\`)"
+              echo "and the tool still builds and behaves correctly, then update the"
+              echo "\`$submodule_path\` submodule and \`vendor/tools.json\`'s \`pin\` field together."
+              echo ""
+              echo "Opened automatically by \`.github/workflows/vendor-release-check.yml\`."
+            } > "$body_file"
+
+            existing="$(gh issue list --search "\"Vendor update available: $display_name\" in:title" --state open --json number --jq '.[0].number // empty')"
+
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --body-file "$body_file"
+              echo "Updated existing issue #$existing"
+            else
+              gh issue create --title "$title" --body-file "$body_file" --label dependencies
+              echo "Opened new issue for $id"
+            fi
+            rm -f "$body_file"
+          }
+
+          check_tool "advantagescope"
+          check_tool "elastic"

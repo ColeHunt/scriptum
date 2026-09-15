@@ -1,0 +1,23 @@
+# Watches Choreo (see vendor/tools.json and docs/decisions/043-vendor-tool-manifest.md)
+# for upstream updates via Dependabot's native gitsubmodule support.
+#
+# AdvantageScope and Elastic Dashboard are deliberately NOT here: both are
+# pinned to real release tags (v26.0.2, v2026.1.2), but Dependabot's
+# gitsubmodule ecosystem has no concept of tags/releases - it only bumps to
+# the latest commit on the submodule's default branch, unlike its npm/Docker
+# support, which understands semver. That would point them at arbitrary
+# unreleased work, not an actual release. Those two are instead watched by
+# .github/workflows/vendor-release-check.yml, which checks GitHub Releases
+# directly and opens an issue (not a PR - see that workflow for why).
+#
+# Choreo is the one case where "latest commit on default branch" is actually
+# correct: per decision 045, it's intentionally pinned to upstream main's
+# tip at migration time, not a tag - there is no release cadence for this
+# tool to track here, just "how current is our commit."
+
+version: 2
+updates:
+  - package-ecosystem: "gitsubmodule"
+    directory: "/vendor/Choreo"
+    schedule:
+      interval: "weekly"
