@@ -21,24 +21,18 @@ type AuditLogResponse = {
 };
 
 export function AuditLog() {
-	const [actorFilter, setActorFilter] = useState("");
-	const [actionFilter, setActionFilter] = useState("");
-	const [daysFilter, setDaysFilter] = useState("");
 	const [beforeId, setBeforeId] = useState<number | undefined>(undefined);
 
 	const fetcher = useCallback(async (): Promise<AuditLogResponse> => {
 		const params = new URLSearchParams();
 		params.set("limit", "50");
 		if (beforeId !== undefined) params.set("before", String(beforeId));
-		if (actorFilter.trim()) params.set("actor", actorFilter.trim());
-		if (actionFilter.trim()) params.set("action", actionFilter.trim());
-		if (daysFilter.trim()) params.set("days", daysFilter.trim());
 		const res = await fetch(`/admin/audit-log?${params}`, {
 			credentials: "same-origin",
 		});
 		if (!res.ok) throw new Error(`${res.status}`);
 		return res.json();
-	}, [beforeId, actorFilter, actionFilter, daysFilter]);
+	}, [beforeId]);
 
 	const { data, loading, error } = useAdminPoll(fetcher, 10_000);
 
@@ -58,46 +52,15 @@ export function AuditLog() {
 						</span>
 					)}
 				</h2>
-				<div className="flex flex-wrap items-center gap-2 text-sm">
-					<input
-						placeholder="Filter actor email…"
-						className="rounded border border-border bg-muted px-2 py-1"
-						value={actorFilter}
-						onChange={(e) => {
-							setActorFilter(e.target.value);
-							setBeforeId(undefined);
-						}}
-					/>
-					<input
-						placeholder="Action prefix…"
-						className="rounded border border-border bg-muted px-2 py-1"
-						value={actionFilter}
-						onChange={(e) => {
-							setActionFilter(e.target.value);
-							setBeforeId(undefined);
-						}}
-					/>
-					<input
-						placeholder="Last N days…"
-						type="number"
-						min={1}
-						className="w-24 rounded border border-border bg-muted px-2 py-1"
-						value={daysFilter}
-						onChange={(e) => {
-							setDaysFilter(e.target.value);
-							setBeforeId(undefined);
-						}}
-					/>
-					{beforeId !== undefined && (
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => setBeforeId(undefined)}
-						>
-							← Back to latest
-						</Button>
-					)}
-				</div>
+				{beforeId !== undefined && (
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => setBeforeId(undefined)}
+					>
+						← Back to latest
+					</Button>
+				)}
 			</div>
 
 			{loading && !data && <p className="text-muted-foreground">Loading…</p>}
