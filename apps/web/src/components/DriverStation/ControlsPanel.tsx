@@ -190,7 +190,7 @@ export function ControlsPanel({
 							const info = available.find((g) => String(g.index) === value);
 							if (info) onSelect(info);
 						}}
-						className="ml-auto min-w-0 max-w-[22.5rem] shrink basis-[22.5rem] truncate rounded-md border border-border bg-zinc-800 px-2.5 py-1.5 text-sm text-white focus:border-orange-400/60 focus:outline-none [&>option]:bg-zinc-800 [&>option]:text-white"
+						className="ml-auto min-w-0 max-w-[22.5rem] shrink basis-[22.5rem] truncate rounded-md border border-border bg-muted px-2.5 py-1.5 text-sm text-foreground focus:border-primary/60 focus:outline-none [&>option]:bg-muted [&>option]:text-foreground"
 					>
 						<option value="">Connect a controller and press any button</option>
 						{available.map((info) => (
@@ -328,7 +328,7 @@ function KeyboardMappingDialog() {
 										<span className="text-muted-foreground">
 											{binding.action}
 										</span>
-										<kbd className="rounded-md border border-border bg-zinc-800 px-1.5 py-0.5 font-mono text-[11px] text-foreground">
+										<kbd className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
 											{binding.key}
 										</kbd>
 									</div>

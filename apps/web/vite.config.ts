@@ -23,9 +23,12 @@ export default defineConfig({
 			"/metrics": controlPlane,
 			"/scope": controlPlane,
 			"/choreo": controlPlane,
+			"/elastic": controlPlane,
 			"/coderunner-icon.png": controlPlane,
 			"/favicon.ico": controlPlane,
-			"^/admin/(assets|allowlist|audit-log|users|containers|workspaces|config|status)(/.*)?$":
+			"/login/legion": controlPlane,
+			"/logout": controlPlane,
+			"^/admin/(assets|lessons|audit-log|users|containers|workspaces|config|status)(/.*)?$":
 				proxyOpts,
 			"^/u/[^/]+/(api|ws|sim|vscode|assets|coderunner-icon\\.png|favicon\\.ico)(/.*)?$":
 				proxyOpts,

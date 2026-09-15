@@ -52,7 +52,7 @@ export function AuditLog() {
 			<div className="flex flex-wrap gap-3 text-sm">
 				<input
 					placeholder="Filter actor email…"
-					className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5"
+					className="rounded border border-border bg-muted px-3 py-1.5"
 					value={actorFilter}
 					onChange={(e) => {
 						setActorFilter(e.target.value);
@@ -61,7 +61,7 @@ export function AuditLog() {
 				/>
 				<input
 					placeholder="Action prefix…"
-					className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5"
+					className="rounded border border-border bg-muted px-3 py-1.5"
 					value={actionFilter}
 					onChange={(e) => {
 						setActionFilter(e.target.value);
@@ -72,7 +72,7 @@ export function AuditLog() {
 					placeholder="Last N days…"
 					type="number"
 					min={1}
-					className="w-28 rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5"
+					className="w-28 rounded border border-border bg-muted px-3 py-1.5"
 					value={daysFilter}
 					onChange={(e) => {
 						setDaysFilter(e.target.value);
@@ -149,7 +149,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
 	return (
 		<>
 			<tr
-				className="cursor-pointer border-b last:border-0 hover:bg-zinc-900/50"
+				className="cursor-pointer border-b last:border-0 hover:bg-muted/50"
 				onClick={() => setExpanded(!expanded)}
 			>
 				<td className="py-2 text-xs text-muted-foreground">{time}</td>
@@ -162,7 +162,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
 			</tr>
 			{expanded && entry.metadata_json && (
 				<tr>
-					<td colSpan={5} className="bg-zinc-900/30 px-4 py-2">
+					<td colSpan={5} className="bg-muted/30 px-4 py-2">
 						<pre className="whitespace-pre-wrap text-xs text-muted-foreground">
 							{formatJson(entry.metadata_json)}
 						</pre>

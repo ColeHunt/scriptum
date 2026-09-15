@@ -322,6 +322,12 @@ describe("run lifecycle and log streaming", () => {
 		const baseOptions: ControlAppOptions = {
 			dataDir,
 			catalogDir,
+			// Explicit, not omitted: Bun auto-loads .env for every process
+			// including `bun test`, so a developer's real LESSONS_CATALOG_REPO/
+			// CODERUNNER_DEMO_MODE would otherwise silently change this test's
+			// behavior. See the identical guard in helpers.ts's withApp().
+			catalogRepo: "",
+			demo: false,
 			webDistDir,
 			advantageScopeDistDir,
 			ssoSecret: "test-session-secret",

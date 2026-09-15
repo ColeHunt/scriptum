@@ -303,6 +303,12 @@ export async function withApp<T>(
 		baseUrl: "http://localhost:4000",
 		idleStopMinutes: 30,
 		containerAutoStart: false,
+		// Explicit false (not nullish, so `??` can't fall through to
+		// Bun.env.CODERUNNER_DEMO_MODE) - same class of bug as catalogRepo
+		// above: a developer's real .env with demo mode on for local testing
+		// would otherwise silently flip every test into demo mode. Tests that
+		// actually want demo mode still override it via `options`, spread below.
+		demo: false,
 		portAvailable: options.dockerRunner ? async () => true : undefined,
 		...options,
 	});

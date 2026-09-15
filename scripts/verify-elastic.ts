@@ -120,6 +120,11 @@ async function verifyElasticServing(): Promise<void> {
 	const app = await createApp({
 		dataDir: join(root, "data"),
 		catalogDir,
+		// See withApp() in apps/control/src/__tests__/helpers.ts - Bun
+		// auto-loads .env, so these must be pinned to avoid a developer's real
+		// local settings silently changing this smoke test's behavior.
+		catalogRepo: "",
+		demo: false,
 		webDistDir,
 		elasticDistDir: distDir,
 		containerAutoStart: false,

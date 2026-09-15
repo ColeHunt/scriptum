@@ -146,7 +146,7 @@ export function Lessons() {
 								setTargetType(e.target.value as "module" | "track");
 								setTargetId("");
 							}}
-							className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm"
+							className="rounded border border-border bg-muted px-2 py-1 text-sm"
 						>
 							<option value="module">Module</option>
 							<option value="track">Track</option>
@@ -155,7 +155,7 @@ export function Lessons() {
 							<select
 								value={targetId}
 								onChange={(e) => setTargetId(e.target.value)}
-								className="min-w-48 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm"
+								className="min-w-48 rounded border border-border bg-muted px-2 py-1 text-sm"
 							>
 								<option value="">Select a module…</option>
 								{(modules ?? []).map((m) => (
@@ -168,7 +168,7 @@ export function Lessons() {
 							<select
 								value={targetId}
 								onChange={(e) => setTargetId(e.target.value)}
-								className="min-w-48 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm"
+								className="min-w-48 rounded border border-border bg-muted px-2 py-1 text-sm"
 							>
 								<option value="">Select a track…</option>
 								{tracks.map((t) => (
@@ -183,7 +183,7 @@ export function Lessons() {
 							onChange={(e) =>
 								setAssigneeType(e.target.value as "user" | "group")
 							}
-							className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm"
+							className="rounded border border-border bg-muted px-2 py-1 text-sm"
 						>
 							<option value="group">Legion group</option>
 							<option value="user">User (member code)</option>
@@ -195,7 +195,7 @@ export function Lessons() {
 							placeholder={
 								assigneeType === "group" ? "team-4143" : "8-char member code"
 							}
-							className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm"
+							className="flex-1 rounded border border-border bg-muted px-3 py-1 text-sm"
 							onKeyDown={(e) => e.key === "Enter" && addAssignment()}
 						/>
 						<Button

@@ -331,6 +331,12 @@ describe("code container orchestration", () => {
 		const config: ControlAppOptions = {
 			dataDir: join(root, "data"),
 			catalogDir,
+			// Explicit, not omitted: Bun auto-loads .env for every process
+			// including `bun test`, so a developer's real LESSONS_CATALOG_REPO/
+			// CODERUNNER_DEMO_MODE would otherwise silently change this test's
+			// behavior. See the identical guard in helpers.ts's withApp().
+			catalogRepo: "",
+			demo: false,
 			webDistDir,
 			ssoSecret: "test-session-secret",
 			baseUrl: "http://localhost:4000",

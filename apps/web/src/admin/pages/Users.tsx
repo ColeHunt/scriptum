@@ -90,8 +90,8 @@ export function Users() {
 											<span
 												className={`inline-block rounded px-2 py-0.5 text-xs ${
 													u.role === "admin"
-														? "bg-blue-900 text-blue-300"
-														: "bg-zinc-800 text-zinc-400"
+														? "bg-primary/20 text-primary"
+														: "bg-muted text-muted-foreground"
 												}`}
 											>
 												{u.role ?? "student"}

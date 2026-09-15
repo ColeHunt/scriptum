@@ -77,7 +77,7 @@ function CapacityEditor({
 			<input
 				type="number"
 				min={1}
-				className="w-20 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm"
+				className="w-20 rounded border border-border bg-muted px-2 py-1 text-sm"
 				value={value}
 				onChange={(e) => setValue(e.target.value)}
 				disabled={saving}
@@ -198,7 +198,7 @@ export function Dashboard() {
 														? "bg-green-900 text-green-300"
 														: w.code.state === "starting"
 															? "bg-yellow-900 text-yellow-300"
-															: "bg-zinc-800 text-zinc-400"
+															: "bg-muted text-muted-foreground"
 												}`}
 											>
 												{w.code.state}

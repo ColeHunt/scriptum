@@ -48,7 +48,7 @@ function Avatar({
 		<span
 			style={{ width: size, height: size }}
 			className={cn(
-				"inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-[11px] font-semibold text-white ring-1 ring-white/10",
+				"inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#e05540] to-[#991900] text-[11px] font-semibold text-white ring-1 ring-white/10",
 				className,
 			)}
 		>

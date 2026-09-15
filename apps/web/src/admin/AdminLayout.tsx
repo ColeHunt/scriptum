@@ -29,8 +29,8 @@ export function AdminLayout({
 }) {
 	return (
 		<div className="flex min-h-screen bg-background text-foreground">
-			<nav className="w-48 shrink-0 border-r border-zinc-800 p-4">
-				<h1 className="mb-6 text-lg font-bold">Admin</h1>
+			<nav className="w-48 shrink-0 border-r border-border p-4">
+				<h1 className="mb-6 text-lg font-bold text-primary">Admin</h1>
 				<ul className="space-y-1">
 					{tabs.map((tab) => (
 						<li key={tab.id}>
@@ -44,7 +44,7 @@ export function AdminLayout({
 						</li>
 					))}
 				</ul>
-				<div className="mt-8 border-t border-zinc-800 pt-4">
+				<div className="mt-8 border-t border-border pt-4">
 					<a
 						href="/"
 						className="text-sm text-muted-foreground hover:text-foreground"

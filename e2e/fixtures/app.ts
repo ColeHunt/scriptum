@@ -119,6 +119,14 @@ export const test = base.extend<AppFixtures & AppOptions>({
 			const candidate = await createApp({
 				dataDir: join(root, "data"),
 				catalogDir,
+				// Empty string / explicit false, not omitted: Bun auto-loads .env for
+				// every process including this fixture, so a developer's real
+				// LESSONS_CATALOG_REPO/CODERUNNER_DEMO_MODE (for their own local
+				// deployment) would otherwise silently swap every e2e test onto a
+				// live remote catalog or into demo mode. See the identical guard in
+				// apps/control/src/__tests__/helpers.ts's withApp().
+				catalogRepo: "",
+				demo: false,
 				webDistDir,
 				advantageScopeDistDir: ascopeDistDir,
 				choreoDistDir,
