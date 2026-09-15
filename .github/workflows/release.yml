@@ -24,12 +24,6 @@ concurrency:
 env:
   WORKSPACE_IMAGE: ghcr.io/${{ github.repository_owner }}/coderunner-workspace
   CONTROL_IMAGE: ghcr.io/${{ github.repository_owner }}/coderunner-control
-  # Pinned PathPlanner web release (mathewdunne/pathplanner-web). Both control
-  # builds must resolve the same artifact, and a pinned tag makes a failed
-  # download fatal instead of silently shipping an empty dist — see the
-  # pathplanner-dist stage in containers/control/Dockerfile. Bump this when
-  # adopting a newer PathPlanner web build.
-  PATHPLANNER_DIST_TAG: web-v2026.1.2-1
 
 jobs:
   validate:
@@ -241,8 +235,6 @@ jobs:
           context: .
           file: containers/control/Dockerfile
           platforms: linux/amd64
-          build-args: |
-            PATHPLANNER_DIST_TAG=${{ env.PATHPLANNER_DIST_TAG }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ needs.validate.outputs.tag_sha }}
@@ -344,8 +336,6 @@ jobs:
           context: .
           file: containers/control/Dockerfile
           platforms: linux/arm64
-          build-args: |
-            PATHPLANNER_DIST_TAG=${{ env.PATHPLANNER_DIST_TAG }}
           build-contexts: |
             ascope-dist=${{ runner.temp }}/ascope-dist
           labels: |
