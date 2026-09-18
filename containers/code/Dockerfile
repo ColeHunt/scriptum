@@ -52,7 +52,7 @@ COPY vendor/Choreo/ vendor/Choreo/
 COPY patches/choreo/ patches/choreo/
 RUN git config --global --add safe.directory '*' \
     && for p in patches/choreo/*.patch; do \
-         echo "Applying $p" && git -C vendor/Choreo apply "$p" || exit 1; \
+         echo "Applying $p" && git -C vendor/Choreo apply "/repo/$p" || exit 1; \
        done \
     && cd vendor/Choreo \
     && cargo build --release -p choreo-server
