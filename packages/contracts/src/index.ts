@@ -43,6 +43,11 @@ export const heartbeatRequestSchema = z.object({
 
 export const lessonModuleKindSchema = z.enum(["plain-java", "robot", "git"]);
 
+/** The tool panes a module can restrict itself to via `restrictTools` -
+ * editor and Driver Station are always available and aren't part of this
+ * set. */
+export const toolPaneKeySchema = z.enum(["scope", "choreo", "elastic"]);
+
 // Top-level (pre-workspace) session probe: does the SPA's `RootIndex` have a
 // slug to redirect to, or should it send the visitor to /login? Deliberately
 // separate from `sessionResponseSchema`, which requires a resolved workspace
@@ -467,6 +472,14 @@ export const lessonModuleSchema = z.object({
 	 * where the student's program writes a log file and opens it in Scope by
 	 * hand, rather than connecting to a live NT4 server. */
 	showScope: z.boolean().default(false).optional(),
+	/** When set, only these tool panes are available for this module -
+	 * their toggle buttons in the topbar don't render, and the panes stay
+	 * hidden regardless of stored visibility from another lesson. Omit (the
+	 * default) to leave every tool pane available, which is what every
+	 * module except the single-tool lessons (advantagescope-intro,
+	 * elastic-intro, choreo-intro) wants. Editor and Driver Station are
+	 * never restricted - only scope/choreo/elastic. */
+	restrictTools: z.array(toolPaneKeySchema).min(1).optional(),
 });
 
 export const lessonCatalogSchema = z.object({
@@ -495,6 +508,7 @@ export const lessonLoadRequestSchema = z.object({
 });
 
 export type LessonModuleKind = z.infer<typeof lessonModuleKindSchema>;
+export type ToolPaneKey = z.infer<typeof toolPaneKeySchema>;
 export type LessonModuleSubdir = z.infer<typeof lessonModuleSubdirSchema>;
 export type LessonCheckpointVerifier = z.infer<
 	typeof lessonCheckpointVerifierSchema

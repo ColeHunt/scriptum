@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test } from "vitest";
+import type { ToolPaneKey } from "@/lib/contracts";
 import {
 	PaneToggleRow,
 	PaneVisibilityRoot,
@@ -11,9 +12,9 @@ function Probe() {
 	return <span data-testid="visible-state">{JSON.stringify(visible)}</span>;
 }
 
-function renderToggles() {
+function renderToggles(allowedTools?: readonly ToolPaneKey[]) {
 	return render(
-		<PaneVisibilityRoot>
+		<PaneVisibilityRoot allowedTools={allowedTools}>
 			<PaneToggleRow />
 			<Probe />
 		</PaneVisibilityRoot>,
@@ -236,5 +237,70 @@ describe("PaneVisibility", () => {
 			"aria-pressed",
 			"true",
 		);
+	});
+});
+
+describe("PaneVisibility restrictTools", () => {
+	afterEach(() => {
+		sessionStorage.clear();
+	});
+
+	test("only the allowed tool's toggle button renders", () => {
+		renderToggles(["choreo"]);
+
+		expect(screen.getByRole("button", { name: "Editor" })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Choreo" })).toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: "AdvantageScope" }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: "Elastic" }),
+		).not.toBeInTheDocument();
+		// Driver Station is never restricted.
+		expect(
+			screen.getByRole("button", { name: "Driver Station" }),
+		).toBeInTheDocument();
+	});
+
+	test("the allowed tool is visible by default even though Choreo defaults to off", () => {
+		renderToggles(["choreo"]);
+
+		expect(screen.getByRole("button", { name: "Choreo" })).toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+	});
+
+	test("a pane left visible from another lesson is forced hidden on entry", () => {
+		// Simulates having toggled AdvantageScope on in an unrestricted lesson,
+		// then switching to the Choreo-only lesson in the same tab/session.
+		sessionStorage.setItem(
+			"scriptum:pane-visibility",
+			JSON.stringify({
+				editor: true,
+				scope: true,
+				choreo: false,
+				elastic: false,
+				driverStation: true,
+			}),
+		);
+
+		renderToggles(["choreo"]);
+
+		const probe = screen.getByTestId("visible-state");
+		const visible = JSON.parse(probe.textContent ?? "{}");
+		expect(visible.scope).toBe(false);
+		expect(visible.elastic).toBe(false);
+		expect(visible.choreo).toBe(true);
+	});
+
+	test("undefined allowedTools renders every tool button, unchanged from before", () => {
+		renderToggles(undefined);
+
+		expect(
+			screen.getByRole("button", { name: "AdvantageScope" }),
+		).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Choreo" })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Elastic" })).toBeInTheDocument();
 	});
 });

@@ -67,8 +67,14 @@ export function WorkspacePage() {
 	// server, so `simSlug` stays null and the run-channel/Driver-Station/NT4
 	// handshake hooks below still never try to connect.
 	const lessons = useLessons(workspaceSlug);
-	const showScope =
-		lessons.modules.find((m) => m.id === currentModule)?.showScope === true;
+	const currentModuleInfo = lessons.modules.find((m) => m.id === currentModule);
+	const showScope = currentModuleInfo?.showScope === true;
+	// The three single-tool lessons (advantagescope-intro, elastic-intro,
+	// choreo-intro) each set restrictTools in modules.json so the other two
+	// tool panes - and their topbar toggle buttons - don't appear at all.
+	// Everything else (general robot lessons, empty workspace) leaves this
+	// undefined and keeps every tool pane available.
+	const allowedTools = currentModuleInfo?.restrictTools;
 
 	const [switchOpen, setSwitchOpen] = useState(false);
 	const [checkpointsOpen, setCheckpointsOpen] = useState(false);
@@ -237,7 +243,10 @@ export function WorkspacePage() {
 		sessionState.status === "error" ? sessionState.message : undefined;
 
 	return (
-		<PaneVisibilityRoot className="flex h-screen flex-col gap-0 bg-background">
+		<PaneVisibilityRoot
+			className="flex h-screen flex-col gap-0 bg-background"
+			allowedTools={allowedTools}
+		>
 			{isDemo && <DemoBanner />}
 			<Topbar
 				displayName={displayName}

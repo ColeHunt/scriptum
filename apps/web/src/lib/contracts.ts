@@ -24,6 +24,7 @@ export type {
 	SessionResponse,
 	SimRunStatus,
 	SimStatusResponse,
+	ToolPaneKey,
 	TopLevelSessionResponse,
 } from "@frc-scriptum/contracts";
 

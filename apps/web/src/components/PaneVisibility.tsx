@@ -11,6 +11,7 @@ import advantagescopeLogo from "@/assets/advantagescope-logo.png";
 import choreoLogo from "@/assets/choreo-logo.png";
 import elasticLogo from "@/assets/elastic-logo.png";
 import vscodeLogo from "@/assets/vscode-logo.svg";
+import type { ToolPaneKey } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 
 export type PaneKey =
@@ -27,6 +28,8 @@ const PANE_KEYS: readonly PaneKey[] = [
 	"elastic",
 	"driverStation",
 ];
+
+const TOOL_PANE_KEYS: readonly ToolPaneKey[] = ["scope", "choreo", "elastic"];
 
 // Panes whose group must keep at least one member visible - hiding all of
 // them would leave the workbench row blank (its own panel isn't collapsible,
@@ -94,9 +97,36 @@ function readStoredVisibility(): PaneVisibility {
 	}
 }
 
+/** Forces every tool pane not in `allowed` to false, regardless of stored
+ * visibility - used so switching into a restricted lesson can't leave a
+ * previously-toggled-on pane from another lesson visible. Also guarantees
+ * at least one allowed pane stays visible: stored visibility might have
+ * every allowed pane off (e.g. Choreo defaults to off in DEFAULT_VISIBILITY,
+ * so a fresh choreo-intro session would otherwise show nothing but the
+ * editor). `undefined` means unrestricted (every tool pane stays whatever
+ * it already was). Never writes back to sessionStorage - this is a display
+ * override, not a preference change. */
+function applyToolRestriction(
+	visibility: PaneVisibility,
+	allowed: readonly ToolPaneKey[] | undefined,
+): PaneVisibility {
+	if (allowed === undefined) return visibility;
+	const next = { ...visibility };
+	for (const key of TOOL_PANE_KEYS) {
+		if (!allowed.includes(key)) next[key] = false;
+	}
+	if (!allowed.some((key) => next[key])) {
+		next[allowed[0]] = true;
+	}
+	return next;
+}
+
 interface PaneVisibilityContextValue {
 	visible: PaneVisibility;
 	toggle: (key: PaneKey) => void;
+	/** Which tool panes this lesson allows - undefined means all of them.
+	 * Consumed by `PaneToggleRow` to decide which buttons to render at all. */
+	allowedTools: readonly ToolPaneKey[] | undefined;
 }
 
 const PaneVisibilityContext = createContext<PaneVisibilityContextValue | null>(
@@ -114,6 +144,11 @@ export function usePaneVisibility(): PaneVisibilityContextValue {
 interface PaneVisibilityRootProps {
 	className?: string;
 	children: ReactNode;
+	/** Restricts this lesson to a subset of the tool panes (scope/choreo/
+	 * elastic) - e.g. `["scope"]` for the AdvantageScope-only lesson.
+	 * Undefined (the default) leaves every tool pane available, which is
+	 * what every module except the three single-tool lessons wants. */
+	allowedTools?: readonly ToolPaneKey[];
 }
 
 /**
@@ -123,11 +158,16 @@ interface PaneVisibilityRootProps {
  * a single pane makes it fill the whole workbench area, which is what gives
  * the "one app fullscreen" behavior without a separate maximize concept. The
  * one exception is Choreo, which forces AdvantageScope and Elastic off when
- * it's turned on (see withChoreoSpace).
+ * it's turned on (see withChoreoSpace). `allowedTools` layers a second,
+ * lesson-driven restriction on top: the raw toggle state still lives in
+ * sessionStorage (shared across whichever lessons a student visits in this
+ * tab), but a disallowed pane is always reported and rendered as hidden,
+ * and its toggle button doesn't render at all - see applyToolRestriction.
  */
 export function PaneVisibilityRoot({
 	className,
 	children,
+	allowedTools,
 }: PaneVisibilityRootProps) {
 	const [visible, setVisible] = useState<PaneVisibility>(readStoredVisibility);
 
@@ -149,7 +189,14 @@ export function PaneVisibilityRoot({
 		});
 	}, []);
 
-	const value = useMemo(() => ({ visible, toggle }), [visible, toggle]);
+	const effectiveVisible = useMemo(
+		() => applyToolRestriction(visible, allowedTools),
+		[visible, allowedTools],
+	);
+	const value = useMemo(
+		() => ({ visible: effectiveVisible, toggle, allowedTools }),
+		[effectiveVisible, toggle, allowedTools],
+	);
 
 	return (
 		<PaneVisibilityContext.Provider value={value}>
@@ -195,28 +242,41 @@ function PaneToggleButton({
 	);
 }
 
-/** Topbar toggle row: independently shows/hides each pane. Must sit inside `PaneVisibilityRoot`. */
+/** Topbar toggle row: independently shows/hides each pane. Tool panes
+ * (scope/choreo/elastic) this lesson's `allowedTools` excludes don't render
+ * as buttons at all - there's nothing to toggle them to. Must sit inside
+ * `PaneVisibilityRoot`. */
 export function PaneToggleRow() {
+	const { allowedTools } = usePaneVisibility();
+	const showTool = (key: ToolPaneKey) =>
+		allowedTools === undefined || allowedTools.includes(key);
+
 	return (
 		<div className="relative flex h-8 items-center gap-[3px] rounded-full border border-border bg-background p-[3px]">
 			<PaneToggleButton
 				paneKey="editor"
 				icon={<img src={vscodeLogo} alt="" className="size-4 shrink-0" />}
 			/>
-			<PaneToggleButton
-				paneKey="scope"
-				icon={
-					<img src={advantagescopeLogo} alt="" className="size-4 shrink-0" />
-				}
-			/>
-			<PaneToggleButton
-				paneKey="choreo"
-				icon={<img src={choreoLogo} alt="" className="size-4 shrink-0" />}
-			/>
-			<PaneToggleButton
-				paneKey="elastic"
-				icon={<img src={elasticLogo} alt="" className="size-4 shrink-0" />}
-			/>
+			{showTool("scope") && (
+				<PaneToggleButton
+					paneKey="scope"
+					icon={
+						<img src={advantagescopeLogo} alt="" className="size-4 shrink-0" />
+					}
+				/>
+			)}
+			{showTool("choreo") && (
+				<PaneToggleButton
+					paneKey="choreo"
+					icon={<img src={choreoLogo} alt="" className="size-4 shrink-0" />}
+				/>
+			)}
+			{showTool("elastic") && (
+				<PaneToggleButton
+					paneKey="elastic"
+					icon={<img src={elasticLogo} alt="" className="size-4 shrink-0" />}
+				/>
+			)}
 			<PaneToggleButton
 				paneKey="driverStation"
 				icon={<Gamepad2 className="size-4 shrink-0" />}
