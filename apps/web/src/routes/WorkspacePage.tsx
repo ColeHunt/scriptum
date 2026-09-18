@@ -73,9 +73,16 @@ export function WorkspacePage() {
 	const [switchOpen, setSwitchOpen] = useState(false);
 	const [checkpointsOpen, setCheckpointsOpen] = useState(false);
 	const scopeFrameRef = useRef<HTMLIFrameElement>(null);
+	// Must match the condition that actually mounts the Scope pane below
+	// (`showSimPanels`/`ScopePane`'s render), not just `showScope` - that flag
+	// only covers the plain-java-opt-in case. A `robot`-kind module (e.g.
+	// advantagescope-intro) renders the pane via `!hideSimChrome` alone, and
+	// previously fell through to `undefined` here, so its layout checkpoints
+	// silently read a stale/missing snapshot instead of the live one.
+	const scopeMounted = !hideSimChrome || showScope;
 	const getScopeLayout = useCallback(
-		() => (showScope ? readScopeLayout(scopeFrameRef.current) : undefined),
-		[showScope],
+		() => (scopeMounted ? readScopeLayout(scopeFrameRef.current) : undefined),
+		[scopeMounted],
 	);
 	const checkpoints = useCheckpoints(workspaceSlug, getScopeLayout);
 
