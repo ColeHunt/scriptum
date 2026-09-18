@@ -11,6 +11,23 @@ if (typeof globalThis.requestAnimationFrame !== "function") {
 		clearTimeout(id as unknown as ReturnType<typeof setTimeout>);
 }
 
+// jsdom doesn't implement matchMedia. Defaults to "doesn't match" - tests
+// that care (e.g. prefers-reduced-motion) should override via
+// vi.stubGlobal("matchMedia", ...).
+if (typeof globalThis.matchMedia !== "function") {
+	globalThis.matchMedia = (query: string): MediaQueryList =>
+		({
+			matches: false,
+			media: query,
+			onchange: null,
+			addListener: () => {},
+			removeListener: () => {},
+			addEventListener: () => {},
+			removeEventListener: () => {},
+			dispatchEvent: () => false,
+		}) as unknown as MediaQueryList;
+}
+
 afterEach(() => {
 	cleanup();
 });

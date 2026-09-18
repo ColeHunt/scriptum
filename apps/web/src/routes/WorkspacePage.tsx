@@ -339,6 +339,7 @@ export function WorkspacePage() {
 				verifying={checkpoints.verifying}
 				error={checkpoints.error}
 				verify={checkpoints.verify}
+				onLaunchNewLesson={() => setSwitchOpen(true)}
 			/>
 		</PaneVisibilityRoot>
 	);

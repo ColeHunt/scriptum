@@ -475,11 +475,13 @@ export const lessonCatalogSchema = z.object({
 });
 
 /** A catalog module as returned to a specific workspace: whether it's
- * currently locked, and the titles of whatever unmet prerequisites are
- * blocking it (empty when unlocked). */
+ * currently locked, the titles of whatever unmet prerequisites are blocking
+ * it (empty when unlocked), and whether every required checkpoint has
+ * passed for this workspace (see CheckpointManager.isModuleComplete). */
 export const lessonModuleWithLockStateSchema = lessonModuleSchema.extend({
 	locked: z.boolean(),
 	missingPrerequisites: z.array(z.string()),
+	completed: z.boolean(),
 });
 
 export const lessonCatalogResponseSchema = z.object({

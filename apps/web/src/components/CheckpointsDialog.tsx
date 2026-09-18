@@ -3,9 +3,11 @@ import {
 	CheckCircle2,
 	Circle,
 	Loader2,
+	PartyPopper,
 	XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Confetti } from "@/components/Confetti";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +30,9 @@ interface CheckpointsDialogProps {
 	verifying: boolean;
 	error: string | null;
 	verify: (checkpointIds?: string[]) => Promise<void>;
+	/** Called when the student picks "Launch new lesson" off the completion
+	 * celebration. Closes this dialog and opens the lesson picker. */
+	onLaunchNewLesson: () => void;
 }
 
 const STATUS_ICON: Record<CheckpointStatus, typeof CheckCircle2> = {
@@ -52,8 +57,10 @@ export function CheckpointsDialog({
 	verifying,
 	error,
 	verify,
+	onLaunchNewLesson,
 }: CheckpointsDialogProps) {
 	const [runningId, setRunningId] = useState<string | null>(null);
+	const [celebrating, setCelebrating] = useState(false);
 
 	const runOne = async (id: string) => {
 		setRunningId(id);
@@ -67,6 +74,77 @@ export function CheckpointsDialog({
 	const passedCount = state.checkpoints.filter(
 		(c) => c.result?.status === "passed",
 	).length;
+
+	const required = state.checkpoints.filter((c) => !c.optional);
+	const allRequiredPassed =
+		required.length > 0 && required.every((c) => c.result?.status === "passed");
+
+	// Fires the celebration only on the transition into "all passed" for the
+	// currently-loaded module - never just from loading a module that was
+	// already completed in an earlier session.
+	const prevModuleIdRef = useRef<string | null>(null);
+	const prevAllPassedRef = useRef(false);
+	useEffect(() => {
+		if (state.moduleId !== prevModuleIdRef.current) {
+			prevModuleIdRef.current = state.moduleId;
+			prevAllPassedRef.current = allRequiredPassed;
+			return;
+		}
+		if (allRequiredPassed && !prevAllPassedRef.current) {
+			setCelebrating(true);
+		}
+		prevAllPassedRef.current = allRequiredPassed;
+	}, [state.moduleId, allRequiredPassed]);
+
+	// Reset so the next lesson's completion can celebrate again.
+	useEffect(() => {
+		if (!open) setCelebrating(false);
+	}, [open]);
+
+	const continueExperimenting = () => {
+		setCelebrating(false);
+		onOpenChange(false);
+	};
+
+	const launchNewLesson = () => {
+		setCelebrating(false);
+		onOpenChange(false);
+		onLaunchNewLesson();
+	};
+
+	if (celebrating) {
+		return (
+			<Dialog open={open} onOpenChange={onOpenChange}>
+				<DialogContent className="sm:max-w-md" showCloseButton={false}>
+					<Confetti />
+					<div className="flex flex-col items-center gap-3 py-4 text-center">
+						<PartyPopper className="size-10 text-emerald-500" />
+						<DialogHeader className="items-center">
+							<DialogTitle className="text-[16px]">
+								Lesson complete!
+							</DialogTitle>
+							<DialogDescription className="text-[12.5px]">
+								You passed every checkpoint. Keep tinkering here, or move on to
+								the next lesson.
+							</DialogDescription>
+						</DialogHeader>
+					</div>
+					<DialogFooter>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={continueExperimenting}
+						>
+							Continue experimenting
+						</Button>
+						<Button type="button" onClick={launchNewLesson}>
+							Launch new lesson
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+		);
+	}
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>

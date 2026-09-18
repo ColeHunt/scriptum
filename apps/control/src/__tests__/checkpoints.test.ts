@@ -914,10 +914,53 @@ describe("CheckpointManager — whole-lesson locking", () => {
 
 				const withLock = manager.withLockState(workspace.id, modules);
 				const byId = new Map(withLock.map((m) => [m.id, m]));
-				expect(byId.get("checkpoint-demo")).toMatchObject({ locked: false });
+				expect(byId.get("checkpoint-demo")).toMatchObject({
+					locked: false,
+					completed: false,
+				});
 				expect(byId.get("locked-followup")).toMatchObject({
 					locked: true,
 					missingPrerequisites: ["Checkpoint Demo"],
+					// Vacuously complete: it has no checkpoints of its own to fail.
+					completed: true,
+				});
+			} finally {
+				await rm(catalogDir, { recursive: true, force: true });
+			}
+		});
+	});
+
+	test("withLockState marks a module completed once every required checkpoint has passed", async () => {
+		await withApp(async (app) => {
+			await login(app, "alice");
+			const workspace = app.storage.db
+				.query("SELECT * FROM workspaces WHERE slug = ?")
+				.get("alice") as WorkspaceRow;
+			const catalogDir = await makeLockCatalogDir();
+			try {
+				const mock = new MockWorkspaceRuntimeProvider([
+					runningRuntime(workspace.id),
+				]);
+				const manager = new CheckpointManager(
+					app.storage,
+					mock,
+					new BundledCatalogSource(catalogDir),
+				);
+				const { modules } = await new BundledCatalogSource(
+					catalogDir,
+				).getManifest();
+
+				app.storage.setCheckpointResult(workspace.id, "checkpoint-demo", {
+					checkpointId: "required-one",
+					status: "passed",
+					message: null,
+					verifiedAt: new Date().toISOString(),
+				});
+
+				const withLock = manager.withLockState(workspace.id, modules);
+				const byId = new Map(withLock.map((m) => [m.id, m]));
+				expect(byId.get("checkpoint-demo")).toMatchObject({
+					completed: true,
 				});
 			} finally {
 				await rm(catalogDir, { recursive: true, force: true });

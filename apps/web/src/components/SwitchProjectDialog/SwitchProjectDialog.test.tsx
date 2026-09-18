@@ -18,6 +18,7 @@ const TRACKED_CATALOG = {
 			track: "Tools",
 			locked: false,
 			missingPrerequisites: [],
+			completed: false,
 		},
 		{
 			id: "robot-starter",
@@ -31,6 +32,7 @@ const TRACKED_CATALOG = {
 			track: "FRC Robot",
 			locked: true,
 			missingPrerequisites: ["Git Basics"],
+			completed: false,
 		},
 		{
 			id: "hello-world",
@@ -44,6 +46,7 @@ const TRACKED_CATALOG = {
 			track: "Java Basics",
 			locked: false,
 			missingPrerequisites: [],
+			completed: false,
 		},
 		{
 			id: "untracked-lesson",
@@ -56,6 +59,7 @@ const TRACKED_CATALOG = {
 			requires: [],
 			locked: false,
 			missingPrerequisites: [],
+			completed: false,
 		},
 	],
 };
@@ -75,6 +79,7 @@ const LOCKING_CATALOG = {
 			requires: [],
 			locked: false,
 			missingPrerequisites: [],
+			completed: false,
 		},
 		{
 			id: "robot-starter",
@@ -87,6 +92,56 @@ const LOCKING_CATALOG = {
 			requires: ["git-basics"],
 			locked: true,
 			missingPrerequisites: ["Git Basics"],
+			completed: false,
+		},
+	],
+};
+
+const COMPLETED_CATALOG = {
+	ok: true,
+	error: null,
+	modules: [
+		{
+			id: "git-basics",
+			title: "Git Basics",
+			description: "Commit, branch, merge.",
+			subdir: "modules/git-basics",
+			kind: "git",
+			order: 5,
+			checkpoints: [
+				{
+					id: "first-commit",
+					title: "First commit",
+					description: "",
+					optional: false,
+					verifier: { type: "script", path: "checkpoints/git-basics/a.sh" },
+				},
+			],
+			requires: [],
+			locked: false,
+			missingPrerequisites: [],
+			completed: true,
+		},
+		{
+			id: "hello-world",
+			title: "Hello, World",
+			description: "Variables and stdin.",
+			subdir: "modules/hello-world",
+			kind: "plain-java",
+			order: 10,
+			checkpoints: [
+				{
+					id: "print",
+					title: "Print",
+					description: "",
+					optional: false,
+					verifier: { type: "script", path: "checkpoints/hello-world/a.sh" },
+				},
+			],
+			requires: [],
+			locked: false,
+			missingPrerequisites: [],
+			completed: false,
 		},
 	],
 };
@@ -177,5 +232,37 @@ describe("SwitchProjectDialog — whole-lesson locking", () => {
 		const loadButtons = screen.getAllByRole("button", { name: "Load" });
 		expect(loadButtons).toHaveLength(1);
 		expect(loadButtons[0]).toBeEnabled();
+	});
+});
+
+describe("SwitchProjectDialog — completed lessons", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	test("shows a green checkmark only on the completed lesson", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: () => Promise.resolve(COMPLETED_CATALOG),
+			}),
+		);
+
+		render(
+			<SwitchProjectDialog
+				open
+				onOpenChange={noop}
+				workspaceSlug="test-slug"
+				currentModule={null}
+				onSwapComplete={noop}
+			/>,
+		);
+
+		await waitFor(() =>
+			expect(screen.getByText("Git Basics")).toBeInTheDocument(),
+		);
+
+		expect(screen.getAllByTitle("Completed")).toHaveLength(1);
 	});
 });

@@ -17,6 +17,7 @@ const CATALOG = {
 			requires: [],
 			locked: false,
 			missingPrerequisites: [],
+			completed: false,
 		},
 		{
 			id: "closest-distance",
@@ -29,6 +30,7 @@ const CATALOG = {
 			requires: ["hello-world"],
 			locked: true,
 			missingPrerequisites: ["Hello, World"],
+			completed: false,
 		},
 	],
 };

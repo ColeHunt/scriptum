@@ -1,5 +1,6 @@
 import {
 	BookOpen,
+	CheckCircle2,
 	Cpu,
 	GitBranch,
 	Lock,
@@ -114,8 +115,13 @@ function LessonCard({
 			)}
 		>
 			<div className="mb-1 flex items-start justify-between gap-2">
-				<h4 className="text-[13px] font-semibold leading-tight text-foreground">
-					{module.title}
+				<h4 className="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold leading-tight text-foreground">
+					{module.completed && module.checkpoints.length > 0 && (
+						<span className="shrink-0" title="Completed">
+							<CheckCircle2 className="size-3.5 text-emerald-500" />
+						</span>
+					)}
+					<span className="truncate">{module.title}</span>
 				</h4>
 				<KindTag kind={module.kind} />
 			</div>

@@ -317,7 +317,8 @@ export class CheckpointManager {
 		return { locked: missing.length > 0, missingPrerequisites: missing };
 	}
 
-	/** Attaches lock state to every module in a catalog listing (GET /api/lessons). */
+	/** Attaches lock and completion state to every module in a catalog listing
+	 * (GET /api/lessons). */
 	withLockState(
 		workspaceId: WorkspaceId,
 		modules: LessonModule[],
@@ -325,6 +326,7 @@ export class CheckpointManager {
 		return modules.map((module) => ({
 			...module,
 			...this.lockState(workspaceId, module, modules),
+			completed: this.isModuleComplete(workspaceId, module),
 		}));
 	}
 

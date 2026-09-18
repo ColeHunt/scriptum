@@ -63,6 +63,9 @@ describe("GET /u/:slug/api/lessons", () => {
 					locked: true,
 					missingPrerequisites: ["Checkpoint Demo"],
 				});
+				expect(
+					before.modules.find((m) => m.id === "checkpoint-demo"),
+				).toMatchObject({ completed: false });
 
 				// Complete every required checkpoint of checkpoint-demo directly
 				// against storage - equivalent to the student passing Verify.
@@ -86,6 +89,9 @@ describe("GET /u/:slug/api/lessons", () => {
 				expect(
 					after.modules.find((m) => m.id === "locked-followup"),
 				).toMatchObject({ locked: false, missingPrerequisites: [] });
+				expect(
+					after.modules.find((m) => m.id === "checkpoint-demo"),
+				).toMatchObject({ completed: true });
 			},
 			{ dockerRunner: docker.runner },
 		);

@@ -36,6 +36,23 @@ const AVAILABLE_STATE: CheckpointsState = {
 	],
 };
 
+const ALL_PASSED_STATE: CheckpointsState = {
+	moduleId: "git-basics",
+	available: true,
+	checkpoints: [
+		AVAILABLE_STATE.checkpoints[0]!,
+		{
+			...AVAILABLE_STATE.checkpoints[1]!,
+			result: {
+				checkpointId: "rebase",
+				status: "passed",
+				message: null,
+				verifiedAt: new Date(1).toISOString(),
+			},
+		},
+	],
+};
+
 const UNAVAILABLE_STATE: CheckpointsState = {
 	moduleId: null,
 	available: false,
@@ -55,6 +72,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error={null}
 				verify={async () => {}}
+				onLaunchNewLesson={noop}
 			/>,
 		);
 
@@ -74,6 +92,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error={null}
 				verify={async () => {}}
+				onLaunchNewLesson={noop}
 			/>,
 		);
 
@@ -98,6 +117,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error={null}
 				verify={verify}
+				onLaunchNewLesson={noop}
 			/>,
 		);
 
@@ -116,6 +136,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error={null}
 				verify={verify}
+				onLaunchNewLesson={noop}
 			/>,
 		);
 
@@ -133,10 +154,100 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error="A verify is already running."
 				verify={async () => {}}
+				onLaunchNewLesson={noop}
 			/>,
 		);
 		expect(
 			screen.getByText("A verify is already running."),
 		).toBeInTheDocument();
+	});
+
+	test("does not celebrate when a lesson loads already fully passed", () => {
+		render(
+			<CheckpointsDialog
+				open
+				onOpenChange={noop}
+				state={ALL_PASSED_STATE}
+				loading={false}
+				verifying={false}
+				error={null}
+				verify={async () => {}}
+				onLaunchNewLesson={noop}
+			/>,
+		);
+
+		expect(screen.queryByText("Lesson complete!")).toBeNull();
+		expect(screen.getByText("Rebase")).toBeInTheDocument();
+	});
+
+	test("celebrates once a verify completes every required checkpoint, then 'Launch new lesson' opens the picker", () => {
+		const onOpenChange = vi.fn();
+		const onLaunchNewLesson = vi.fn();
+		const { rerender } = render(
+			<CheckpointsDialog
+				open
+				onOpenChange={onOpenChange}
+				state={AVAILABLE_STATE}
+				loading={false}
+				verifying={false}
+				error={null}
+				verify={async () => {}}
+				onLaunchNewLesson={onLaunchNewLesson}
+			/>,
+		);
+		expect(screen.queryByText("Lesson complete!")).toBeNull();
+
+		rerender(
+			<CheckpointsDialog
+				open
+				onOpenChange={onOpenChange}
+				state={ALL_PASSED_STATE}
+				loading={false}
+				verifying={false}
+				error={null}
+				verify={async () => {}}
+				onLaunchNewLesson={onLaunchNewLesson}
+			/>,
+		);
+		expect(screen.getByText("Lesson complete!")).toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole("button", { name: "Launch new lesson" }));
+		expect(onOpenChange).toHaveBeenCalledWith(false);
+		expect(onLaunchNewLesson).toHaveBeenCalledTimes(1);
+	});
+
+	test("'Continue experimenting' dismisses the celebration without opening the picker", () => {
+		const onOpenChange = vi.fn();
+		const onLaunchNewLesson = vi.fn();
+		const { rerender } = render(
+			<CheckpointsDialog
+				open
+				onOpenChange={onOpenChange}
+				state={AVAILABLE_STATE}
+				loading={false}
+				verifying={false}
+				error={null}
+				verify={async () => {}}
+				onLaunchNewLesson={onLaunchNewLesson}
+			/>,
+		);
+		rerender(
+			<CheckpointsDialog
+				open
+				onOpenChange={onOpenChange}
+				state={ALL_PASSED_STATE}
+				loading={false}
+				verifying={false}
+				error={null}
+				verify={async () => {}}
+				onLaunchNewLesson={onLaunchNewLesson}
+			/>,
+		);
+
+		fireEvent.click(
+			screen.getByRole("button", { name: "Continue experimenting" }),
+		);
+		expect(onOpenChange).toHaveBeenCalledWith(false);
+		expect(onLaunchNewLesson).not.toHaveBeenCalled();
 	});
 });
