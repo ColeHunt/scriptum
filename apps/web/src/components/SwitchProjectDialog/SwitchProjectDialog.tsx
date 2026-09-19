@@ -1,6 +1,7 @@
 import {
 	BookOpen,
 	CheckCircle2,
+	ChevronDown,
 	Cpu,
 	GitBranch,
 	Lock,
@@ -11,6 +12,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { SiGithub } from "react-icons/si";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
 	Dialog,
 	DialogContent,
@@ -66,6 +72,17 @@ type TrackGroup = {
 	track: string | null;
 	modules: LessonModuleWithLockState[];
 };
+
+/** A stable key for a track group, usable as both a React key and a
+ * collapse-state map key ("\0untracked" can't collide with a real track
+ * name). */
+function trackKey(track: string | null): string {
+	return track ?? "\0untracked";
+}
+
+function isTrackComplete(modules: LessonModuleWithLockState[]): boolean {
+	return modules.every((module) => module.completed);
+}
 
 /** Groups modules by their `track` label, preserving each module's catalog
  * order within its group, and ordering tracks by the lowest `order` among
@@ -197,6 +214,10 @@ export function SwitchProjectDialog({
 	const [pending, setPending] = useState<Pending | null>(null);
 	const [url, setUrl] = useState("");
 	const [urlError, setUrlError] = useState("");
+	// Empty = every track expanded, which is the default.
+	const [collapsedTracks, setCollapsedTracks] = useState<Set<string>>(
+		() => new Set(),
+	);
 
 	const running = state.status === "connecting" || state.status === "running";
 	const finished = state.status === "done" || state.status === "error";
@@ -307,34 +328,60 @@ export function SwitchProjectDialog({
 								)}
 
 								{groupByTrack(modules).map(
-									({ track, modules: trackModules }) => (
-										<div
-											key={track ?? "\0untracked"}
-											className="mb-5 last:mb-0"
-										>
-											<div className="mb-2.5 flex items-center gap-2">
-												<BookOpen className="size-3.5 text-muted-foreground" />
-												<h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-													{track ?? "Lessons"}
-												</h3>
-											</div>
-											<div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-												{trackModules.map((module) => (
-													<LessonCard
-														key={module.id}
-														module={module}
-														isCurrent={module.id === currentModule}
-														onLoad={() =>
-															setPending({ kind: "lesson", module })
+									({ track, modules: trackModules }) => {
+										const key = trackKey(track);
+										const open = !collapsedTracks.has(key);
+										return (
+											<Collapsible
+												key={key}
+												open={open}
+												onOpenChange={(next) => {
+													setCollapsedTracks((prev) => {
+														const nextSet = new Set(prev);
+														if (next) {
+															nextSet.delete(key);
+														} else {
+															nextSet.add(key);
 														}
-														onReset={() =>
-															setPending({ kind: "reset", module })
-														}
-													/>
-												))}
-											</div>
-										</div>
-									),
+														return nextSet;
+													});
+												}}
+												className="mb-5 last:mb-0"
+											>
+												<CollapsibleTrigger className="mb-2.5 flex w-full items-center gap-2 text-left">
+													<BookOpen className="size-3.5 shrink-0 text-muted-foreground" />
+													<h3 className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+														<span className="truncate">
+															{track ?? "Lessons"}
+														</span>
+														{isTrackComplete(trackModules) && (
+															<span className="shrink-0" title="Track complete">
+																<CheckCircle2 className="size-3.5 text-emerald-500" />
+															</span>
+														)}
+													</h3>
+													<ChevronDown className="ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform group-data-panel-open/collapsible-trigger:rotate-180" />
+												</CollapsibleTrigger>
+												<CollapsibleContent>
+													<div className="grid grid-cols-1 gap-2.5 pt-px sm:grid-cols-2">
+														{trackModules.map((module) => (
+															<LessonCard
+																key={module.id}
+																module={module}
+																isCurrent={module.id === currentModule}
+																onLoad={() =>
+																	setPending({ kind: "lesson", module })
+																}
+																onReset={() =>
+																	setPending({ kind: "reset", module })
+																}
+															/>
+														))}
+													</div>
+												</CollapsibleContent>
+											</Collapsible>
+										);
+									},
 								)}
 
 								{/* ── Import from GitHub ─────────────────────────── */}

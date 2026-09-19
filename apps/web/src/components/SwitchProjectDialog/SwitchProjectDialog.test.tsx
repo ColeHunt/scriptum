@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { SwitchProjectDialog } from "./SwitchProjectDialog";
 
@@ -191,6 +192,145 @@ describe("SwitchProjectDialog — track grouping", () => {
 			"Lessons",
 			"Import from GitHub",
 		]);
+	});
+});
+
+describe("SwitchProjectDialog — track collapse", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	const MIXED_TRACK_CATALOG = {
+		ok: true,
+		error: null,
+		modules: [
+			{
+				id: "git-basics",
+				title: "Git Basics",
+				description: "Commit, branch, merge.",
+				subdir: "modules/git-basics",
+				kind: "git",
+				order: 5,
+				checkpoints: [
+					{
+						id: "first-commit",
+						title: "First commit",
+						description: "",
+						optional: false,
+						verifier: { type: "script", path: "checkpoints/git-basics/a.sh" },
+					},
+				],
+				requires: [],
+				track: "Tools",
+				locked: false,
+				missingPrerequisites: [],
+				completed: true,
+			},
+			{
+				id: "hello-world",
+				title: "Hello, World",
+				description: "Variables and stdin.",
+				subdir: "modules/hello-world",
+				kind: "plain-java",
+				order: 10,
+				checkpoints: [
+					{
+						id: "print",
+						title: "Print",
+						description: "",
+						optional: false,
+						verifier: { type: "script", path: "checkpoints/hello-world/a.sh" },
+					},
+				],
+				requires: [],
+				track: "Java Basics",
+				locked: false,
+				missingPrerequisites: [],
+				completed: true,
+			},
+			{
+				id: "java-loops",
+				title: "Java Loops",
+				description: "For and while loops.",
+				subdir: "modules/java-loops",
+				kind: "plain-java",
+				order: 11,
+				checkpoints: [
+					{
+						id: "loop",
+						title: "Loop",
+						description: "",
+						optional: false,
+						verifier: { type: "script", path: "checkpoints/java-loops/a.sh" },
+					},
+				],
+				requires: [],
+				track: "Java Basics",
+				locked: false,
+				missingPrerequisites: [],
+				completed: false,
+			},
+		],
+	};
+
+	test("shows a track-level checkmark only when every module in that track is completed", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: () => Promise.resolve(MIXED_TRACK_CATALOG),
+			}),
+		);
+
+		render(
+			<SwitchProjectDialog
+				open
+				onOpenChange={noop}
+				workspaceSlug="test-slug"
+				currentModule={null}
+				onSwapComplete={noop}
+			/>,
+		);
+
+		await waitFor(() => expect(screen.getByText("Tools")).toBeInTheDocument());
+
+		// "Tools" has one module, fully completed - gets a track checkmark.
+		// "Java Basics" has one completed and one not - no track checkmark.
+		// Plus one per-card checkmark on each of the two completed lessons.
+		expect(screen.getAllByTitle("Completed")).toHaveLength(2);
+		expect(screen.getAllByTitle("Track complete")).toHaveLength(1);
+	});
+
+	test("collapsing a track's header toggles its expanded state", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: () => Promise.resolve(TRACKED_CATALOG),
+			}),
+		);
+
+		render(
+			<SwitchProjectDialog
+				open
+				onOpenChange={noop}
+				workspaceSlug="test-slug"
+				currentModule={null}
+				onSwapComplete={noop}
+			/>,
+		);
+
+		await waitFor(() => expect(screen.getByText("Tools")).toBeInTheDocument());
+
+		const toolsHeader = screen.getByRole("button", { name: /Tools/ });
+		expect(toolsHeader).toHaveAttribute("aria-expanded", "true");
+
+		const user = userEvent.setup();
+		await user.click(toolsHeader);
+		expect(toolsHeader).toHaveAttribute("aria-expanded", "false");
+
+		await user.click(toolsHeader);
+		expect(toolsHeader).toHaveAttribute("aria-expanded", "true");
 	});
 });
 
