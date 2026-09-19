@@ -326,7 +326,6 @@ export function WorkspacePage() {
 				preview={previewPane}
 				driverStation={
 					<DriverStation
-						visible={layout.bottomVisible}
 						simulationStatus={simulation.status}
 						runStatus={simulation.runStatus}
 						runConnection={runConnection}
