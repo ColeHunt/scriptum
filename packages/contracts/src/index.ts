@@ -437,8 +437,9 @@ export const lessonCheckpointVerifierSchema = z.discriminatedUnion("type", [
 		min: z.number().optional(),
 		max: z.number().optional(),
 		/** Required (and only used) when check is "differs-from-default": the
-		 * starting value the topic is compared against. */
-		expected: z.number().optional(),
+		 * starting value the topic is compared against - a number for a tunable
+		 * like FlywheelTargetRPM, a boolean for a toggle like BrakeModeEnabled. */
+		expected: z.union([z.number(), z.boolean()]).optional(),
 	}),
 ]);
 

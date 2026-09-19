@@ -126,6 +126,17 @@ const NT4_MANIFEST = {
 						expected: 3000,
 					},
 				},
+				{
+					id: "differs-from-default-boolean-check",
+					title: "Differs from default boolean check",
+					description: "",
+					verifier: {
+						type: "nt4-value",
+						topic: "/BrakeModeEnabledButton",
+						check: "differs-from-default",
+						expected: false,
+					},
+				},
 			],
 		},
 	],
@@ -327,6 +338,28 @@ describe("CheckpointManager — nt4-value checkpoints", () => {
 			expect(byId.get("differs-from-default-check")?.result).toMatchObject({
 				status: "passed",
 			});
+		});
+	});
+
+	test("differs-from-default check works for a boolean default, not just numbers", async () => {
+		await withNt4Manager(async ({ manager, workspace, nt4Auto }) => {
+			nt4Auto.setSequence("/BrakeModeEnabledButton", [false]);
+			const failedState = await manager.verify(workspace.id, "nt4-demo", [
+				"differs-from-default-boolean-check",
+			]);
+			const failedById = new Map(failedState.checkpoints.map((c) => [c.id, c]));
+			expect(
+				failedById.get("differs-from-default-boolean-check")?.result,
+			).toMatchObject({ status: "failed" });
+
+			nt4Auto.setSequence("/BrakeModeEnabledButton", [true]);
+			const passedState = await manager.verify(workspace.id, "nt4-demo", [
+				"differs-from-default-boolean-check",
+			]);
+			const passedById = new Map(passedState.checkpoints.map((c) => [c.id, c]));
+			expect(
+				passedById.get("differs-from-default-boolean-check")?.result,
+			).toMatchObject({ status: "passed" });
 		});
 	});
 });
