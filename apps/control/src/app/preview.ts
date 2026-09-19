@@ -10,7 +10,7 @@ import {
 	previewPathSchema,
 	type WorkspaceId,
 	type WorkspaceSlug,
-} from "@frc-coderunner/contracts";
+} from "@frc-scriptum/contracts";
 import { getLogger } from "../logging";
 import { isInsideDirectory, isOpenFileInsideRoot } from "./assets";
 import {

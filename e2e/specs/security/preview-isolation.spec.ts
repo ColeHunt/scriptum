@@ -9,7 +9,7 @@
  */
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { PreviewDocumentsResponse } from "@frc-coderunner/contracts";
+import type { PreviewDocumentsResponse } from "@frc-scriptum/contracts";
 import { expect, test } from "../../fixtures/app";
 import { loginAs } from "../../fixtures/auth";
 import { seedPreviewProject } from "../../fixtures/preview-project";

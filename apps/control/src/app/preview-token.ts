@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { WorkspaceId } from "@frc-coderunner/contracts";
+import type { WorkspaceId } from "@frc-scriptum/contracts";
 
 /**
  * Preview iframes are sandboxed without `allow-same-origin`, so their document

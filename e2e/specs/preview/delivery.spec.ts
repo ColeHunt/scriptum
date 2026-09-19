@@ -9,7 +9,7 @@
  * authenticated APIs.
  */
 
-import type { PreviewDocumentsResponse } from "@frc-coderunner/contracts";
+import type { PreviewDocumentsResponse } from "@frc-scriptum/contracts";
 import type { Frame, Page } from "@playwright/test";
 import { expect, test } from "../../fixtures/app";
 import { loginAs } from "../../fixtures/auth";

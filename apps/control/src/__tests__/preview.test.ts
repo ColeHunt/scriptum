@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdir, symlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import type { PreviewDocumentsResponse } from "@frc-coderunner/contracts";
+import type { PreviewDocumentsResponse } from "@frc-scriptum/contracts";
 import type { ControlApp } from "../app";
 import {
 	mintPreviewToken,
