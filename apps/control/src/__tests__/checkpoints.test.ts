@@ -137,6 +137,17 @@ const NT4_MANIFEST = {
 						expected: false,
 					},
 				},
+				{
+					id: "differs-from-default-string-check",
+					title: "Differs from default string check",
+					description: "",
+					verifier: {
+						type: "nt4-value",
+						topic: "/SmartDashboard/AutoRoutine/selected",
+						check: "differs-from-default",
+						expected: "Do nothing",
+					},
+				},
 			],
 		},
 	],
@@ -359,6 +370,32 @@ describe("CheckpointManager — nt4-value checkpoints", () => {
 			const passedById = new Map(passedState.checkpoints.map((c) => [c.id, c]));
 			expect(
 				passedById.get("differs-from-default-boolean-check")?.result,
+			).toMatchObject({ status: "passed" });
+		});
+	});
+
+	test("differs-from-default check works for a string default, e.g. a chooser's selected option", async () => {
+		await withNt4Manager(async ({ manager, workspace, nt4Auto }) => {
+			nt4Auto.setSequence("/SmartDashboard/AutoRoutine/selected", [
+				"Do nothing",
+			]);
+			const failedState = await manager.verify(workspace.id, "nt4-demo", [
+				"differs-from-default-string-check",
+			]);
+			const failedById = new Map(failedState.checkpoints.map((c) => [c.id, c]));
+			expect(
+				failedById.get("differs-from-default-string-check")?.result,
+			).toMatchObject({ status: "failed" });
+
+			nt4Auto.setSequence("/SmartDashboard/AutoRoutine/selected", [
+				"Leave only",
+			]);
+			const passedState = await manager.verify(workspace.id, "nt4-demo", [
+				"differs-from-default-string-check",
+			]);
+			const passedById = new Map(passedState.checkpoints.map((c) => [c.id, c]));
+			expect(
+				passedById.get("differs-from-default-string-check")?.result,
 			).toMatchObject({ status: "passed" });
 		});
 	});
