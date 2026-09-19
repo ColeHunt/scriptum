@@ -29,6 +29,48 @@ export async function exists(path: string): Promise<boolean> {
 }
 
 /**
+ * Writes a catalog fixture in the on-disk split format `BundledCatalogSource`
+ * (and, over HTTP, `RemoteCatalogSource`) actually reads: a slim
+ * `modules.json` index (`id`/`order`/`track` only) plus one
+ * `modules-meta/<id>.json` per entry with everything else. `modules-meta/` is
+ * a sibling of `modules/`, not nested inside a module's own `modules/<id>/` -
+ * that directory is `cp -a`'d byte-for-byte into the student's workspace, so
+ * the detail file has to live outside it. Callers pass modules in the same
+ * full flat shape the catalog always documented them in
+ * (id/title/description/subdir/kind/... all on one object) - this just
+ * splits that object across the two files, so existing test fixtures don't
+ * need to change shape, only how they're written.
+ */
+export async function writeCatalogDir(
+	catalogDir: string,
+	schemaVersion: number,
+	modules: Array<
+		Record<string, unknown> & { id: string; order: number; track?: string }
+	>,
+): Promise<void> {
+	await mkdir(catalogDir, { recursive: true });
+	await writeFile(
+		join(catalogDir, "modules.json"),
+		JSON.stringify({
+			schemaVersion,
+			modules: modules.map(({ id, order, track }) =>
+				track === undefined ? { id, order } : { id, order, track },
+			),
+		}),
+		"utf8",
+	);
+	const metaDir = join(catalogDir, "modules-meta");
+	await mkdir(metaDir, { recursive: true });
+	for (const { id, order, track, ...detail } of modules) {
+		await writeFile(
+			join(metaDir, `${id}.json`),
+			JSON.stringify(detail),
+			"utf8",
+		);
+	}
+}
+
+/**
  * Build a bundled-catalog fixture: a `catalog/` dir with a `modules.json`
  * manifest plus one `plain-java` and one `robot` module subdir. Returned path
  * is wired into the test `ControlApp` as `catalogDir`.
@@ -99,73 +141,62 @@ export async function createCatalogDir(root: string): Promise<string> {
 		"utf8",
 	);
 
-	await writeFile(
-		join(catalogDir, "modules.json"),
-		JSON.stringify(
-			{
-				schemaVersion: 1,
-				modules: [
-					{
-						id: "hello-world",
-						title: "Hello, World",
-						description: "Variables and stdin.",
-						subdir: "modules/hello-world",
-						kind: "plain-java",
-						order: 10,
+	await writeCatalogDir(catalogDir, 2, [
+		{
+			id: "hello-world",
+			title: "Hello, World",
+			description: "Variables and stdin.",
+			subdir: "modules/hello-world",
+			kind: "plain-java",
+			order: 10,
+		},
+		{
+			id: "robot-starter",
+			title: "Robot Starter",
+			description: "A starter robot project.",
+			subdir: "modules/robot-starter",
+			kind: "robot",
+			order: 20,
+		},
+		{
+			id: "checkpoint-demo",
+			title: "Checkpoint Demo",
+			description: "A tiny git lesson with two checkpoints.",
+			subdir: "modules/checkpoint-demo",
+			kind: "git",
+			order: 30,
+			setupScript: "checkpoints/checkpoint-demo/setup.sh",
+			checkpoints: [
+				{
+					id: "first-commit",
+					title: "First commit",
+					description: "Always passes.",
+					verifier: {
+						type: "script",
+						path: "checkpoints/checkpoint-demo/verify/first-commit.sh",
 					},
-					{
-						id: "robot-starter",
-						title: "Robot Starter",
-						description: "A starter robot project.",
-						subdir: "modules/robot-starter",
-						kind: "robot",
-						order: 20,
+				},
+				{
+					id: "rebase",
+					title: "Rebase",
+					description: "Always fails.",
+					verifier: {
+						type: "script",
+						path: "checkpoints/checkpoint-demo/verify/rebase.sh",
 					},
-					{
-						id: "checkpoint-demo",
-						title: "Checkpoint Demo",
-						description: "A tiny git lesson with two checkpoints.",
-						subdir: "modules/checkpoint-demo",
-						kind: "git",
-						order: 30,
-						setupScript: "checkpoints/checkpoint-demo/setup.sh",
-						checkpoints: [
-							{
-								id: "first-commit",
-								title: "First commit",
-								description: "Always passes.",
-								verifier: {
-									type: "script",
-									path: "checkpoints/checkpoint-demo/verify/first-commit.sh",
-								},
-							},
-							{
-								id: "rebase",
-								title: "Rebase",
-								description: "Always fails.",
-								verifier: {
-									type: "script",
-									path: "checkpoints/checkpoint-demo/verify/rebase.sh",
-								},
-							},
-						],
-					},
-					{
-						id: "locked-followup",
-						title: "Locked Followup",
-						description: "Requires checkpoint-demo to be fully complete first.",
-						subdir: "modules/hello-world",
-						kind: "plain-java",
-						order: 40,
-						requires: ["checkpoint-demo"],
-					},
-				],
-			},
-			null,
-			2,
-		),
-		"utf8",
-	);
+				},
+			],
+		},
+		{
+			id: "locked-followup",
+			title: "Locked Followup",
+			description: "Requires checkpoint-demo to be fully complete first.",
+			subdir: "modules/hello-world",
+			kind: "plain-java",
+			order: 40,
+			requires: ["checkpoint-demo"],
+		},
+	]);
 
 	return catalogDir;
 }

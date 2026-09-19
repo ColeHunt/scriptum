@@ -1,35 +1,15 @@
 {
-	"schemaVersion": 1,
+	"schemaVersion": 2,
 	"modules": [
 		{
 			"id": "hello-world",
-			"title": "Hello, World",
-			"description": "Basic java hello world project",
-			"subdir": "modules/hello-world",
-			"kind": "plain-java",
 			"order": 10,
-			"track": "Java Basics",
-			"checkpoints": [
-				{
-					"id": "prints-hello-world",
-					"title": "Prints Hello, World!",
-					"description": "Running Main prints \"Hello, World!\" to standard out.",
-					"verifier": {
-						"type": "script",
-						"path": "checkpoints/hello-world/verify/prints-hello-world.sh"
-					}
-				}
-			]
+			"track": "Java Basics"
 		},
 		{
 			"id": "robot-starter",
-			"title": "Robot Starter",
-			"description": "A minimal WPILib and AdvantageKit command-based robot you run from the Driver Station.",
-			"subdir": "modules/robot-starter",
-			"kind": "robot",
 			"order": 20,
-			"track": "FRC Robot",
-			"requires": ["git-basics"]
+			"track": "FRC Robot"
 		}
 	]
 }

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { access, readdir, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { lessonCatalogSchema } from "../packages/contracts/src/index";
+import { BundledCatalogSource } from "../apps/control/src/catalog";
 
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const catalogRoot = resolve(repoRoot, "catalog");
@@ -15,14 +15,21 @@ async function expectCatalogFile(relativePath: string): Promise<void> {
 	expect(fileStat.size).toBeGreaterThan(0);
 }
 
-describe("bundled lesson catalog", () => {
-	test("modules.json parses and matches the contract schema", async () => {
-		const manifestPath = resolve(catalogRoot, "modules.json");
-		const manifest = await Bun.file(manifestPath).json();
-		const catalog = lessonCatalogSchema.parse(manifest);
+// Loaded once via the real BundledCatalogSource - the same index +
+// modules-meta/<id>.json merge production uses - rather than hand-parsing
+// modules.json, so this test actually exercises the on-disk split format
+// (decision 051), not just the schema shape.
+const source = new BundledCatalogSource(catalogRoot);
+const { modules: catalogModules, error: catalogError } =
+	await source.getManifest();
 
-		expect(catalog.schemaVersion).toBe(1);
-		const ids = catalog.modules.map((module) => module.id).sort();
+describe("bundled lesson catalog", () => {
+	test("loads cleanly through BundledCatalogSource", () => {
+		expect(catalogError).toBeNull();
+	});
+
+	test("modules.json + modules-meta/*.json list the expected module ids", () => {
+		const ids = catalogModules.map((module) => module.id).sort();
 		// The bundled catalog is a minimal zero-config/offline demo, not the full
 		// curriculum - git-basics, the rest of the Java Basics track, and the
 		// advantagescope-intro/elastic-intro tool lessons live in the external
@@ -33,12 +40,7 @@ describe("bundled lesson catalog", () => {
 	});
 
 	test("every module subdir exists and is non-empty", async () => {
-		const manifest = await Bun.file(
-			resolve(catalogRoot, "modules.json"),
-		).json();
-		const catalog = lessonCatalogSchema.parse(manifest);
-
-		for (const module of catalog.modules) {
+		for (const module of catalogModules) {
 			const subdirPath = resolve(catalogRoot, module.subdir);
 			const subdirStat = await stat(subdirPath);
 			expect(subdirStat.isDirectory()).toBe(true);
@@ -72,12 +74,7 @@ describe("bundled lesson catalog", () => {
 	});
 
 	test("every checkpoint's verifier script exists and checkpoint ids are unique", async () => {
-		const manifest = await Bun.file(
-			resolve(catalogRoot, "modules.json"),
-		).json();
-		const catalog = lessonCatalogSchema.parse(manifest);
-
-		for (const module of catalog.modules) {
+		for (const module of catalogModules) {
 			const ids = module.checkpoints.map((c) => c.id);
 			expect(new Set(ids).size).toBe(ids.length);
 

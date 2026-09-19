@@ -19,9 +19,10 @@ Real examples to read alongside this page:
 
 - **A complete standalone lessons repo:**
   [github.com/mathewdunne/coderunner-lessons](https://github.com/mathewdunne/coderunner-lessons),
-  the maintainer's own team lessons, structured exactly as described here and
-  exercising all three `kind`s, `track`/`requires` grouping, and both
-  checkpoint verifier types.
+  the upstream maintainer's own team lessons, exercising all three `kind`s,
+  `track`/`requires` grouping, and both checkpoint verifier types. It predates
+  the split `modules.json`/`modules-meta/<id>.json` manifest (decision 051) -
+  everything else about its structure still applies.
 - **The bundled demo catalog:**
   [`catalog/` in the CodeRunner repo](https://github.com/mathewdunne/CodeRunner/tree/main/catalog),
   intentionally minimal (just `hello-world` and `robot-starter`, for a
@@ -31,11 +32,16 @@ Real examples to read alongside this page:
 
 ## Repository layout
 
-A lessons repository has a manifest at its root, one directory per module, and
+A lessons repository has a slim manifest at its root, one small metadata file
+per module, one directory per module holding its actual starting files, and
 (for any module with checkpoints) a matching `checkpoints/` tree:
 
 ```text
-modules.json              ← the catalog manifest (required, at repo root)
+modules.json              ← the catalog index (required, at repo root)
+modules-meta/
+  hello-world.json         ← that module's title/description/kind/checkpoints/...
+  git-basics.json
+  ...
 modules/
   hello-world/             ← one directory per module
     README.md             ← the lesson text
@@ -60,114 +66,145 @@ checkpoints/
 Each `modules/<id>/` directory is a **complete starting project**: everything
 the student needs the moment the lesson loads. There is no separate build or
 packaging step; CodeRunner copies the directory contents directly into the
-student's workspace. `checkpoints/<id>/` is separate — its contents are never
-copied into the student's project; they're fetched and run by the control
-plane itself (see [Checkpoints](#checkpoints-and-hard-prerequisites) below).
+student's workspace, byte-for-byte. Both `checkpoints/<id>/` and
+`modules-meta/<id>.json` are separate — never copied into the student's
+project. `checkpoints/<id>/` is fetched and run by the control plane itself
+(see [Checkpoints](#checkpoints-and-hard-prerequisites) below);
+`modules-meta/<id>.json` is read once, at catalog-listing time, to fill in
+everything the slim `modules.json` index doesn't carry.
 
-The `modules/`/`checkpoints/` folder names are a convention used by these
-examples, not a requirement. The manifest's `subdir` field (below) is what
-actually points at each module's directory; a checkpoint's `verifier.path`
-(or a module's `setupScript`) is what points at its script, always as a path
-relative to the repo root. Lay the repo out however you like as long as those
-fields match.
+The `modules/`/`modules-meta/`/`checkpoints/` folder names are a convention
+used by these examples, not a requirement. The manifest's `subdir` field
+(below) is what actually points at each module's directory; a checkpoint's
+`verifier.path` (or a module's `setupScript`) is what points at its script,
+always as a path relative to the repo root. `modules-meta/<id>.json`'s own
+location is *not* configurable, though — the catalog source always looks for
+it by `id` at exactly that path, since it's what CodeRunner reads to learn
+the module's `id` in the first place. Lay the rest of the repo out however
+you like as long as `subdir`/`verifier.path`/`setupScript` match.
 
-## The `modules.json` manifest
+## The catalog manifest
 
-`modules.json` lists every module in the catalog. Here is a complete, valid
-example covering every field (see `catalog/modules.json` in the CodeRunner
-repo for the real bundled manifest, which exercises all of this at once):
+The manifest is split across two kinds of file, so a lesson's own data lives
+next to its own scripts instead of in one central file every lesson's edits
+collide on:
+
+- **`modules.json`** is the curriculum-sequence index: just enough per module
+  — `id`, `order`, `track` — to sort and group the Switch Project menu. It's
+  also the authoritative list of which module ids exist in the catalog; a
+  `modules-meta/<id>.json` with no matching index entry is never loaded.
+- **`modules-meta/<id>.json`** is everything else: `title`, `description`,
+  `subdir`, `kind`, `checkpoints`, and so on. `id` is not repeated in it —
+  CodeRunner already knows it from the index entry that pointed here.
+
+Here is a complete, valid example covering every field (see `catalog/` in the
+CodeRunner repo for the real bundled manifest, which exercises all of this at
+once):
 
 ```json
+// modules.json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "modules": [
+    { "id": "hello-world", "order": 10, "track": "Java Basics" },
+    { "id": "java-variables", "order": 11, "track": "Java Basics" },
+    { "id": "git-basics", "order": 5, "track": "Tools" },
+    { "id": "robot-starter", "order": 20, "track": "FRC Robot" }
+  ]
+}
+```
+
+```json
+// modules-meta/hello-world.json
+{
+  "title": "Hello, World",
+  "description": "Basic java hello world project",
+  "subdir": "modules/hello-world",
+  "kind": "plain-java",
+  "checkpoints": [
     {
-      "id": "hello-world",
-      "title": "Hello, World",
-      "description": "Basic java hello world project",
-      "subdir": "modules/hello-world",
-      "kind": "plain-java",
-      "order": 10,
-      "track": "Java Basics",
-      "checkpoints": [
-        {
-          "id": "prints-hello-world",
-          "title": "Prints Hello, World!",
-          "description": "Running Main prints \"Hello, World!\" to standard out.",
-          "verifier": {
-            "type": "script",
-            "path": "checkpoints/hello-world/verify/prints-hello-world.sh"
-          }
-        }
-      ]
-    },
-    {
-      "id": "java-variables",
-      "title": "Variables",
-      "description": "Declare variables, define a constant, and define your first enum.",
-      "subdir": "modules/java-variables",
-      "kind": "plain-java",
-      "order": 11,
-      "track": "Java Basics",
-      "requires": ["hello-world"]
-    },
-    {
-      "id": "git-basics",
-      "title": "Git Basics",
-      "description": "Commit, branch, merge, resolve a conflict, and rebase.",
-      "subdir": "modules/git-basics",
-      "kind": "git",
-      "order": 5,
-      "track": "Tools",
-      "setupScript": "checkpoints/git-basics/setup.sh",
-      "checkpoints": [
-        {
-          "id": "first-commit",
-          "title": "First commit",
-          "description": "Add your name to roster.txt and commit it with a real message.",
-          "verifier": {
-            "type": "script",
-            "path": "checkpoints/git-basics/verify/first-commit.sh"
-          }
-        }
-      ]
-    },
-    {
-      "id": "robot-starter",
-      "title": "Robot Starter",
-      "description": "A minimal WPILib command-based robot you run from the Driver Station.",
-      "subdir": "modules/robot-starter",
-      "kind": "robot",
-      "order": 20,
-      "track": "FRC Robot",
-      "requires": ["git-basics"]
+      "id": "prints-hello-world",
+      "title": "Prints Hello, World!",
+      "description": "Running Main prints \"Hello, World!\" to standard out.",
+      "verifier": {
+        "type": "script",
+        "path": "checkpoints/hello-world/verify/prints-hello-world.sh"
+      }
     }
   ]
 }
 ```
 
-### Top-level fields
+```json
+// modules-meta/java-variables.json
+{
+  "title": "Variables",
+  "description": "Declare variables, define a constant, and define your first enum.",
+  "subdir": "modules/java-variables",
+  "kind": "plain-java",
+  "requires": ["hello-world"]
+}
+```
+
+```json
+// modules-meta/git-basics.json
+{
+  "title": "Git Basics",
+  "description": "Commit, branch, merge, resolve a conflict, and rebase.",
+  "subdir": "modules/git-basics",
+  "kind": "git",
+  "setupScript": "checkpoints/git-basics/setup.sh",
+  "checkpoints": [
+    {
+      "id": "first-commit",
+      "title": "First commit",
+      "description": "Add your name to roster.txt and commit it with a real message.",
+      "verifier": {
+        "type": "script",
+        "path": "checkpoints/git-basics/verify/first-commit.sh"
+      }
+    }
+  ]
+}
+```
+
+```json
+// modules-meta/robot-starter.json
+{
+  "title": "Robot Starter",
+  "description": "A minimal WPILib command-based robot you run from the Driver Station.",
+  "subdir": "modules/robot-starter",
+  "kind": "robot",
+  "requires": ["git-basics"]
+}
+```
+
+### `modules.json` fields
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `schemaVersion` | integer | Manifest format version. Use `1`. |
-| `modules` | array | One entry per lesson module. |
+| `schemaVersion` | integer | Manifest format version. Use `2`. |
+| `modules` | array | One index entry per lesson module - just `id`/`order`/`track`. |
 
-### Module fields
+### `modules-meta/<id>.json` fields
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `id` | string | yes | Stable, unique identifier. Used internally and recorded as the student's current module. Don't reuse or rename casually. |
 | `title` | string | yes | Shown in the Switch Project menu. |
 | `description` | string | yes | One-line summary shown under the title. May be empty. |
 | `subdir` | string | yes | Relative path from the repo root to the module directory (for example `modules/hello-world`). Must be a relative path of safe segments: no leading slash and no `..`. |
 | `kind` | string | yes | One of `plain-java`, `robot`, `git`. See below. |
-| `order` | integer | yes | Sort position in the menu (ascending). |
-| `track` | string | no | A cosmetic grouping label shown in the menu (for example `"Java Basics"`). Purely for display — it does **not** gate anything. Don't confuse it with `requires`. |
 | `requires` | string[] | no | Ids of other modules that must be completed first (every non-optional checkpoint passed) before this one can be loaded — the actual hard-lock gate. Default `[]` (no prerequisites). An id that doesn't resolve to a real module is skipped, not treated as blocking. |
 | `checkpoints` | array | no | Verifiable goals for this module. Default `[]` (no checkpoints, no lock gating possible for anything that `requires` this module). See [Checkpoints](#checkpoints-and-hard-prerequisites). |
 | `setupScript` | string | no | A repo-root-relative script run once, immediately after the module's files are copied in. Used by the `git` kind to build real commit history — see below. |
 | `showScope` | boolean | no | Default `false`. Mounts the AdvantageScope telemetry pane even for a non-`robot` module - for a `plain-java` module that generates a static log file and wants students opening it in AdvantageScope with no live robot involved. `advantagescope-intro` is `robot`-kind (live NT4 telemetry) and does not use this. |
+
+`id` itself lives only in `modules.json` — CodeRunner reads that file's `id`
+field, uses it to fetch/read `modules-meta/<id>.json`, and merges the two
+back into one object with every field above. It's a stable, unique
+identifier: used internally and recorded as the student's current module.
+Don't reuse or rename it casually. Lowercase kebab-case only (`hello-world`,
+not `Hello_World`) — it's embedded directly as a path segment.
 
 ### Sparse ordering
 

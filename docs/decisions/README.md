@@ -21,6 +21,7 @@ Record active architecture decisions here.
 - [`049-scriptum-rename.md`](049-scriptum-rename.md) — full technical rename from CodeRunner to Scriptum, matching the MARS/WARS family's Latin naming convention — package/env-var/Docker/CLI identifiers renamed, existing decision logs (001–048) kept as historical record of the old name.
 
 - [`050-project-preview.md`](050-project-preview.md) — reads project Markdown and generated HTML reports in the right pane, isolating student HTML in an opaque-origin sandbox and authorising its resources with a signed path token instead of the session cookie.
+- [`051-split-catalog-manifest.md`](051-split-catalog-manifest.md) — `modules.json` shrinks to a curriculum-order index (`id`/`order`/`track`); each module's title/description/checkpoints/etc. move to its own `modules-meta/<id>.json`, merged back into the full shape by `CatalogSource.getManifest()`.
 
 ## Archive
 

@@ -208,7 +208,7 @@ describe("lessonModuleSchema / lessonCatalogSchema", () => {
 					schemaVersion: fc.integer({ min: 1, max: 10 }),
 					modules: fc.array(
 						fc.record({
-							id: fc.stringMatching(/^[a-z][a-z0-9-]{0,30}$/),
+							id: fc.stringMatching(/^[a-z0-9]+(?:-[a-z0-9]+){0,5}$/),
 							title: fc.stringMatching(/^.{1,40}$/),
 							description: fc.string(),
 							subdir: fc.stringMatching(/^modules\/[a-z][a-z0-9-]{0,30}$/),

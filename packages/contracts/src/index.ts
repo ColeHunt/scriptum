@@ -460,7 +460,18 @@ export const lessonCheckpointSchema = z.object({
 });
 
 export const lessonModuleSchema = z.object({
-	id: z.string().min(1),
+	/** Lowercase kebab-case, like a checkpoint id - it's embedded directly as
+	 * a path/URL segment (`modules-meta/<id>.json`, `modules/<id>/`,
+	 * `checkpoints/<id>/`), so it needs the same safe-charset guarantee those
+	 * already get. */
+	id: z
+		.string()
+		.min(1)
+		.max(100)
+		.regex(
+			/^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+			"Module id must be lowercase kebab-case.",
+		),
 	title: z.string().min(1),
 	description: z.string(),
 	subdir: lessonModuleSubdirSchema,
@@ -499,6 +510,47 @@ export const lessonCatalogSchema = z.object({
 	modules: z.array(lessonModuleSchema),
 });
 
+/**
+ * On-disk catalog format (decision 051): a module's full definition is split
+ * across two files so a lesson's own data lives next to its own scripts
+ * instead of in one central manifest that every lesson's edits collide on.
+ *
+ * - `modules.json` (`lessonCatalogIndexSchema`) is the curriculum-sequence
+ *   index: just enough per module - `id`, `order`, `track` - to sort and
+ *   group the picker without reading anything else. It's also still the
+ *   authoritative list of which module ids exist; a detail file with no
+ *   matching index entry is never loaded.
+ * - `modules-meta/<id>.json` (`lessonModuleDetailSchema`) is everything
+ *   else: title, description, subdir, kind, checkpoints, etc. `id` is not
+ *   repeated in it - the catalog source derives it from the index entry
+ *   that pointed here. It's a sibling of `modules/` and `checkpoints/`, not
+ *   nested inside a module's own `modules/<id>/` - that directory (`subdir`)
+ *   is `cp -a`'d byte-for-byte into the student's workspace on load, so
+ *   anything catalog-internal (this file, like checkpoint verify scripts)
+ *   has to live outside it or the student would see it in their Explorer.
+ *
+ * `CatalogSource.getManifest()` reads the index, then reads (bundled: from
+ * disk; remote: one more raw-content fetch per module, in parallel) each
+ * entry's detail file and merges `{ ...detail, id, order, track }` back into
+ * the full `lessonModuleSchema` shape used everywhere past that point.
+ */
+export const lessonModuleIndexEntrySchema = lessonModuleSchema.pick({
+	id: true,
+	order: true,
+	track: true,
+});
+
+export const lessonCatalogIndexSchema = z.object({
+	schemaVersion: z.number().int(),
+	modules: z.array(lessonModuleIndexEntrySchema),
+});
+
+export const lessonModuleDetailSchema = lessonModuleSchema.omit({
+	id: true,
+	order: true,
+	track: true,
+});
+
 /** A catalog module as returned to a specific workspace: whether it's
  * currently locked, the titles of whatever unmet prerequisites are blocking
  * it (empty when unlocked), and whether every required checkpoint has
@@ -531,6 +583,11 @@ export type LessonModuleWithLockState = z.infer<
 	typeof lessonModuleWithLockStateSchema
 >;
 export type LessonCatalog = z.infer<typeof lessonCatalogSchema>;
+export type LessonModuleIndexEntry = z.infer<
+	typeof lessonModuleIndexEntrySchema
+>;
+export type LessonCatalogIndex = z.infer<typeof lessonCatalogIndexSchema>;
+export type LessonModuleDetail = z.infer<typeof lessonModuleDetailSchema>;
 export type LessonCatalogResponse = z.infer<typeof lessonCatalogResponseSchema>;
 export type LessonLoadRequest = z.infer<typeof lessonLoadRequestSchema>;
 

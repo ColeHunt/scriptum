@@ -10,9 +10,12 @@ import {
 	importRequestSchema,
 	importResponseSchema,
 	isWorkspaceSlug,
+	lessonCatalogIndexSchema,
 	lessonCatalogResponseSchema,
 	lessonCatalogSchema,
 	lessonLoadRequestSchema,
+	lessonModuleDetailSchema,
+	lessonModuleSchema,
 	runClientMessageSchema,
 	runServerMessageSchema,
 	simRunCommandRequestSchema,
@@ -323,6 +326,81 @@ describe("lesson catalog schemas", () => {
 				],
 			}).success,
 		).toBe(false);
+	});
+});
+
+describe("lessonCatalogIndexSchema / lessonModuleDetailSchema (decision 051)", () => {
+	test("parses a slim index entry and strips fields that belong in the detail file", () => {
+		const parsed = lessonCatalogIndexSchema.parse({
+			schemaVersion: 2,
+			modules: [
+				{ id: "hello-world", order: 10, track: "Java Basics" },
+				{
+					id: "robot-starter",
+					order: 20,
+					// A stray detail field here (as if someone pasted a full module
+					// object by mistake) is silently stripped, not rejected - the
+					// index only ever carries id/order/track.
+					title: "Robot Starter",
+				},
+			],
+		});
+		expect(parsed.modules[0]).toEqual({
+			id: "hello-world",
+			order: 10,
+			track: "Java Basics",
+		});
+		expect(parsed.modules[1]).toEqual({ id: "robot-starter", order: 20 });
+		expect(parsed.modules[1]).not.toHaveProperty("title");
+	});
+
+	test("rejects a non-kebab-case module id", () => {
+		expect(
+			lessonCatalogIndexSchema.safeParse({
+				schemaVersion: 2,
+				modules: [{ id: "Hello_World", order: 10 }],
+			}).success,
+		).toBe(false);
+		expect(
+			lessonCatalogIndexSchema.safeParse({
+				schemaVersion: 2,
+				modules: [{ id: "trailing-", order: 10 }],
+			}).success,
+		).toBe(false);
+	});
+
+	test("parses a module.json detail file with no id/order/track", () => {
+		const parsed = lessonModuleDetailSchema.parse({
+			title: "Hello, World",
+			description: "Variables and stdin.",
+			subdir: "modules/hello-world",
+			kind: "plain-java",
+			checkpoints: [],
+		});
+		expect(parsed).not.toHaveProperty("id");
+		expect(parsed).not.toHaveProperty("order");
+		expect(parsed).not.toHaveProperty("track");
+	});
+
+	test("an index entry merged with its detail file re-parses as a full lessonModuleSchema", () => {
+		const entry = lessonCatalogIndexSchema.parse({
+			schemaVersion: 2,
+			modules: [{ id: "hello-world", order: 10, track: "Java Basics" }],
+		}).modules[0];
+		const detail = lessonModuleDetailSchema.parse({
+			title: "Hello, World",
+			description: "Variables and stdin.",
+			subdir: "modules/hello-world",
+			kind: "plain-java",
+		});
+		const merged = lessonModuleSchema.parse({ ...detail, ...entry });
+		expect(merged).toMatchObject({
+			id: "hello-world",
+			order: 10,
+			track: "Java Basics",
+			title: "Hello, World",
+			kind: "plain-java",
+		});
 	});
 });
 

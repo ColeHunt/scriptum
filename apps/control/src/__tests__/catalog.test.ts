@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -10,33 +10,32 @@ import {
 } from "../catalog";
 import type { ControlConfig } from "../config";
 import { ImportError } from "../imports";
+import { writeCatalogDir } from "./helpers";
 
-const MANIFEST = {
-	schemaVersion: 1,
-	modules: [
-		{
-			id: "robot-starter",
-			title: "Robot Starter",
-			description: "A robot.",
-			subdir: "modules/robot-starter",
-			kind: "robot",
-			order: 20,
-		},
-		{
-			id: "hello-world",
-			title: "Hello, World",
-			description: "Plain java.",
-			subdir: "modules/hello-world",
-			kind: "plain-java",
-			order: 10,
-		},
-	],
-};
+const MODULES: Array<
+	Record<string, unknown> & { id: string; order: number; track?: string }
+> = [
+	{
+		id: "robot-starter",
+		title: "Robot Starter",
+		description: "A robot.",
+		subdir: "modules/robot-starter",
+		kind: "robot",
+		order: 20,
+	},
+	{
+		id: "hello-world",
+		title: "Hello, World",
+		description: "Plain java.",
+		subdir: "modules/hello-world",
+		kind: "plain-java",
+		order: 10,
+	},
+];
 
 async function makeBundledCatalog(): Promise<string> {
 	const dir = await mkdtemp(join(tmpdir(), "frc-catalog-"));
-	await mkdir(dir, { recursive: true });
-	await writeFile(join(dir, "modules.json"), JSON.stringify(MANIFEST), "utf8");
+	await writeCatalogDir(dir, 2, MODULES);
 	return dir;
 }
 
@@ -84,14 +83,16 @@ describe("BundledCatalogSource", () => {
 	test("surfaces an error string when a bundled manifest has an unsafe subdir", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "frc-catalog-unsafe-"));
 		try {
-			await writeFile(
-				join(dir, "modules.json"),
-				JSON.stringify({
-					schemaVersion: 1,
-					modules: [{ ...MANIFEST.modules[0], subdir: "../escape" }],
-				}),
-				"utf8",
-			);
+			await writeCatalogDir(dir, 2, [
+				{
+					id: "unsafe",
+					title: "Unsafe",
+					description: "A robot.",
+					subdir: "../escape",
+					kind: "robot",
+					order: 20,
+				},
+			]);
 			const source = new BundledCatalogSource(dir);
 			const { modules, error } = await source.getManifest();
 			expect(modules).toEqual([]);
@@ -124,28 +125,44 @@ describe("parseCatalogRepo", () => {
 });
 
 describe("RemoteCatalogSource", () => {
-	function stubFetch(
-		responder: (url: string) => { ok: boolean; body: unknown; status?: number },
+	/** Serves `modules` as the split index + detail format a real
+	 * RemoteCatalogSource fetches: the index at `.../modules.json`, and each
+	 * module's own detail at `.../modules-meta/<id>.json`. `failAll` lets a
+	 * test flip every subsequent response to a failure, index or detail alike. */
+	function stubCatalogFetch(
+		modules: typeof MODULES,
+		options: { failAll?: () => boolean } = {},
 	): { fetch: typeof fetch; calls: string[] } {
 		const calls: string[] = [];
+		const byId = new Map(modules.map((m) => [m.id, m]));
+		const index = {
+			schemaVersion: 2,
+			modules: modules.map(({ id, order, track }) =>
+				track === undefined ? { id, order } : { id, order, track },
+			),
+		};
 		const fetchImpl = (async (input: unknown) => {
 			const url = String(input);
 			calls.push(url);
-			const res = responder(url);
-			return {
-				ok: res.ok,
-				status: res.status ?? (res.ok ? 200 : 500),
-				json: async () => res.body,
-			} as Response;
+			if (options.failAll?.()) {
+				return { ok: false, status: 500, json: async () => null } as Response;
+			}
+			if (url.endsWith("/modules.json")) {
+				return { ok: true, status: 200, json: async () => index } as Response;
+			}
+			const detailMatch = /\/modules-meta\/([^/]+)\.json$/.exec(url);
+			const module = detailMatch && byId.get(detailMatch[1] ?? "");
+			if (!module) {
+				return { ok: false, status: 404, json: async () => null } as Response;
+			}
+			const { id: _id, order: _order, track: _track, ...detail } = module;
+			return { ok: true, status: 200, json: async () => detail } as Response;
 		}) as typeof fetch;
 		return { fetch: fetchImpl, calls };
 	}
 
-	test("fetches the raw manifest, sorts, and caches within the TTL", async () => {
-		const { fetch: fetchImpl, calls } = stubFetch(() => ({
-			ok: true,
-			body: MANIFEST,
-		}));
+	test("fetches the index, then each module's detail in parallel, sorts, and caches within the TTL", async () => {
+		const { fetch: fetchImpl, calls } = stubCatalogFetch(MODULES);
 		const source = new RemoteCatalogSource(
 			"https://github.com/owner/lessons",
 			"main",
@@ -163,19 +180,22 @@ describe("RemoteCatalogSource", () => {
 		expect(calls[0]).toBe(
 			"https://raw.githubusercontent.com/owner/lessons/main/modules.json",
 		);
+		expect(new Set(calls.slice(1))).toEqual(
+			new Set([
+				"https://raw.githubusercontent.com/owner/lessons/main/modules-meta/robot-starter.json",
+				"https://raw.githubusercontent.com/owner/lessons/main/modules-meta/hello-world.json",
+			]),
+		);
 
-		// Second call within TTL is served from cache (no extra fetch).
+		// Second call within TTL is served from cache (no extra fetches).
 		await source.getManifest();
-		expect(calls.length).toBe(1);
+		expect(calls.length).toBe(3);
 	});
 
 	test("serves last-good cache on a later fetch failure", async () => {
 		let failNext = false;
-		const { fetch: fetchImpl } = stubFetch(() => {
-			if (failNext) {
-				return { ok: false, body: null, status: 500 };
-			}
-			return { ok: true, body: MANIFEST };
+		const { fetch: fetchImpl } = stubCatalogFetch(MODULES, {
+			failAll: () => failNext,
 		});
 		const source = new RemoteCatalogSource("owner/lessons", "main", fetchImpl);
 
@@ -192,22 +212,47 @@ describe("RemoteCatalogSource", () => {
 	});
 
 	test("returns an error state when the first fetch fails and there is no cache", async () => {
-		const { fetch: fetchImpl } = stubFetch(() => ({
-			ok: false,
-			body: null,
-			status: 404,
-		}));
+		const { fetch: fetchImpl } = stubCatalogFetch(MODULES, {
+			failAll: () => true,
+		});
 		const source = new RemoteCatalogSource("owner/lessons", "main", fetchImpl);
 		const { modules, error } = await source.getManifest();
 		expect(modules).toEqual([]);
 		expect(error).toBeTruthy();
 	});
 
+	test("returns an error state when one module's detail fetch fails", async () => {
+		const { fetch: fetchImpl } = stubCatalogFetch(
+			MODULES.filter((m) => m.id !== "hello-world"),
+		);
+		// The index still lists hello-world, but its detail file 404s - the
+		// whole manifest load should fail rather than silently drop a module.
+		const source = new RemoteCatalogSource("owner/lessons", "main", (async (
+			input: unknown,
+		) => {
+			const url = String(input);
+			if (url.endsWith("/modules.json")) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({
+						schemaVersion: 2,
+						modules: [
+							{ id: "hello-world", order: 10 },
+							{ id: "robot-starter", order: 20 },
+						],
+					}),
+				} as Response;
+			}
+			return fetchImpl(input as never);
+		}) as typeof fetch);
+		const { modules, error } = await source.getManifest();
+		expect(modules).toEqual([]);
+		expect(error).toContain("hello-world");
+	});
+
 	test("resolveModule throws ImportError for an unknown id", async () => {
-		const { fetch: fetchImpl } = stubFetch(() => ({
-			ok: true,
-			body: MANIFEST,
-		}));
+		const { fetch: fetchImpl } = stubCatalogFetch(MODULES);
 		const source = new RemoteCatalogSource("owner/lessons", "main", fetchImpl);
 		await expect(source.resolveModule("nope")).rejects.toThrow(ImportError);
 	});

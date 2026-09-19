@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { LessonModule, WorkspaceId } from "@frc-scriptum/contracts";
@@ -12,10 +12,15 @@ import {
 import type { Nt4AutoChooserBridge } from "../nt4-auto";
 import type { RunManager, RunSnapshot } from "../runs";
 import type { WorkspaceRow } from "../storage";
-import { login, MockWorkspaceRuntimeProvider, withApp } from "./helpers";
+import {
+	login,
+	MockWorkspaceRuntimeProvider,
+	withApp,
+	writeCatalogDir,
+} from "./helpers";
 
 const MANIFEST = {
-	schemaVersion: 1,
+	schemaVersion: 2,
 	modules: [
 		{
 			id: "checkpoint-demo",
@@ -58,7 +63,7 @@ const MANIFEST = {
 
 async function makeCatalogDir(): Promise<string> {
 	const dir = await mkdtemp(join(tmpdir(), "frc-checkpoint-catalog-"));
-	await writeFile(join(dir, "modules.json"), JSON.stringify(MANIFEST), "utf8");
+	await writeCatalogDir(dir, MANIFEST.schemaVersion, MANIFEST.modules);
 	return dir;
 }
 
@@ -83,7 +88,7 @@ function runningRuntime(workspaceId: WorkspaceId) {
 // own NT4 auto-chooser bridge rather than an exec'd script. ---
 
 const NT4_MANIFEST = {
-	schemaVersion: 1,
+	schemaVersion: 2,
 	modules: [
 		{
 			id: "nt4-demo",
@@ -155,11 +160,7 @@ const NT4_MANIFEST = {
 
 async function makeNt4CatalogDir(): Promise<string> {
 	const dir = await mkdtemp(join(tmpdir(), "frc-nt4-catalog-"));
-	await writeFile(
-		join(dir, "modules.json"),
-		JSON.stringify(NT4_MANIFEST),
-		"utf8",
-	);
+	await writeCatalogDir(dir, NT4_MANIFEST.schemaVersion, NT4_MANIFEST.modules);
 	return dir;
 }
 
@@ -828,11 +829,7 @@ const LOCK_MODULES = [
 
 async function makeLockCatalogDir(): Promise<string> {
 	const dir = await mkdtemp(join(tmpdir(), "frc-lock-catalog-"));
-	await writeFile(
-		join(dir, "modules.json"),
-		JSON.stringify({ schemaVersion: 1, modules: LOCK_MODULES }),
-		"utf8",
-	);
+	await writeCatalogDir(dir, 2, LOCK_MODULES);
 	return dir;
 }
 

@@ -1,0 +1,7 @@
+{
+	"title": "Robot Starter",
+	"description": "A minimal WPILib and AdvantageKit command-based robot you run from the Driver Station.",
+	"subdir": "modules/robot-starter",
+	"kind": "robot",
+	"requires": ["git-basics"]
+}

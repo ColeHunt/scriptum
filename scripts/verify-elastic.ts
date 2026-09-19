@@ -36,7 +36,7 @@ async function createCatalogDir(root: string): Promise<string> {
 	await mkdir(catalogDir, { recursive: true });
 	await writeFile(
 		join(catalogDir, "modules.json"),
-		JSON.stringify({ schemaVersion: 1, modules: [] }),
+		JSON.stringify({ schemaVersion: 2, modules: [] }),
 		"utf8",
 	);
 	return catalogDir;

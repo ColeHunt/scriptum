@@ -27,7 +27,7 @@ apps/web/                      React + Vite browser IDE shell
 packages/contracts/            Shared API schemas, message types, and path rules
 containers/code/               V2 merged VSCodium + sim container
 containers/control/            Control-plane image: multi-stage build burying the emsdk/AdvantageScope compile, the scriptum dispatching entrypoint
-catalog/                       Bundled (zero-config) lesson catalog: modules.json + modules/<id>/, baked into the code image
+catalog/                       Bundled (zero-config) lesson catalog: modules.json index + modules-meta/<id>.json + modules/<id>/, baked into the code image
 lessons-repo-root/             Staging for the standalone remote lessons repo (will move out of this repo); not used by the app build
 scripts/                       TypeScript utility scripts run by Bun
 patches/advantagescope/        Source-level AS Lite patches
