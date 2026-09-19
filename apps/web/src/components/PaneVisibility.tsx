@@ -1,4 +1,4 @@
-import { Gamepad2 } from "lucide-react";
+import { FileText, Gamepad2 } from "lucide-react";
 import type { ReactNode } from "react";
 import {
 	createContext,
@@ -19,6 +19,7 @@ export type PaneKey =
 	| "scope"
 	| "choreo"
 	| "elastic"
+	| "preview"
 	| "driverStation";
 
 const PANE_KEYS: readonly PaneKey[] = [
@@ -26,6 +27,7 @@ const PANE_KEYS: readonly PaneKey[] = [
 	"scope",
 	"choreo",
 	"elastic",
+	"preview",
 	"driverStation",
 ];
 
@@ -42,6 +44,7 @@ const WORKBENCH_PANE_KEYS: readonly PaneKey[] = [
 	"scope",
 	"choreo",
 	"elastic",
+	"preview",
 ];
 
 export type PaneVisibility = Record<PaneKey, boolean>;
@@ -52,6 +55,10 @@ const DEFAULT_VISIBILITY: PaneVisibility = {
 	scope: true,
 	choreo: false,
 	elastic: false,
+	// Reads the project's own files, not a live sim - off by default like
+	// Choreo/Elastic since it isn't always relevant, but unlike them it never
+	// gets forced off by withChoreoSpace (no canvas, no width requirement).
+	preview: false,
 	driverStation: true,
 };
 
@@ -210,10 +217,13 @@ const PANE_LABELS: Record<PaneKey, string> = {
 	scope: "AdvantageScope",
 	choreo: "Choreo",
 	elastic: "Elastic",
+	preview: "Preview",
 	driverStation: "Driver Station",
 };
 
-function PaneToggleButton({
+/** Exported so Topbar can show a single toggle (Preview, for console lessons
+ * with no pane row at all) without pulling in the whole PaneToggleRow. */
+export function PaneToggleButton({
 	paneKey,
 	icon,
 }: {
@@ -277,6 +287,10 @@ export function PaneToggleRow() {
 					icon={<img src={elasticLogo} alt="" className="size-4 shrink-0" />}
 				/>
 			)}
+			<PaneToggleButton
+				paneKey="preview"
+				icon={<FileText className="size-4 shrink-0" />}
+			/>
 			<PaneToggleButton
 				paneKey="driverStation"
 				icon={<Gamepad2 className="size-4 shrink-0" />}

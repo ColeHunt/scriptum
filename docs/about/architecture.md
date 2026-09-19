@@ -153,6 +153,15 @@ Choreo and Elastic Dashboard don't share one file-access pattern:
 Both iframes reload after a project switch to pick up the replacement
 project's files.
 
+## How Preview reads documents
+
+Preview reads Markdown and HTML reports directly from the host-mounted project
+directory. Markdown is rendered by the control plane; HTML and its local assets
+are served in a sandboxed frame. A short-lived path token authorizes framed
+requests because the sandbox does not receive the session cookie. See
+[Preview isolation](./security-model.md#preview-isolation) and
+[decision 050](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/050-project-preview.md).
+
 ## Persistence and data layout
 
 The control plane uses a single **SQLite** database (`data/app.db` by default)

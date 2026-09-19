@@ -1,8 +1,10 @@
+import { existsSync } from "node:fs";
 import {
 	cp,
 	mkdir,
 	readdir,
 	readFile,
+	realpath,
 	rm,
 	stat,
 	writeFile,
@@ -62,6 +64,38 @@ export function isInsideDirectory(root: string, target: string): boolean {
 		relativePath === "" ||
 		(!relativePath.startsWith("..") && !isAbsolute(relativePath))
 	);
+}
+
+/**
+ * Whether this host exposes `/proc/self/fd`, which is what lets us resolve an
+ * open descriptor back to the file it actually refers to. Linux (every
+ * deployment target, and the CI/dev containers) has it; macOS does not, and
+ * Node exposes no portable equivalent.
+ */
+const HAS_PROC_SELF_FD = existsSync("/proc/self/fd");
+
+/**
+ * Confirm the file an open descriptor actually refers to lives inside `realRoot`
+ * (which must itself already be realpath-resolved).
+ *
+ * Path-based containment checks are check-then-use: where the caller can write
+ * into the tree, a directory can be swapped for a symlink in the window between
+ * the check and the open. Resolving the descriptor we already hold closes that
+ * race — it names the inode we opened, which cannot be re-pointed underneath us.
+ *
+ * Returns true on a host without `/proc` rather than failing closed: there the
+ * path-based checks are all we have, and refusing every read would be worse
+ * than the race. Deployments run on Linux, where the check is live.
+ */
+export async function isOpenFileInsideRoot(
+	fd: number,
+	realRoot: string,
+): Promise<boolean> {
+	if (!HAS_PROC_SELF_FD) {
+		return true;
+	}
+	const real = await realpath(`/proc/self/fd/${fd}`).catch(() => null);
+	return real !== null && isInsideDirectory(realRoot, real);
 }
 
 export function safeRelativeAssetPath(value: string): string | null {

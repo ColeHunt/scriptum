@@ -116,6 +116,21 @@ assets. Their per-student traffic sits under the same ownership-checked
   validated as a JSON object before being written to
   `src/main/deploy/elastic-layout.json`.
 
+## Preview isolation
+
+Project HTML is untrusted. Preview runs it in an opaque-origin sandbox, so it
+cannot access the CodeRunner page, browser storage, cookies, or authenticated
+APIs. The same sandbox is sent as a response header for direct links. Its CSP
+also blocks network connections and adds a best-effort navigation restriction.
+Markdown runs with scripts disabled.
+
+Sandboxed frames do not receive the session cookie, so local report assets use
+a signed, workspace-specific path token that expires after fifteen minutes.
+Preview routes are read-only, capability URLs are not logged, and responses are
+not cached. Path validation, file type allowlists, symlink checks, and read
+limits keep the endpoint inside the student's project. The full rationale is in
+[decision 050](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/050-project-preview.md).
+
 ## Container isolation
 
 Each student's container:

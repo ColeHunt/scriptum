@@ -8,6 +8,7 @@ import { EditorPane } from "@/components/EditorPane";
 import { ElasticPane } from "@/components/ElasticPane";
 import { IDELayout } from "@/components/IDELayout";
 import { PaneVisibilityRoot } from "@/components/PaneVisibility";
+import { PreviewPane } from "@/components/PreviewPane";
 import { ScopePane } from "@/components/ScopePane";
 import { SwitchProjectDialog } from "@/components/SwitchProjectDialog";
 import { Topbar } from "@/components/Topbar";
@@ -242,6 +243,19 @@ export function WorkspacePage() {
 	const errorMessage =
 		sessionState.status === "error" ? sessionState.message : undefined;
 
+	// Preview reads project files, which exist independently of the simulator,
+	// so it is addressed by `workspaceSlug` rather than the sim-gated `simSlug`.
+	// Always active: unlike upstream's tab-switcher, every pane here stays
+	// mounted regardless of toggle state (see IDELayout), so there's no
+	// separate "first opened" moment to gate the document fetch on.
+	const previewPane = (
+		<PreviewPane
+			workspaceSlug={workspaceSlug}
+			active
+			reloadNonce={reloadNonce}
+		/>
+	);
+
 	return (
 		<PaneVisibilityRoot
 			className="flex h-screen flex-col gap-0 bg-background"
@@ -255,6 +269,7 @@ export function WorkspacePage() {
 				isAdmin={isAdmin}
 				onSwitchProject={() => setSwitchOpen(true)}
 				showPaneToggle={!hideSimChrome || showScope}
+				showPreviewToggle={hideSimChrome && !showScope}
 				checkpoints={
 					checkpoints.state.available
 						? {
@@ -308,8 +323,10 @@ export function WorkspacePage() {
 				}
 				choreo={<ChoreoPane key={reloadNonce} workspaceSlug={simSlug} />}
 				elastic={<ElasticPane workspaceSlug={simSlug} />}
+				preview={previewPane}
 				driverStation={
 					<DriverStation
+						visible={layout.bottomVisible}
 						simulationStatus={simulation.status}
 						runStatus={simulation.runStatus}
 						runConnection={runConnection}

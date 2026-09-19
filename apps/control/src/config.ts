@@ -26,6 +26,10 @@ export type ControlConfig = {
 	ssoSessionTtlSeconds: number;
 	/** Legion's own origin, for building /sso/authorize and /sso/stepup redirect links. */
 	legionBaseUrl: string | null;
+	/** Signs the short-lived path token that authorises `/api/preview/files/*`
+	 * requests (see preview-token.ts) - deliberately separate from `ssoSecret`,
+	 * which is Legion's externally-shared secret and can be null in demo mode. */
+	previewTokenSecret: string;
 	dockerPath: string;
 	codeImage: string;
 	codeMemoryLimit: string;
@@ -286,6 +290,13 @@ export function loadControlConfig(
 				"without Legion configured.",
 		);
 	}
+	// Always present, unlike ssoSecret - Preview needs to sign file tokens
+	// even in demo mode. The fallback is fine for local dev; set
+	// PREVIEW_TOKEN_SECRET explicitly in any real deployment.
+	const previewTokenSecret =
+		input.previewTokenSecret ??
+		Bun.env.PREVIEW_TOKEN_SECRET ??
+		"frc-local-dev-preview-token-secret-change-me";
 
 	return {
 		logLevel: parseLogLevelOrThrow(input.logLevel ?? Bun.env.LOG_LEVEL),
@@ -331,6 +342,7 @@ export function loadControlConfig(
 			Bun.env.SCRIPTUM_BASE_URL ??
 			`http://localhost:${input.port ?? Bun.env.PORT ?? 4000}`,
 		ssoSecret,
+		previewTokenSecret,
 		ssoSessionTtlSeconds: parsePositiveInteger(
 			input.ssoSessionTtlSeconds ?? Bun.env.SSO_SESSION_TTL,
 			12 * 60 * 60,

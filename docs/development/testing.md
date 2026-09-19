@@ -41,6 +41,7 @@ Runs Bun's built-in test runner across the control plane
 - Choreo: proxy auth/ownership checks (`choreo-proxy.test.ts`)
 - Elastic Dashboard: layout API ownership/size/validation checks, static asset routing, NT4 `?app=` passthrough (`elastic.test.ts`)
 - AdvantageScope: static asset routing, bundled-assets manifest, NT4 endpoint (`scope-and-nt4.test.ts`)
+- Preview: document discovery, file serving, path safety, and signed tokens
 - Security: SSRF/path-traversal/command-injection validators, admin-route enumeration
 - Property-based tests via `fast-check`: URL validation, slug generation, contract schema round-trips, audit-filter SQL parameterization
 - Metrics: route-templating cardinality
@@ -57,7 +58,8 @@ Runs Vitest inside `apps/web/`. Coverage includes:
 - DriverStation components: Enable/Disable button state machine, mode switching
 - Zustand store: input-mode transitions, gamepad selection persistence
 - Keyboard and gamepad mappings
-- AdvantageScope/Choreo/Elastic pane iframe URLs, independent pane visibility toggling, keyboard navigation, and saved pane choices
+- AdvantageScope/Choreo/Elastic/Preview pane iframe URLs, independent pane visibility toggling, keyboard navigation, and saved pane choices
+- Preview document loading, selection, refresh, and failure states
 
 ### `bun run e2e`: Playwright mocked tier
 
@@ -68,7 +70,7 @@ bun run e2e
 Runs the Playwright test suite against the `mocked` project. No Docker
 daemon required. Each test gets a fully isolated control-plane instance;
 see [Fixture architecture](#fixture-architecture) below. Approximately
-55 tests covering the full login→editor→run→telemetry→driver-station
+75 tests covering the full login→editor→run→telemetry→driver-station
 flow, including:
 
 - Auth: session isolation, cross-workspace 403 gating, magic-link (`via:link`) step-up to Legion, role-from-group gating
@@ -78,6 +80,7 @@ flow, including:
 - Gamepad: controller selection persistence across run cycles, unplug-while-enabled safety, pre-run no-lease behavior, keyboard tile focus gating, auto-chooser refresh on restart
 - Telemetry: AdvantageScope iframe load, NT4 per-workspace isolation
 - Sim pane tools: AdvantageScope visible by default, the Choreo iframe mounted while hidden and reporting readiness/load counts (`choreo-pane.spec.ts`), independent pane visibility surviving a reload, and a project swap reloading each visible pane
+- Preview: Markdown and HTML delivery, refresh, project switching, console lessons, and browser isolation
 - Admin: capacity cap enforcement, audit log entries, user management
 - Public routes: health check, OpenAPI endpoint
 
@@ -119,6 +122,9 @@ Runs the `security` Playwright project (specs under `e2e/specs/security/`).
 Covers CSRF gating on state-changing endpoints, XSS output encoding in the
 run console and admin pages, and response-header policy (`Content-Security-Policy`,
 `X-Frame-Options`, `X-Content-Type-Options`, `SameSite` cookie attributes).
+
+Preview security tests cover sandboxing, response headers, API isolation, and
+cross-workspace access.
 
 ### `bun run verify`: full CI gate
 

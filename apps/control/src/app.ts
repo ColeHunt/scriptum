@@ -205,6 +205,10 @@ export async function createApp(
 		const url = new URL(request.url);
 		const start = performance.now();
 		const route = templateRoute(url.pathname);
+		// Preview file URLs contain a bearer capability and a private project path.
+		// Keep both out of logs; the templated route is enough to identify traffic.
+		const loggedPath =
+			route === "/u/:slug/api/preview/files/*" ? route : url.pathname;
 		httpRequestsInFlight.inc();
 		let response: Response;
 		let observedStatus: number;
@@ -219,7 +223,7 @@ export async function createApp(
 			);
 			httpLog.error("unhandled error in request dispatcher", {
 				method: request.method,
-				path: url.pathname,
+				path: loggedPath,
 				err: err instanceof Error ? err : new Error(String(err)),
 			});
 			throw err;
@@ -246,7 +250,7 @@ export async function createApp(
 			NOISY_WORKSPACE_PATH.test(url.pathname);
 		const fields = {
 			method: request.method,
-			path: url.pathname,
+			path: loggedPath,
 			status: response.status,
 			durationMs,
 		};

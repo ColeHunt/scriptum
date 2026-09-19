@@ -17,12 +17,13 @@ interface IDELayoutProps {
 	scope: ReactNode;
 	choreo: ReactNode;
 	elastic: ReactNode;
+	preview: ReactNode;
 	driverStation: ReactNode;
 	/**
 	 * When false (a `plain-java` console lesson), AdvantageScope, Choreo,
-	 * Elastic, and Driver Station are hidden and the editor fills the
-	 * workspace, with a hint to run from the editor's Run button. The pane
-	 * toggles don't apply here - there's nothing to toggle.
+	 * Elastic, and Driver Station are hidden - there's no live sim to show.
+	 * Preview is the exception: it reads the project's own files, not the
+	 * sim, so it stays available (editor | Preview) even here.
 	 */
 	showSimPanels?: boolean;
 }
@@ -42,21 +43,22 @@ function syncPanel(
  * Left-to-right order of the workbench columns, matching JSX render order.
  * react-resizable-panels' imperative `resize()` always redistributes against
  * one fixed neighbor - a non-last panel pairs with the one to its right, the
- * last panel pairs with the one to its left - so scope, choreo, and elastic
- * (indices 1-3) all resize against whichever of them is rightmost. That means
- * collapsing scope directly can silently no-op whenever everything to its
- * right is *already* collapsed: the pivot has nowhere to put scope's freed
- * space. Resizing left to right instead lets each call push space through
- * whatever's already settled to its right, so a target combination is always
- * reachable regardless of which columns are hidden.
+ * last panel pairs with the one to its left - so scope, choreo, elastic, and
+ * preview (indices 1-4) all resize against whichever of them is rightmost.
+ * That means collapsing scope directly can silently no-op whenever
+ * everything to its right is *already* collapsed: the pivot has nowhere to
+ * put scope's freed space. Resizing left to right instead lets each call
+ * push space through whatever's already settled to its right, so a target
+ * combination is always reachable regardless of which columns are hidden.
  */
-type WorkbenchColumnKey = "editor" | "scope" | "choreo" | "elastic";
+type WorkbenchColumnKey = "editor" | "scope" | "choreo" | "elastic" | "preview";
 
 const WORKBENCH_COLUMN_ORDER: readonly WorkbenchColumnKey[] = [
 	"editor",
 	"scope",
 	"choreo",
 	"elastic",
+	"preview",
 ];
 
 /** Recomputes an even split of 100% across whichever workbench columns are visible. */
@@ -78,11 +80,77 @@ function resizeWorkbenchColumns(
 	}
 }
 
+/** editor | Preview split for a console lesson, which has no sim panes at
+ * all - a separate, minimal resizable group rather than reusing the full
+ * workbench one below, since nothing else here ever applies. */
+function ConsoleLayout({
+	editor,
+	preview,
+}: {
+	editor: ReactNode;
+	preview: ReactNode;
+}) {
+	const columns = useResizableLayout({
+		id: "ide-console-columns",
+		storage: sessionStorage,
+	});
+	const { visible } = usePaneVisibility();
+	const previewRef = useRef<PanelImperativeHandle>(null);
+
+	useEffect(() => {
+		syncPanel(previewRef, visible.preview);
+	}, [visible.preview]);
+
+	return (
+		<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+			<ResizablePanelGroup
+				orientation="horizontal"
+				className="min-h-0 flex-1"
+				defaultLayout={columns.defaultLayout}
+				onLayoutChanged={columns.onLayoutChanged}
+			>
+				<ResizablePanel
+					id="ide-console-editor"
+					collapsible
+					collapsedSize={0}
+					defaultSize={60}
+					minSize={20}
+					data-pane="editor"
+					className="min-h-0"
+				>
+					<div className="h-full min-h-0 min-w-0 bg-card">{editor}</div>
+				</ResizablePanel>
+				<ResizableHandle withHandle data-pane="preview-handle" />
+				<ResizablePanel
+					id="ide-console-preview"
+					panelRef={previewRef}
+					collapsible
+					collapsedSize={0}
+					defaultSize={visible.preview ? 40 : 0}
+					minSize={20}
+					className="min-h-0"
+					data-pane="preview"
+				>
+					{preview}
+				</ResizablePanel>
+			</ResizablePanelGroup>
+			<div
+				data-pane="console-hint"
+				className="flex shrink-0 items-center gap-2 border-t border-border bg-card px-4 py-2 text-[12px] text-muted-foreground"
+			>
+				<Play className="size-3.5 text-primary" />
+				Run this lesson from the editor's Run button (▷ top-right of the file).
+			</div>
+		</div>
+	);
+}
+
 export function IDELayout({
 	editor,
 	scope,
 	choreo,
 	elastic,
+	preview,
 	driverStation,
 	showSimPanels = true,
 }: IDELayoutProps) {
@@ -101,10 +169,11 @@ export function IDELayout({
 	const scopeRef = useRef<PanelImperativeHandle>(null);
 	const choreoRef = useRef<PanelImperativeHandle>(null);
 	const elasticRef = useRef<PanelImperativeHandle>(null);
+	const previewRef = useRef<PanelImperativeHandle>(null);
 	const driverStationRef = useRef<PanelImperativeHandle>(null);
-	// Tracks the last (editor, scope, choreo, elastic) visibility combo an
-	// even-split resize was computed for, so a Driver Station-only toggle
-	// doesn't reset any manual drag the student has done between the
+	// Tracks the last (editor, scope, choreo, elastic, preview) visibility
+	// combo an even-split resize was computed for, so a Driver Station-only
+	// toggle doesn't reset any manual drag the student has done between the
 	// workbench columns.
 	const workbenchComboRef = useRef<string>("");
 
@@ -125,6 +194,7 @@ export function IDELayout({
 					scope: scopeRef,
 					choreo: choreoRef,
 					elastic: elasticRef,
+					preview: previewRef,
 				},
 				visible,
 			);
@@ -133,19 +203,7 @@ export function IDELayout({
 	}, [visible]);
 
 	if (!showSimPanels) {
-		return (
-			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-				<div className="min-h-0 min-w-0 flex-1 bg-card">{editor}</div>
-				<div
-					data-pane="console-hint"
-					className="flex shrink-0 items-center gap-2 border-t border-border bg-card px-4 py-2 text-[12px] text-muted-foreground"
-				>
-					<Play className="size-3.5 text-primary" />
-					Run this lesson from the editor's Run button (▷ top-right of the
-					file).
-				</div>
-			</div>
-		);
+		return <ConsoleLayout editor={editor} preview={preview} />;
 	}
 
 	return (
@@ -217,6 +275,19 @@ export function IDELayout({
 						data-pane="elastic"
 					>
 						{elastic}
+					</ResizablePanel>
+					<ResizableHandle withHandle data-pane="preview-handle" />
+					<ResizablePanel
+						id="ide-preview"
+						panelRef={previewRef}
+						collapsible
+						collapsedSize={0}
+						defaultSize={30}
+						minSize={20}
+						className="min-h-0"
+						data-pane="preview"
+					>
+						{preview}
 					</ResizablePanel>
 				</ResizablePanelGroup>
 			</ResizablePanel>

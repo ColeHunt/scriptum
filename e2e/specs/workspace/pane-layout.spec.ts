@@ -3,7 +3,10 @@
  */
 import { expect, test } from "../../fixtures/app";
 import { loginAs } from "../../fixtures/auth";
-import { seedRuntimeRunning } from "../../fixtures/runtime";
+import {
+	seedRuntimeRunning,
+	seedWorkspaceProject,
+} from "../../fixtures/runtime";
 
 test("resized pane sizes survive a reload and reset in a new session", async ({
 	page,
@@ -16,6 +19,7 @@ test("resized pane sizes survive a reload and reset in a new session", async ({
 	const workspace = app.storage.findWorkspaceBySlug(
 		session.user.slug as never,
 	)!;
+	await seedWorkspaceProject(workspace.project_path);
 	seedRuntimeRunning({
 		runtime,
 		workspaceId: workspace.id,
@@ -53,6 +57,7 @@ test("resized pane sizes survive a reload and reset in a new session", async ({
 	const freshWorkspace = app.storage.findWorkspaceBySlug(
 		freshSession.user.slug as never,
 	)!;
+	await seedWorkspaceProject(freshWorkspace.project_path);
 	seedRuntimeRunning({
 		runtime,
 		workspaceId: freshWorkspace.id,

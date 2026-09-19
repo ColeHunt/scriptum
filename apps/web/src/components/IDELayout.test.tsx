@@ -10,7 +10,16 @@ class FakeResizeObserver {
 	disconnect() {}
 }
 
-function renderLayout(props: Partial<ComponentProps<typeof IDELayout>> = {}) {
+function renderLayout(
+	props: Partial<ComponentProps<typeof IDELayout>> = {},
+	initialVisibility?: Record<string, boolean>,
+) {
+	if (initialVisibility) {
+		sessionStorage.setItem(
+			"scriptum:pane-visibility",
+			JSON.stringify(initialVisibility),
+		);
+	}
 	return render(
 		<PaneVisibilityRoot>
 			<IDELayout
@@ -18,6 +27,7 @@ function renderLayout(props: Partial<ComponentProps<typeof IDELayout>> = {}) {
 				scope={<div>Scope</div>}
 				choreo={<div>Choreo</div>}
 				elastic={<div>Elastic</div>}
+				preview={<div>Preview</div>}
 				driverStation={<div>Driver Station</div>}
 				{...props}
 			/>
@@ -48,13 +58,37 @@ describe("IDELayout", () => {
 		expect(screen.queryByText(/Run this lesson from the editor/)).toBeNull();
 	});
 
-	test("hides simulator panels in console lesson mode", () => {
+	test("Preview is mounted in robot mode too, alongside scope/choreo/elastic", () => {
+		renderLayout();
+
+		expect(document.querySelector('[data-pane="preview"]')).not.toBeNull();
+		expect(screen.getByText("Preview")).toBeInTheDocument();
+	});
+
+	test("hides simulator panels in console lesson mode, but Preview stays available", () => {
 		renderLayout({ showSimPanels: false });
 
 		expect(screen.getByText("Editor")).toBeInTheDocument();
 		expect(screen.queryByText("Scope")).toBeNull();
 		expect(screen.queryByText("Choreo")).toBeNull();
 		expect(screen.queryByText("Elastic")).toBeNull();
+		expect(screen.queryByText("Driver Station")).toBeNull();
+		expect(
+			screen.getByText(/Run this lesson from the editor/),
+		).toBeInTheDocument();
+		// Mounted (so its document list can load in the background), even
+		// though Preview defaults to collapsed like every other tool pane.
+		expect(document.querySelector('[data-pane="preview"]')).not.toBeNull();
+	});
+
+	test("console lesson mode reveals Preview when toggled on in shared state", () => {
+		renderLayout(
+			{ showSimPanels: false },
+			{ editor: true, scope: false, choreo: false, preview: true },
+		);
+
+		expect(screen.getByText("Editor")).toBeInTheDocument();
+		expect(screen.getByText("Preview")).toBeInTheDocument();
 		expect(screen.queryByText("Driver Station")).toBeNull();
 		expect(
 			screen.getByText(/Run this lesson from the editor/),
@@ -70,9 +104,10 @@ describe("IDELayout", () => {
 			"react-resizable-panels:ide-columns",
 			JSON.stringify({
 				"ide-editor": 40,
-				"ide-scope": 20,
-				"ide-choreo": 20,
-				"ide-elastic": 20,
+				"ide-scope": 15,
+				"ide-choreo": 15,
+				"ide-elastic": 15,
+				"ide-preview": 15,
 			}),
 		);
 
@@ -81,9 +116,10 @@ describe("IDELayout", () => {
 		expect(document.getElementById("ide-workbench")?.style.flexGrow).toBe("30");
 		expect(document.getElementById("ide-console")?.style.flexGrow).toBe("70");
 		expect(document.getElementById("ide-editor")?.style.flexGrow).toBe("40");
-		expect(document.getElementById("ide-scope")?.style.flexGrow).toBe("20");
-		expect(document.getElementById("ide-choreo")?.style.flexGrow).toBe("20");
-		expect(document.getElementById("ide-elastic")?.style.flexGrow).toBe("20");
+		expect(document.getElementById("ide-scope")?.style.flexGrow).toBe("15");
+		expect(document.getElementById("ide-choreo")?.style.flexGrow).toBe("15");
+		expect(document.getElementById("ide-elastic")?.style.flexGrow).toBe("15");
+		expect(document.getElementById("ide-preview")?.style.flexGrow).toBe("15");
 	});
 
 	test("a pane toggled off in shared state stays mounted (not removed)", () => {

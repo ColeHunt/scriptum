@@ -576,3 +576,91 @@ export type CheckpointsStateResponse = z.infer<
 export type VerifyCheckpointsRequest = z.infer<
 	typeof verifyCheckpointsRequestSchema
 >;
+
+// --- Preview (project Markdown / HTML reader) ---
+
+/**
+ * Directory names Preview never walks or serves. `.git` and `.gradle` hold
+ * large machine-generated trees (and, for `.git`, object data that has no
+ * business coming back out through an HTML reader); `node_modules` is the same
+ * problem by sheer volume. Every other directory — including other
+ * dot-directories, which often hold hand-written docs — stays eligible.
+ */
+export const PREVIEW_EXCLUDED_DIRS = [".git", ".gradle", "node_modules"];
+
+export const previewDocumentKindSchema = z.enum(["markdown", "html"]);
+
+// Deliberately not `deployFilePathSchema`: that one rejects any segment
+// starting with ".", which would hide project-authored docs in dot-directories.
+// Preview excludes specific directory names instead (PREVIEW_EXCLUDED_DIRS).
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional — rejects control chars in preview paths
+const PREVIEW_FORBIDDEN_CHARS = /[\\/:*?"<>| -]/;
+
+/** Maximum path segments, mirroring the walker's depth budget. */
+export const PREVIEW_MAX_DEPTH = 32;
+
+export const previewPathSchema = z
+	.string()
+	.min(1)
+	.max(1024)
+	.superRefine((value, ctx) => {
+		const fail = (message: string) => {
+			ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+		};
+		if (/^[a-zA-Z]:/.test(value)) {
+			fail("Path must not be absolute.");
+			return;
+		}
+		const segments = value.split("/");
+		if (segments.length > PREVIEW_MAX_DEPTH) {
+			fail("Path is too deeply nested.");
+			return;
+		}
+		for (const segment of segments) {
+			if (segment.length === 0) {
+				fail("Path must not contain empty segments.");
+				return;
+			}
+			if (segment === "." || segment === "..") {
+				fail("Path must not contain traversal segments.");
+				return;
+			}
+			if (PREVIEW_FORBIDDEN_CHARS.test(segment)) {
+				fail("Path segments must not contain reserved characters.");
+				return;
+			}
+			if (PREVIEW_EXCLUDED_DIRS.includes(segment)) {
+				fail("Path is inside an excluded directory.");
+				return;
+			}
+		}
+	});
+
+export const previewDocumentSchema = z.object({
+	path: previewPathSchema,
+	kind: previewDocumentKindSchema,
+});
+
+export const previewDocumentsResponseSchema = z.object({
+	ok: z.literal(true),
+	documents: z.array(previewDocumentSchema),
+	/** True when a discovery budget stopped the walk before it finished. */
+	truncated: z.boolean(),
+	/**
+	 * Short-lived capability for `/api/preview/files/<token>/<path>`. Preview
+	 * iframes are sandboxed without `allow-same-origin`, which gives them an
+	 * opaque origin; browsers then drop the SameSite=Lax session cookie from
+	 * every subresource request and in-frame navigation the report makes.
+	 * Carrying the grant in the URL path instead means a report's own relative
+	 * links inherit it without the report knowing anything about it.
+	 */
+	token: z.string(),
+	/** Seconds until `token` stops being accepted. */
+	tokenExpiresIn: z.number().int().positive(),
+});
+
+export type PreviewDocumentKind = z.infer<typeof previewDocumentKindSchema>;
+export type PreviewDocument = z.infer<typeof previewDocumentSchema>;
+export type PreviewDocumentsResponse = z.infer<
+	typeof previewDocumentsResponseSchema
+>;
