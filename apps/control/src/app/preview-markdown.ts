@@ -1,4 +1,5 @@
 import MarkdownIt from "markdown-it";
+import container from "markdown-it-container";
 
 /**
  * Markdown rendering for Preview. Everything ships with the control plane —
@@ -63,6 +64,39 @@ export function escapeHtml(value: string): string {
 		.replace(/"/g, "&quot;");
 }
 
+const ADMONITION_TITLES: Record<string, string> = {
+	note: "Note",
+	tip: "Tip",
+	info: "Info",
+	warning: "Warning",
+	danger: "Danger",
+};
+
+/**
+ * Docusaurus-style admonitions - `:::warning[Custom title]` ... `:::` - so a
+ * README written for (or copied from) the docs site renders the same way
+ * here, not as literal `:::warning[...]` text. markdown-it-container's
+ * default `validate` only matches a bare type name with no `[title]`
+ * suffix, so each type gets its own validator; `render` pulls an optional
+ * `[title]` out of the container token's raw info string, inline-rendered
+ * so `` `code` ``/`**bold**` work in a title the same as in the body, and
+ * falls back to the type's default title when there isn't one.
+ */
+for (const [type, defaultTitle] of Object.entries(ADMONITION_TITLES)) {
+	md.use(container, type, {
+		validate: (params: string) =>
+			new RegExp(`^${type}(?:\\[.*\\])?\\s*$`).test(params.trim()),
+		render: (tokens, idx) => {
+			const token = tokens[idx];
+			if (!token || token.nesting !== 1) return "</div>\n";
+			const titleMatch = /\[(.*)\]\s*$/.exec((token.info ?? "").trim());
+			const rawTitle = titleMatch?.[1]?.trim();
+			const title = rawTitle ? md.renderInline(rawTitle) : defaultTitle;
+			return `<div class="admonition admonition-${type}">\n<p class="admonition-title">${title}</p>\n`;
+		},
+	});
+}
+
 /**
  * Deliberately plain: system font stack, no webfonts, colours that stay legible
  * in either theme via `color-scheme` plus `prefers-color-scheme`.
@@ -95,6 +129,21 @@ th, td { border: 1px solid var(--line); padding: 6px 13px; text-align: left; }
 th { background: var(--code-bg); }
 img { max-width: 100%; }
 hr { border: none; border-top: 1px solid var(--line); margin: 2em 0; }
+.admonition { margin: 0 0 1em; padding: 10px 16px; border-radius: 6px; border-left: 4px solid var(--admonition-color); background: var(--admonition-bg); }
+.admonition > :last-child { margin-bottom: 0; }
+.admonition-title { font-weight: 700; margin: 0 0 0.4em; color: var(--admonition-color); }
+.admonition-note { --admonition-color: #57606a; --admonition-bg: #f3f4f6; }
+.admonition-tip { --admonition-color: #1a7f37; --admonition-bg: #e6f6ea; }
+.admonition-info { --admonition-color: #0969da; --admonition-bg: #ddf0ff; }
+.admonition-warning { --admonition-color: #9a6700; --admonition-bg: #fff8c5; }
+.admonition-danger { --admonition-color: #cf222e; --admonition-bg: #ffebe9; }
+@media (prefers-color-scheme: dark) {
+  .admonition-note { --admonition-color: #9198a1; --admonition-bg: #21262d; }
+  .admonition-tip { --admonition-color: #3fb950; --admonition-bg: #122117; }
+  .admonition-info { --admonition-color: #6ea8fe; --admonition-bg: #0d1929; }
+  .admonition-warning { --admonition-color: #d29922; --admonition-bg: #271f0a; }
+  .admonition-danger { --admonition-color: #ff7b72; --admonition-bg: #2d1214; }
+}
 `;
 
 function documentShell(title: string, body: string): string {

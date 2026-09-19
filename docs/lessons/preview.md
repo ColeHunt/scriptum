@@ -22,7 +22,9 @@ updated list.
 
 ## Supported files
 
-- `.md` files, including local images and heading links
+- `.md` files, including local images, heading links, and admonitions
+  (`:::warning[Title]` … `:::` - the same syntax as this docs site, one of
+  `note`/`tip`/`info`/`warning`/`danger`, title optional)
 - `.html` and `.htm` files, including local stylesheets, scripts, images, fonts,
   and linked report pages
 

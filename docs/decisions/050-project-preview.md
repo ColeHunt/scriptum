@@ -144,3 +144,11 @@ file are not made to work offline by this feature.
   copy; it was not refactored, per the surgical-changes rule.
 - `/u/:slug/api/preview/files/*` is templated in `metrics.ts` so neither
   the token nor a project path can become a metric label.
+- `markdown-it-container` was added later so Preview renders the docs site's
+  own `:::warning[Title]` … `:::` admonition syntax (`preview-markdown.ts`)
+  instead of it appearing as literal text - a lesson README can now use the
+  same callouts the docs site does. `markdown-it-container` ships no types
+  of its own and the DefinitelyTyped package for it conflicts with
+  `markdown-it` v15's now-bundled native types, so it's typed with a small
+  local ambient module (`apps/control/src/types/markdown-it-container.d.ts`)
+  instead.
