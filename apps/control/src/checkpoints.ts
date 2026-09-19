@@ -451,6 +451,21 @@ export class CheckpointManager {
 			return { status: "passed", message: `${verifier.topic} looks good.` };
 		}
 
+		if (verifier.check === "differs-from-default") {
+			// A one-off student action (e.g. a Tuning Mode write) settles long
+			// before Verify is clicked, so - unlike "changes" - this only needs
+			// the current value compared against the code's known starting
+			// point, not a live sampling window.
+			const current = samples.at(-1);
+			if (current === verifier.expected) {
+				return {
+					status: "failed",
+					message: `${verifier.topic} is still ${JSON.stringify(verifier.expected)}, its starting value - change it, then click Verify again.`,
+				};
+			}
+			return { status: "passed", message: `${verifier.topic} looks good.` };
+		}
+
 		// "changes"
 		const distinct = new Set(samples.map((value) => JSON.stringify(value)));
 		if (distinct.size < 2) {

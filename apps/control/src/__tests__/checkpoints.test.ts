@@ -115,6 +115,17 @@ const NT4_MANIFEST = {
 						check: "changes",
 					},
 				},
+				{
+					id: "differs-from-default-check",
+					title: "Differs from default check",
+					description: "",
+					verifier: {
+						type: "nt4-value",
+						topic: "/AdvantageKit/RealOutputs/FlywheelTargetRPM",
+						check: "differs-from-default",
+						expected: 3000,
+					},
+				},
 			],
 		},
 	],
@@ -279,6 +290,42 @@ describe("CheckpointManager — nt4-value checkpoints", () => {
 			expect(byId.get("changes-check")?.result).toMatchObject({
 				status: "failed",
 				message: expect.stringContaining("looks constant"),
+			});
+		});
+	});
+
+	test("differs-from-default check fails when the value never left its starting point", async () => {
+		await withNt4Manager(async ({ manager, workspace, nt4Auto }) => {
+			nt4Auto.setSequence(
+				"/AdvantageKit/RealOutputs/FlywheelTargetRPM",
+				[3000],
+			);
+			const state = await manager.verify(workspace.id, "nt4-demo", [
+				"differs-from-default-check",
+			]);
+			const byId = new Map(state.checkpoints.map((c) => [c.id, c]));
+			expect(byId.get("differs-from-default-check")?.result).toMatchObject({
+				status: "failed",
+				message: expect.stringContaining("still"),
+			});
+		});
+	});
+
+	test("differs-from-default check passes on a single settled sample, unlike changes", async () => {
+		await withNt4Manager(async ({ manager, workspace, nt4Auto }) => {
+			// Simulates the realistic timeline: the student wrote a new value via
+			// Tuning Mode *before* clicking Verify, so it has already settled by
+			// the time sampling starts - every sample is the same new number.
+			nt4Auto.setSequence(
+				"/AdvantageKit/RealOutputs/FlywheelTargetRPM",
+				[4200],
+			);
+			const state = await manager.verify(workspace.id, "nt4-demo", [
+				"differs-from-default-check",
+			]);
+			const byId = new Map(state.checkpoints.map((c) => [c.id, c]));
+			expect(byId.get("differs-from-default-check")?.result).toMatchObject({
+				status: "passed",
 			});
 		});
 	});

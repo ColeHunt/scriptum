@@ -416,7 +416,14 @@ export const lessonModuleSubdirSchema = z
  *   `robot`-kind module whose student code can't be compiled against by a
  *   hidden checkpoint class the way plain-java lessons can. "range" checks
  *   every sample falls within [min, max]; "changes" checks at least two
- *   distinct values were observed (catches a frozen number OR boolean).
+ *   distinct values were observed across the ~1s sampling window (catches a
+ *   frozen number OR boolean) - only meaningful for a topic that changes
+ *   continuously on its own, like telemetry driven by robot code. A topic
+ *   that only moves in response to a one-off student action (e.g. a Tuning
+ *   Mode write) will have already settled by the time Verify is clicked, so
+ *   "changes" would almost always see a flat sampling window even after a
+ *   real edit; "differs-from-default" instead takes one sample and checks it
+ *   is not still `expected` (the value the code starts with).
  */
 export const lessonCheckpointVerifierSchema = z.discriminatedUnion("type", [
 	z.object({
@@ -426,9 +433,12 @@ export const lessonCheckpointVerifierSchema = z.discriminatedUnion("type", [
 	z.object({
 		type: z.literal("nt4-value"),
 		topic: z.string().min(1),
-		check: z.enum(["range", "changes"]),
+		check: z.enum(["range", "changes", "differs-from-default"]),
 		min: z.number().optional(),
 		max: z.number().optional(),
+		/** Required (and only used) when check is "differs-from-default": the
+		 * starting value the topic is compared against. */
+		expected: z.number().optional(),
 	}),
 ]);
 
