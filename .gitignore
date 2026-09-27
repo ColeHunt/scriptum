@@ -70,9 +70,6 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
-# CloudFlare Worker
-_worker.bundle
-
 lessons-repo-root/
 
 # Bundled catalog build artifacts (keep sources, ignore generated output)

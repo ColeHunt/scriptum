@@ -1,4 +1,4 @@
-# V2 Code Container (`coderunner-workspace`)
+# V2 Code Container (`scriptum-workspace`)
 
 Merged per-student container for V2. Combines VSCodium reh-web (`codium-server`) + Java IDE + WPILib support in a single image using the linuxserver.io base (Ubuntu 24.04, s6-overlay).
 
@@ -39,7 +39,7 @@ The runtime seeds conservative memory defaults for classroom density:
 bun run docker:build:workspace
 ```
 
-Tags the image as `${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${SCRIPTUM_TAG:-latest}` —
+Tags the image as `${SCRIPTUM_IMAGE_NS:-ghcr.io/frc-team-4143}/scriptum-workspace:${SCRIPTUM_TAG:-latest}` —
 the same name docker compose and the control plane resolve, so a local build is
 used directly. Override the full name with the `CODE_IMAGE` env var.
 
@@ -88,7 +88,7 @@ frc-sim.workspace=<workspaceId>
 
 ```bash
 docker run -d \
-  --name coderunner-workspace-<hex> \
+  --name scriptum-workspace-<hex> \
   --label frc-sim.managed=true \
   --label frc-sim.version=v2 \
   --label frc-sim.role=code \
@@ -102,7 +102,7 @@ docker run -d \
   -e PGID=$(id -g) \
   -e VSCODE_BASE_PATH=/u/<slug>/vscode/ \
   --memory=2560m \
-  ghcr.io/mathewdunne/coderunner-workspace:latest
+  ghcr.io/frc-team-4143/scriptum-workspace:latest
 ```
 
 (`--name` drops the `ws_` prefix from `<workspaceId>`; the label, volume paths,

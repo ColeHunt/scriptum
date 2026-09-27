@@ -14,25 +14,13 @@ const config: Config = {
   },
 
   // Deployed to GitHub Pages (see .github/workflows/deploy-docs.yml)
-  url: 'https://mathewdunne.github.io',
-  baseUrl: '/CodeRunner/',
+  url: 'https://frc-team-4143.github.io',
+  baseUrl: '/scriptum/',
 
   // GitHub Pages deployment config (used by `docusaurus deploy` and for metadata).
-  organizationName: 'mathewdunne',
-  projectName: 'CodeRunner',
+  organizationName: 'FRC-Team-4143',
+  projectName: 'scriptum',
   trailingSlash: false,
-
-  // Proves site ownership to the Algolia crawler. Injected into every page's
-  // <head>; the crawler reads it from the site root.
-  headTags: [
-    {
-      tagName: 'meta',
-      attributes: {
-        name: 'algolia-site-verification',
-        content: '772853D21F365831',
-      },
-    },
-  ],
 
   onBrokenLinks: 'throw',
   onBrokenAnchors: 'throw',
@@ -61,7 +49,7 @@ const config: Config = {
             'decisions/**',
             'superpowers/**',
           ],
-          editUrl: 'https://github.com/mathewdunne/CodeRunner/tree/main/docs/',
+          editUrl: 'https://github.com/FRC-Team-4143/scriptum/tree/main/docs/',
         },
         blog: false,
         pages: false,
@@ -73,16 +61,6 @@ const config: Config = {
   ],
 
   themeConfig: {
-    // DocSearch, via the theme-search-algolia bundled in preset-classic. The
-    // apiKey here is Algolia's public search-only key and is safe to commit;
-    // the write/admin key is not and must never land in this repo.
-    algolia: {
-      appId: '5BW22U91EM',
-      apiKey: 'cfbf90d7a19db5b9dfa3397952873270',
-      indexName: 'CodeRunner Docs',
-      contextualSearch: false,
-      searchPagePath: 'search',
-    },
     colorMode: {
       defaultMode: 'dark',
       respectPrefersColorScheme: false,
@@ -95,7 +73,7 @@ const config: Config = {
       },
       items: [
         {
-          href: 'https://github.com/mathewdunne/CodeRunner',
+          href: 'https://github.com/FRC-Team-4143/scriptum',
           label: 'GitHub',
           position: 'right',
         },
@@ -130,11 +108,11 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/mathewdunne/CodeRunner',
+              href: 'https://github.com/FRC-Team-4143/scriptum',
             },
             {
               label: 'Issues',
-              href: 'https://github.com/mathewdunne/CodeRunner/issues',
+              href: 'https://github.com/FRC-Team-4143/scriptum/issues',
             },
           ],
         },

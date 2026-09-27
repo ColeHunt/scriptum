@@ -10,7 +10,7 @@ remains under its own terms.
 
 This page is a summary. The authoritative, complete notices — including the full license
 texts the BSD-3-Clause components require — are in
-[`THIRD_PARTY_NOTICES.md`](https://github.com/mathewdunne/CodeRunner/blob/main/THIRD_PARTY_NOTICES.md)
+[`THIRD_PARTY_NOTICES.md`](https://github.com/FRC-Team-4143/scriptum/blob/main/THIRD_PARTY_NOTICES.md)
 in the repository, and ship inside both container images at `/usr/share/coderunner/`.
 
 None of the projects, organizations, or individuals listed below endorse or are affiliated
@@ -19,7 +19,7 @@ with CodeRunner.
 ## CodeRunner
 
 MIT License, Copyright © 2026 Mathew Dunne and CodeRunner contributors. Full text:
-[`LICENSE`](https://github.com/mathewdunne/CodeRunner/blob/main/LICENSE).
+[`LICENSE`](https://github.com/FRC-Team-4143/scriptum/blob/main/LICENSE).
 
 You may use, copy, modify, and redistribute CodeRunner, including commercially, provided the
 copyright notice and permission notice are included. It comes with no warranty.
@@ -44,9 +44,9 @@ copyright notice and permission notice are included. It comes with no warranty.
 | [Docusaurus](https://github.com/facebook/docusaurus) | MIT | This documentation site |
 
 Exact pinned versions are in
-[`vendor/tools.json`](https://github.com/mathewdunne/CodeRunner/blob/main/vendor/tools.json)
+[`vendor/tools.json`](https://github.com/FRC-Team-4143/scriptum/blob/main/vendor/tools.json)
 (AdvantageScope, Choreo, Elastic Dashboard) and
-[`containers/code/Dockerfile`](https://github.com/mathewdunne/CodeRunner/blob/main/containers/code/Dockerfile)
+[`containers/code/Dockerfile`](https://github.com/FRC-Team-4143/scriptum/blob/main/containers/code/Dockerfile)
 (everything else). AdvantageScope ships its own aggregated dependency license list as
 `ThirdPartyLicenses.txt` alongside the bundled telemetry view. Elastic Dashboard ships
 Flutter's generated dependency notices as `assets/NOTICES`.
@@ -55,7 +55,7 @@ Flutter's generated dependency notices as `assets/NOTICES`.
 
 CodeRunner redistributes a **modified** build of AdvantageScope. The change is kept as a
 source-level patch in
-[`patches/advantagescope/`](https://github.com/mathewdunne/CodeRunner/tree/main/patches/advantagescope)
+[`patches/advantagescope/`](https://github.com/FRC-Team-4143/scriptum/tree/main/patches/advantagescope)
 and injects an NT4 endpoint so the telemetry view can run embedded in the CodeRunner page.
 
 CodeRunner also redistributes Choreo's web frontend and `choreo-server` sidecar from the
@@ -65,7 +65,7 @@ as-is, and embedding support lives entirely in CodeRunner's own proxy/routing co
 
 CodeRunner also redistributes a **modified** build of Elastic Dashboard. The change is kept
 as a source-level patch in
-[`patches/elastic/`](https://github.com/mathewdunne/CodeRunner/tree/main/patches/elastic)
+[`patches/elastic/`](https://github.com/FRC-Team-4143/scriptum/tree/main/patches/elastic)
 and adds embedded-mode NT4 endpoint injection and layout persistence to the student's
 project.
 

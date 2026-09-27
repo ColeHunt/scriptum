@@ -5,50 +5,35 @@ title: Deployment Overview
 
 # Deployment Overview
 
-CodeRunner is self-hosted. You run the control plane and the per-student
+Scriptum is self-hosted. You run the control plane and the per-student
 workspace containers on a machine you control; there is no managed SaaS.
 
-:::tip Recommended for new deployments
+## Local Deployment
 
-Start with [Local Deployment](./local.md). It is the simplest setup and works
-well for most teams running CodeRunner in a classroom or at team meetings.
-
-:::
-
-## Choose a deployment route
-
-### Local Deployment (recommended)
-
-Run CodeRunner on a lab PC, spare laptop, or mini PC. Students connect over the
+Run Scriptum on a lab PC, spare laptop, or mini PC. Students connect over the
 same trusted local network. Setup is a small `.env` file followed by
 `docker compose up`.
 
 See [Local Deployment](./local.md).
 
-### Google Cloud Deployment (advanced)
+## Hosting with the MARS/WARS apps
 
-Use the Terraform-based Google Cloud setup when students need remote access at
-a stable public URL. It provisions a VM, HTTPS, automated releases, monitoring,
-and persistent storage. This route requires a domain, a GCP project with
-billing, and more infrastructure experience.
+For remote access, Scriptum is hosted the same way as the other MARS/WARS apps
+(Legion, Tempus, Munus, ...): as a service in the team's shared `apps-infra`
+Docker Compose stack, behind Nginx Proxy Manager at `scriptum.marswars.org`, deployed by a
+GitHub Actions workflow on merge to `main`.
 
-You can stop the VM between seasons; see
-[Seasonal Teardown](../operating/seasonal-teardown.md).
+Scriptum is much heavier than its siblings: every active student runs their own
+workspace container (editor, Java, and simulator), so the host needs memory for
+each student working at once. See [Capacity](../operating/capacity.md) before
+choosing a machine.
 
-See [Google Cloud Deployment](./gcloud.md).
+## What every deployment needs
 
-## What both need
-
-Regardless of shape, every non-demo deployment needs:
+Every non-demo deployment needs:
 
 - **A Legion instance.** Sign-in is delegated entirely to Legion, your team's
-  own SSO service; CodeRunner needs its base URL and shared `SSO_SECRET`. See
+  own SSO service; Scriptum needs its base URL and shared `SSO_SECRET`. See
   [Legion Setup](./legion-setup.md).
 - **Docker.** Each active student runs in a per-student workspace container
   (sim + editor), so the host needs a working Docker Engine.
-
-## Cloudflare Offline Page (advanced, optional)
-
-Google Cloud deployments can optionally add a Cloudflare Pages layer so
-students see a styled offline screen while the VM is powered down. This is not
-needed for local deployments. See [Cloudflare Offline Page](./cloudflare.md).

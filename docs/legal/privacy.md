@@ -115,12 +115,12 @@ particular instance, contact the operating school or team.
 
 Material changes will be reflected here with an updated date above. The revision history is
 public in the
-[project repository](https://github.com/mathewdunne/CodeRunner/commits/main/docs/legal/privacy.md).
+[project repository](https://github.com/FRC-Team-4143/scriptum/commits/main/docs/legal/privacy.md).
 
 ## Contact
 
 For questions about the CodeRunner software or this policy, open an issue at
-[github.com/mathewdunne/CodeRunner/issues](https://github.com/mathewdunne/CodeRunner/issues).
+[github.com/FRC-Team-4143/scriptum/issues](https://github.com/FRC-Team-4143/scriptum/issues).
 
 For questions about a specific installation and the data on it, contact the school, team, or
 mentor who operates it.

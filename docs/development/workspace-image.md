@@ -5,12 +5,12 @@ title: Workspace Image
 
 # Workspace Image
 
-The workspace image (`ghcr.io/mathewdunne/coderunner-workspace`) is the
+The workspace image (`ghcr.io/frc-team-4143/scriptum-workspace`) is the
 per-student container that runs
 VSCodium reh-web (`codium-server`), Java 17/21, and the WPILib simulation stack in a single
 Docker image. The [workspace container overview](../about/workspace-container.md)
 explains the runtime contract from the application's perspective; the
-[container README](https://github.com/mathewdunne/CodeRunner/blob/main/containers/code/README.md)
+[container README](https://github.com/FRC-Team-4143/scriptum/blob/main/containers/code/README.md)
 is the authoritative reference for bind mounts, published ports, labels,
 and environment variables.
 
@@ -34,11 +34,11 @@ bun run docker:build:workspace
 This runs `scripts/image.ts`, which calls:
 
 ```
-docker build -f containers/code/Dockerfile -t ghcr.io/mathewdunne/coderunner-workspace:latest .
+docker build -f containers/code/Dockerfile -t ghcr.io/frc-team-4143/scriptum-workspace:latest .
 ```
 
 The build context is the repo root. The image is tagged with its canonical
-name — `${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${SCRIPTUM_TAG:-latest}` —
+name — `${SCRIPTUM_IMAGE_NS:-ghcr.io/frc-team-4143}/scriptum-workspace:${SCRIPTUM_TAG:-latest}` —
 the same name docker compose and the control plane's `CODE_IMAGE` default
 resolve to, so a local build is picked up directly by `docker compose up` or
 `bun run dev:control` with no re-tagging. Forks set `SCRIPTUM_IMAGE_NS` (in

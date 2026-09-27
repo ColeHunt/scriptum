@@ -5,7 +5,6 @@ import { resolve } from "node:path";
 // instead of building them from source. This is the demo/quick-start path: it
 // skips the emscripten-dependent `build:ascope` compile entirely by reusing the
 // `ascope-dist.tar.gz` and `web-dist.tar.gz` already published on each release.
-// The GCE deploy does the same thing (see .github/workflows/deploy.yml).
 //
 // Choreo's frontend is built (not downloaded) last via build-choreo.ts - it
 // needs only Bun + Vite, already required above, so there's no prebuilt
@@ -17,7 +16,7 @@ import { downloadAndExtract, withScratch } from "./dist-download";
 const repoRoot = resolve(import.meta.dirname, "..");
 
 // Overridable so forks can point at their own releases.
-const repo = Bun.env.DEMO_RELEASE_REPO ?? "mathewdunne/CodeRunner";
+const repo = Bun.env.DEMO_RELEASE_REPO ?? "FRC-Team-4143/scriptum";
 
 // Default to the newest published release. Pass `--tag vX.Y.Z` to pin.
 const tagArgIndex = Bun.argv.indexOf("--tag");

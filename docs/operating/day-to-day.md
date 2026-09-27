@@ -15,25 +15,22 @@ The maintenance commands in this page (`users`, `audit-prune`, `backup`,
 `restore`) run **inside the control container** via the `coderunner` CLI:
 
 ```bash
-docker compose exec control coderunner <subcommand> <args>
+docker compose exec control scriptum <subcommand> <args>
 ```
 
 Use `docker compose run --rm control <subcommand> <args>` instead for a
-one-off command while the control plane is stopped (e.g. `restore`). On the
-Google Cloud VM the compose project lives in `/opt/coderunner` and needs
-`sudo` (`cd /opt/coderunner && sudo docker compose exec -T control …`). On a
+one-off command while the control plane is stopped (e.g. `restore`). On a
 from-source host checkout with Bun you can instead use the `bun run <name>`
 aliases shown in `package.json`. The examples below use the `bun run` short form;
-substitute the `docker compose exec control coderunner <subcommand>` form for a
+substitute the `docker compose exec control scriptum <subcommand>` form for a
 containerized deployment.
 
 ::::
 
 ## Starting and stopping
 
-Both the local and Google Cloud deployments run the control plane as a docker
-compose service. From the compose directory (the repo root locally, or
-`/opt/coderunner` on the VM):
+The control plane runs as a docker compose service. From the compose directory
+(the repo root for a local deployment):
 
 ```bash
 docker compose up -d        # start (runs DB migrations first, then serves)
@@ -43,8 +40,8 @@ docker compose ps           # status — control should be "healthy"
 docker compose logs -f control
 ```
 
-Students connect to `http://<host-ip>:4000/` (or `https://<your-domain>/` behind
-Caddy on the VM). Student workspace containers keep running after the control
+Students connect to `http://<host-ip>:4000/` (or its `https://` URL behind a
+reverse proxy). Student workspace containers keep running after the control
 plane stops and are reconciled automatically when it starts again. `restart:
 unless-stopped` brings the stack back after a host reboot.
 

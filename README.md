@@ -7,7 +7,7 @@ A self-hosted, browser-based IDE for learning FRC robot programming. Students ge
 Try Scriptum locally in demo mode — no Legion setup, no configuration required. Just Docker:
 
 ```bash
-git clone https://github.com/mathewdunne/CodeRunner scriptum
+git clone https://github.com/FRC-Team-4143/scriptum scriptum
 cd scriptum
 SCRIPTUM_DEMO_MODE=1 docker compose up
 ```

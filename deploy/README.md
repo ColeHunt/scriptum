@@ -1,15 +1,9 @@
 # deploy/
 
-Terraform, cloud-init, and Cloudflare deployment assets for the GCE-based production deployment.
+Deployment assets for running Scriptum somewhere other than a single local
+machine. There are none on `main` right now: the Google Cloud and Cloudflare
+setup inherited from the upstream CodeRunner project was removed (decision
+052) because this fork never used it.
 
-Full instructions live in the docs site:
-
-- [Deploying to Google Cloud](../docs/deploying/gcloud.md) — one-VM GCE setup with Terraform, Caddy, and Workload Identity Federation.
-- [Cloudflare Pages](../docs/deploying/cloudflare.md) — optional CDN layer for the web shell with graceful offline handling.
-- [Seasonal Teardown & Restore](../docs/operating/seasonal-teardown.md) — snapshot-based off-season teardown to near-zero cost and fall restore.
-
-## Subdirectories
-
-- `terraform/` — Infrastructure as code: VM, persistent disk, IAM, secrets, network, outputs.
-- `cloud-init/` — First-boot provisioning script (`user-data.yaml`): installs Docker + the compose plugin, fetches the compose files, and renders `/opt/coderunner/.env` and the Alloy config from Secret Manager. The control plane, Caddy, and Alloy run as compose services (`docker-compose.yml` + `docker-compose.prod.yml`); see [decision 031](../docs/decisions/031-containerized-control-plane.md).
-- `cloudflare/` — Cloudflare Pages config and catch-all Pages Function for backend proxying.
+For a local deployment, `docker-compose.yml` at the repo root is all you need;
+see [Local Deployment](../docs/deploying/local.md).

@@ -20,7 +20,7 @@ that workspace.
 docker info
 
 # Check whether the workspace image exists
-docker images | grep coderunner-workspace
+docker images | grep scriptum-workspace
 
 # If missing, pull both images (control + workspace)
 docker compose pull
@@ -36,7 +36,7 @@ fails. Verify the ranges are not overlapping with other services on the host.
 Defaults are `25810–25899` (sim NT4) and `33000–33099` (codium-server).
 This does not apply to **network mode** — the default for `docker compose`
 deployments — where workspace containers publish no host ports at all; see
-[decision 031](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/031-containerized-control-plane.md).
+[decision 031](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/031-containerized-control-plane.md).
 
 After the image is present and Docker is healthy, the student's container will
 start on their next workspace open.
@@ -143,10 +143,10 @@ SIM_STARTUP_TIMEOUT_MS=60000
 If this happens consistently for one student, check the container logs:
 
 ```bash
-docker logs coderunner-workspace-<hex> --tail 100
+docker logs scriptum-workspace-<hex> --tail 100
 ```
 
-(The container name is `coderunner-workspace-` followed by the workspace id's
+(The container name is `scriptum-workspace-` followed by the workspace id's
 hex suffix, with the `ws_` prefix dropped.)
 
 Look for the simulator failing to bind its HALSim port. If `HALSIM_PORT_RANGE`

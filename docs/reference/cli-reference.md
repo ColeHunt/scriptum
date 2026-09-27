@@ -21,11 +21,11 @@ All scripts are run from the repo root with `bun run NAME` and require Bun 1.3.1
 
 In a `docker compose` deployment the scripts documented on this page are baked
 into the control image and reachable through one dispatching entrypoint,
-`coderunner <subcommand>`, installed at `/usr/local/bin/coderunner`
+`scriptum <subcommand>`, installed at `/usr/local/bin/scriptum`
 (`containers/control/entrypoint.sh`). Two invocation forms work, for different
 reasons:
 
-- `docker compose exec control coderunner <subcommand>` — runs inside the
+- `docker compose exec control scriptum <subcommand>` — runs inside the
   already-running `control` container. `exec` bypasses the image
   `ENTRYPOINT` entirely, so this form only works because `coderunner` is also
   installed on `PATH`, not because it's the entrypoint.
@@ -48,7 +48,7 @@ reasons:
 | anything else | — | Passed through verbatim (`exec "$@"`) — for example, `docker compose run --rm control bash` opens a shell. |
 
 Example: `bun run users:list` on a from-source checkout is
-`docker compose exec control coderunner users list` in a compose deployment.
+`docker compose exec control scriptum users list` in a compose deployment.
 There is no admin bootstrap step here at all — admin access is a Legion group
 membership, granted entirely in Legion's own `/admin/groups`; see
 [Legion Setup](../deploying/legion-setup.md).
@@ -61,10 +61,10 @@ membership, granted entirely in Legion's own `/admin/groups`; see
 | `build:web` | Builds only the React web shell into `apps/web/dist`. |
 | `build:ascope` | Builds only the AdvantageScope Lite assets into `dist/advantagescope`. Requires emscripten and the AdvantageScope submodule. Applies `patches/advantagescope/` first. |
 | `build:choreo` | Builds only Choreo's web frontend into `dist/choreo`, cloning the pinned commit from `vendor/tools.json` and building it inline with Vite. Requires only Bun (no Flutter, no submodule). |
-| `build:elastic` | Builds only Elastic Dashboard's web assets into `dist/elastic`. Requires a local Flutter SDK — deliberately **not** part of `build`, since Flutter is otherwise absent from this repo's toolchain (see [decision 041](../decisions/041-elastic-dashboard-integration.md)). Applies `patches/elastic/` first. |
+| `build:elastic` | Builds only Elastic Dashboard's web assets into `dist/elastic`. Requires a local Flutter SDK — deliberately **not** part of `build`, since Flutter is otherwise absent from this repo's toolchain (see [decision 041](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/041-elastic-dashboard-integration.md)). Applies `patches/elastic/` first. |
 | `apply:ascope-patches` | Applies `patches/advantagescope/*.patch` to the vendored submodule without building. |
 | `apply:elastic-patches` | Applies `patches/elastic/*.patch` to the vendored submodule without building. |
-| `check:vendor-manifest` | Cross-checks `vendor/tools.json` against `.gitmodules`, `THIRD_PARTY_NOTICES.md`, `.env.example`, `config.ts`, and each tool's Dockerfile build sites; fails if any have drifted apart. Part of `verify`. See [decision 043](../decisions/043-vendor-tool-manifest.md). |
+| `check:vendor-manifest` | Cross-checks `vendor/tools.json` against `.gitmodules`, `THIRD_PARTY_NOTICES.md`, `.env.example`, `config.ts`, and each tool's Dockerfile build sites; fails if any have drifted apart. Part of `verify`. See [decision 043](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/043-vendor-tool-manifest.md). |
 | `fetch:dist` | Downloads the web shell and AdvantageScope from a CodeRunner release, builds Choreo (same as `build:choreo`), and fetches an optional Elastic Dashboard web build. Pass `--tag vX.Y.Z` (or set `DEMO_RELEASE_TAG`) to pin the CodeRunner release; set `DEMO_RELEASE_REPO` to use a fork. A missing/failed Elastic fetch only warns here — `/elastic/` then serves a 503. |
 | `setup:demo` | One-step demo setup: pulls the workspace image, then runs `fetch:dist`. Pair with `demo`. |
 | `clean` | Deletes built output directories (`apps/web/dist`, `dist/advantagescope`, `dist/choreo`, and `dist/elastic`). Does not touch runtime data under `data/`. |
@@ -89,7 +89,7 @@ membership, granted entirely in Legion's own `/admin/groups`; see
 
 | Script | What it does |
 |--------|-------------|
-| `docker:pull:workspace` | Pulls the workspace image (`${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${SCRIPTUM_TAG:-latest}`) from the registry. Called automatically by `build`. |
+| `docker:pull:workspace` | Pulls the workspace image (`${SCRIPTUM_IMAGE_NS:-ghcr.io/frc-team-4143}/scriptum-workspace:${SCRIPTUM_TAG:-latest}`) from the registry. Called automatically by `build`. |
 | `docker:build:workspace` | Builds the workspace image locally from `containers/code/Dockerfile`, tagged with the same canonical name the pull uses — so a rebuild is picked up directly by `docker compose up`. Use when iterating on the container itself; normal deployments pull the prebuilt image instead. |
 | `docker:build:control` | Builds the control-plane image locally: web shell, AdvantageScope Lite (compiled in-image via emsdk), and Choreo's web frontend (cloned and built in-image) all come from source; Elastic Dashboard must already be built at `dist/elastic` (via `build:elastic` or `fetch:dist`) before running this, since the image has no Flutter toolchain. Choreo's repo/commit pin is passed explicitly from `vendor/tools.json`. Normal deployments pull the published image instead. |
 | `docker:cleanup` | Removes all stopped managed containers (those with the `frc-sim.managed=true` label). Safe to run while the control plane is up. Accepts `--dry-run` to preview what would be removed. |

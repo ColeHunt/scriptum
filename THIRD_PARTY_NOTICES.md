@@ -46,7 +46,7 @@ are kept at source level in
 [`patches/choreo/`](./patches/choreo/) (five patches, applied in order) and
 add, most notably, a `choreo-server` HTTP/WS sidecar replacing Choreo's
 native Tauri IPC boundary, and a frontend ported to talk to it instead. See
-[decision 045](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/045-choreo-submodule-migration.md)
+[decision 045](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/045-choreo-submodule-migration.md)
 for the full list of changes.
 
 CodeRunner also redistributes a **modified** build of Elastic Dashboard. The

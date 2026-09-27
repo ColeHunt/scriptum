@@ -90,10 +90,11 @@ See `docs/decisions/050-project-preview.md` and
 [`docs/lessons/preview.md`](./docs/lessons/preview.md).
 
 **Containerized control plane (post-V2):** the control plane ships as a Docker
-image (`containers/control/Dockerfile` → `ghcr.io/mathewdunne/coderunner-control`)
-and is deployed with docker compose (`docker-compose.yml` base +
-`docker-compose.prod.yml` for Caddy/Alloy; demo mode is `SCRIPTUM_DEMO_MODE=1
-docker compose up`, an env passthrough rather than an override file). It runs
+image (`containers/control/Dockerfile` → `ghcr.io/frc-team-4143/scriptum-control`)
+and is deployed with docker compose (`docker-compose.yml`; demo mode is
+`SCRIPTUM_DEMO_MODE=1 docker compose up`, an env passthrough rather than an
+override file). Remote hosting follows the other MARS/WARS apps: a service in
+the shared `apps-infra` compose stack behind Nginx Proxy Manager (decision 052). It runs
 the host Docker daemon over the bind-mounted socket and manages workspace
 containers as siblings. The control container runs **non-root** as the data-dir
 owner (image default `USER bun`; compose overrides via
@@ -114,13 +115,13 @@ with zero exec steps on this side; ops commands run as `scriptum <subcommand>`
 image build runs the emsdk/AdvantageScope compile in a build stage. See
 `docs/decisions/031-containerized-control-plane.md`.
 
-**CI, release, and multi-arch images (post-V2):** three workflows —
-`ci.yml` runs `bun run verify` on PRs and pushes to main; `release.yml`
-(on `v*` tag push) verifies, then publishes both images to GHCR as
-multi-arch manifest lists (linux/amd64 + linux/arm64, built on native
-runners and merged by digest) and uploads the web/ascope dist tarballs
-to the GitHub release; `deploy.yml` (manual dispatch) preflights that a
-tag is fully published, then rolls GCE/Cloudflare. The emsdk stage has
+**CI, release, and multi-arch images (post-V2):** `ci.yml` runs
+`bun run verify` on PRs and pushes to main; `release.yml` (on `v*` tag
+push) verifies, then publishes both images to
+`ghcr.io/frc-team-4143/scriptum-*` as multi-arch manifest lists
+(linux/amd64 + linux/arm64, built on native runners and merged by digest)
+and uploads the web/ascope dist tarballs to the GitHub release. The
+upstream GCE/Cloudflare `deploy.yml` was removed (decision 052). The emsdk stage has
 no arm64 image, so the arm64 control build reuses the amd64 job's
 AdvantageScope dist via a named build context (the wasm output is
 arch-independent). See `docs/decisions/035-multi-arch-images-and-workflow-split.md`.
@@ -146,7 +147,7 @@ arch-independent). See `docs/decisions/035-multi-arch-images-and-workflow-split.
 
 ## Key References
 
-- `docs/` + `website/` — docs site content and Docusaurus config; published at `https://mathewdunne.github.io/CodeRunner/`; run `bun run docs:dev` to browse locally, `bun run docs:build` to build.
+- `docs/` + `website/` — docs site content and Docusaurus config; published at `https://frc-team-4143.github.io/scriptum/`; run `bun run docs:dev` to browse locally, `bun run docs:build` to build.
 - `docs/decisions/` — all architecture decision logs (011–041 active; 001–010 archived under `docs/decisions/archive/`).
 - Pinned AdvantageScope submodule: `vendor/AdvantageScope` at tag `v26.0.2`.
 
