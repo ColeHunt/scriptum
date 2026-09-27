@@ -3,6 +3,14 @@
 Status: **Proposed** — 2026-09-15 (design/roadmap; Phase 1 scaffolding
 implemented, no DigitalOcean infrastructure exists yet)
 
+> **Update 2026-09-27:** the Google Compute Engine deployment described in
+> Context below was inherited from upstream and never used by this fork; it
+> was removed by decision 052, which also settles that Scriptum is hosted like
+> the other MARS/WARS apps. This design now only covers where student
+> workspaces run: the head is Scriptum's `apps-infra` service, and workers
+> carry the per-student containers the shared droplet can't hold. There is no
+> GCE cutover.
+
 ## Context
 
 CodeRunner today deploys as one dedicated, always-on Google Compute Engine VM
@@ -61,7 +69,7 @@ mount — no CodeRunner code is ever deployed to them.
 
 ### Key design points
 
-1. **Head packaging**: extends the existing `coderunner-control`
+1. **Head packaging**: extends the existing `scriptum-control`
    codebase/image (a fleet-mode config flag switches on the fleet manager and
    `RemoteDockerRuntimeProvider`), not a new codebase — everything else
    (Legion auth, admin portal, lesson assignment, audit log, run pipeline,
@@ -104,9 +112,9 @@ mount — no CodeRunner code is ever deployed to them.
    convention rather than introducing new secrets infrastructure.
 8. **Worker cold-start**: a periodically-refreshed DigitalOcean Custom
    Image/snapshot with Docker pre-installed and the current
-   `coderunner-workspace` image pre-pulled, refreshed as a new step appended
+   `scriptum-workspace` image pre-pulled, refreshed as a new step appended
    to `.github/workflows/release.yml` after it publishes
-   `coderunner-workspace`.
+   `scriptum-workspace`.
 9. **Idle/scale-down**: extends the existing per-container idle-stop concept
    (`IDLE_STOP_MINUTES`) one level up — once a worker's last workspace is
    unplaced, the fleet manager waits a grace period, then destroys the
@@ -149,16 +157,12 @@ mount — no CodeRunner code is ever deployed to them.
   droplet: build the golden worker-image baking step; prove real
   droplet-create → SSH docker-context → NFS-mount → run-one-container →
   droplet-destroy end to end against a throwaway DO project.
-- **Phase 3** — needs the shared droplet: add `coderunner-head` as a new
+- **Phase 3** — needs the shared droplet: add `scriptum-head` as a new
   apps-infra compose service, wire an NPM subdomain, confirm/resize the
-  droplet, cut real traffic over, decommission the GCP Terraform/cloud-init
-  path.
+  droplet, cut real traffic over.
 
 ## Consequences
 
-- `deploy/terraform/` (the GCP single-VM tree), `deploy/cloud-init/`, and
-  `.github/workflows/deploy.yml`'s GCE SCP/SSH flow become obsolete once
-  cutover is verified — kept until then.
 - Legion SSO verification, the single front-door principle, the admin
   portal, lesson assignment, audit log, the run pipeline, and Choreo/Elastic
   proxying are all unaffected — they already depend on

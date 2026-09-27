@@ -43,15 +43,14 @@ variable "worker_subnet_cidr" {
 # cannot be moved into it after the fact (DigitalOcean droplets can't change
 # VPC post-creation without recreating them - not something to do to a box
 # already running four other production apps). So firewall rules that need
-# to admit the head target its public IP specifically, the same
-# break-glass-CIDR pattern deploy/terraform/variables.tf already uses for
-# GCE SSH, rather than VPC membership.
+# to admit the head target its public IP specifically (a single /32 CIDR)
+# rather than VPC membership.
 variable "head_public_ip_cidr" {
-  description = "The shared MARS/WARS droplet's public IP, as a /32 CIDR (e.g. 104.248.113.170/32) - the only source allowed to reach worker SSH and the storage node's NFS export/SSH."
+  description = "The shared MARS/WARS droplet's public IP, as a /32 CIDR (e.g. 157.230.52.41/32) - the only source allowed to reach worker SSH and the storage node's NFS export/SSH."
   type        = string
 
   validation {
     condition     = can(cidrnetmask(var.head_public_ip_cidr))
-    error_message = "head_public_ip_cidr must be a valid CIDR (e.g. 104.248.113.170/32)."
+    error_message = "head_public_ip_cidr must be a valid CIDR (e.g. 157.230.52.41/32)."
   }
 }

@@ -9,8 +9,8 @@
 #
 # The head itself is NOT a resource here either: per decision 048 it lives as
 # a new compose service on the existing shared MARS/WARS droplet
-# (/prj/frc/apps/apps-infra), following that repo's own deploy pattern, not
-# as GCE/DO infrastructure of its own.
+# (apps-infra), following that repo's own deploy pattern, not as
+# infrastructure of its own.
 
 terraform {
   required_version = ">= 1.6.0"
@@ -22,13 +22,9 @@ terraform {
     }
   }
 
-  # Reuses the same GCS state bucket as deploy/terraform/ (the GCE
-  # deployment) under a different prefix, rather than standing up a second
-  # state backend for one more cloud:
-  #   terraform init -backend-config="bucket=$PROJECT_ID-tf-state"
-  backend "gcs" {
-    prefix = "do-fleet"
-  }
+  # Local state for now: this tree has never been applied. Before a real
+  # apply, pick a shared remote backend (for example an S3-compatible
+  # DigitalOcean Spaces bucket) so state isn't tied to one laptop.
 }
 
 provider "digitalocean" {

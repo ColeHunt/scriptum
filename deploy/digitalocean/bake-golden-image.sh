@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bakes the golden worker snapshot (decision 048, design point #8): boots a
 # throwaway droplet from a stock Ubuntu image, installs Docker + the NFS
-# client and pre-pulls the coderunner-workspace image, seals it (clears
+# client and pre-pulls the scriptum-workspace image, seals it (clears
 # machine-id/SSH host keys/cloud-init state so every droplet cloned from the
 # resulting snapshot gets its own unique identity), snapshots it, and
 # destroys the throwaway droplet. Prints the resulting snapshot id - set that
@@ -21,7 +21,7 @@ set -euo pipefail
 : "${DO_REGION:?Set DO_REGION (e.g. nyc3) - match deploy/digitalocean/terraform's var.region}"
 : "${DO_SSH_KEY_FINGERPRINT:?Set DO_SSH_KEY_FINGERPRINT - fingerprint of a key already in your DO account}"
 : "${DO_VPC_UUID:?Set DO_VPC_UUID - output of terraform apply in deploy/digitalocean/terraform}"
-SCRIPTUM_IMAGE_NS="${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}"
+SCRIPTUM_IMAGE_NS="${SCRIPTUM_IMAGE_NS:-ghcr.io/frc-team-4143}"
 SCRIPTUM_TAG="${SCRIPTUM_TAG:-latest}"
 BUILDER_SIZE="${BUILDER_SIZE:-s-2vcpu-4gb}"
 BUILDER_NAME="scriptum-golden-image-builder-$(date +%s)"
@@ -50,8 +50,7 @@ for _ in $(seq 1 30); do
 done
 
 echo "==> Provisioning: Docker Engine + NFS client + pre-pulled workspace image"
-# Mirrors deploy/cloud-init/user-data.yaml's bootstrap.sh Docker install step
-# (Docker's official apt repo), plus nfs-common for the worker mount and a
+# Docker Engine from Docker's official apt repo, plus nfs-common for the worker mount and a
 # pull of the workspace image so a fresh worker never waits on a
 # multi-gigabyte GHCR download.
 ssh "${SSH_OPTS[@]}" "root@$BUILDER_IP" bash -s <<EOF
@@ -69,7 +68,7 @@ apt-get update
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 systemctl enable --now docker
 
-docker pull "$SCRIPTUM_IMAGE_NS/coderunner-workspace:$SCRIPTUM_TAG"
+docker pull "$SCRIPTUM_IMAGE_NS/scriptum-workspace:$SCRIPTUM_TAG"
 EOF
 
 echo "==> Sealing the image (unique machine-id/host keys/cloud-init state per clone)"

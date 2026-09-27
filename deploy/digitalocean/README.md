@@ -29,7 +29,7 @@ available, per decision 048's phased roadmap.
   (`apps/control/src/fleet/worker-user-data.ts`), not Terraform — it runs
   once per newly created worker (dynamic, at fleet-scaling time), not once
   ever like the storage node's. Deliberately minimal: Docker and the
-  `coderunner-workspace` image are already baked into the golden snapshot a
+  `scriptum-workspace` image are already baked into the golden snapshot a
   worker boots from, so this only needs to mount the shared NFS export.
 - `bake-golden-image.sh` — builds that golden snapshot: boots a throwaway
   droplet from a stock Ubuntu image, installs Docker + the NFS client,
