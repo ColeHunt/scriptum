@@ -4,8 +4,9 @@
  * + the project-swap remount. The component tests cover PaneVisibility and
  * IDELayout in isolation; these cover the assembly.
  *
- * Unlike the old exclusive-tab model, any subset of panes can be visible at
- * once - toggling every other pane off is what makes the remaining one fill
+ * Unlike the old exclusive-tab model, panes toggle independently, except that
+ * Choreo and AdvantageScope/Elastic take turns (Choreo's canvas doesn't fit a
+ * three-way split). Toggling every other pane off is what makes the remaining one fill
  * the whole screen, so there's no separate "maximize" to test. Driver Station
  * is a full sibling row rather than a workbench column, so it can be hidden
  * on its own to let the workbench (editor/AdvantageScope/Choreo) grow to the
@@ -117,7 +118,10 @@ test("editor and AdvantageScope are visible by default, Choreo collapsed", async
 	expect(await paneWidth(page, "choreo")).toBeLessThan(5);
 });
 
-test("toggling Choreo on reveals it alongside AdvantageScope, not instead of it", async ({
+// Choreo's canvas won't render in a three-way split, so it and AdvantageScope
+// take turns: turning either on collapses the other (PaneVisibility's
+// withChoreoSpace).
+test("Choreo and AdvantageScope take turns: turning one on collapses the other", async ({
 	page,
 	app,
 	runtime,
@@ -127,19 +131,24 @@ test("toggling Choreo on reveals it alongside AdvantageScope, not instead of it"
 	const po = await openWorkspace(
 		page,
 		{ app, runtime, fakeVscode, fakeHalsim },
-		"Toggle Additive",
+		"Toggle Exclusive",
 	);
 
 	await choreoToggle(page).click();
 
-	await expect(scopeToggle(page)).toHaveAttribute("aria-pressed", "true");
 	await expect(choreoToggle(page)).toHaveAttribute("aria-pressed", "true");
-	expect(await paneWidth(page, "scope")).toBeGreaterThan(20);
+	await expect(scopeToggle(page)).toHaveAttribute("aria-pressed", "false");
 	expect(await paneWidth(page, "choreo")).toBeGreaterThan(20);
-	await expect(po.scopeIframe().locator("body")).toContainText("AS Lite");
 	await expect(po.choreoIframe().locator("body")).toContainText(
 		"Choreo test dist",
 	);
+
+	await scopeToggle(page).click();
+
+	await expect(scopeToggle(page)).toHaveAttribute("aria-pressed", "true");
+	await expect(choreoToggle(page)).toHaveAttribute("aria-pressed", "false");
+	expect(await paneWidth(page, "scope")).toBeGreaterThan(20);
+	await expect(po.scopeIframe().locator("body")).toContainText("AS Lite");
 });
 
 test("toggling off every other pane fills the workbench with the one left", async ({
@@ -155,12 +164,12 @@ test("toggling off every other pane fills the workbench with the one left", asyn
 		"Toggle Fullscreen",
 	);
 
+	// Turning Choreo on already collapses AdvantageScope, so hiding the
+	// editor leaves Choreo alone - it should now span (approximately) the
+	// full workbench width.
 	await choreoToggle(page).click();
 	await editorToggle(page).click();
-	await scopeToggle(page).click();
 
-	// Editor and AdvantageScope both off, Choreo the only one left - it
-	// should now span (approximately) the full workbench width.
 	const workbenchWidth = await paneWidth(page, "choreo");
 	const viewport = page.viewportSize();
 	expect(viewport).not.toBeNull();
@@ -244,9 +253,10 @@ test("refuses to hide the last visible pane", async ({
 		"Toggle Last One",
 	);
 
+	// Choreo on (collapsing AdvantageScope), then off again.
 	await choreoToggle(page).click();
-	await scopeToggle(page).click();
 	await choreoToggle(page).click();
+	await expect(scopeToggle(page)).toHaveAttribute("aria-pressed", "false");
 	// Only Editor is left visible now; toggling it must be a no-op.
 	await editorToggle(page).click();
 
@@ -266,8 +276,9 @@ test("the pane selection survives a page reload", async ({
 		"Toggle Reload",
 	);
 
+	// Choreo on, which also collapses AdvantageScope.
 	await choreoToggle(page).click();
-	await scopeToggle(page).click();
+	await expect(scopeToggle(page)).toHaveAttribute("aria-pressed", "false");
 
 	await page.reload();
 
