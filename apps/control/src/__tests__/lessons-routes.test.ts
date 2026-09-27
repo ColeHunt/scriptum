@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { LessonModuleWithLockState } from "@frc-scriptum/contracts";
+import { DEMO_SLUG } from "../auth/demo";
 import {
 	cookieFrom,
 	createFakeDocker,
@@ -94,6 +95,26 @@ describe("GET /u/:slug/api/lessons", () => {
 				).toMatchObject({ completed: true });
 			},
 			{ dockerRunner: docker.runner },
+		);
+	});
+
+	test("demo mode waives prerequisites - nothing is locked", async () => {
+		const docker = createFakeDocker();
+		await withApp(
+			async (app) => {
+				// Demo mode bypasses auth entirely and resolves every request to
+				// the seeded demo user/workspace - no login() or cookie needed.
+				const lessons = await app.fetch(
+					new Request(`http://localhost/u/${DEMO_SLUG}/api/lessons`),
+				);
+				const body = (await lessons.json()) as {
+					modules: LessonModuleWithLockState[];
+				};
+				expect(
+					body.modules.find((m) => m.id === "locked-followup"),
+				).toMatchObject({ locked: false, missingPrerequisites: [] });
+			},
+			{ dockerRunner: docker.runner, demo: true },
 		);
 	});
 
