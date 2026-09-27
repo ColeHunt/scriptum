@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import type { CheckpointsState } from "@/lib/contracts";
+import type {
+	CheckpointsState,
+	LessonModuleWithLockState,
+} from "@/lib/contracts";
 import { CheckpointsDialog } from "./CheckpointsDialog";
 
 const AVAILABLE_STATE: CheckpointsState = {
@@ -61,6 +64,21 @@ const UNAVAILABLE_STATE: CheckpointsState = {
 
 function noop() {}
 
+const UNLOCKED_MODULE: LessonModuleWithLockState = {
+	id: "java-recursion",
+	title: "Recursion",
+	description: "Solve a few problems recursively instead of with a loop.",
+	subdir: "modules/java-recursion",
+	kind: "plain-java",
+	order: 18,
+	checkpoints: [],
+	track: "Java Programming",
+	requires: ["java-methods"],
+	locked: false,
+	missingPrerequisites: [],
+	completed: false,
+};
+
 describe("CheckpointsDialog", () => {
 	test("shows an empty state when no checkpoints are available", () => {
 		render(
@@ -72,6 +90,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error={null}
 				verify={async () => {}}
+				newlyUnlocked={[]}
 				onLaunchNewLesson={noop}
 			/>,
 		);
@@ -92,6 +111,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error={null}
 				verify={async () => {}}
+				newlyUnlocked={[]}
 				onLaunchNewLesson={noop}
 			/>,
 		);
@@ -117,6 +137,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error={null}
 				verify={verify}
+				newlyUnlocked={[]}
 				onLaunchNewLesson={noop}
 			/>,
 		);
@@ -136,6 +157,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error={null}
 				verify={verify}
+				newlyUnlocked={[]}
 				onLaunchNewLesson={noop}
 			/>,
 		);
@@ -154,6 +176,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error="A verify is already running."
 				verify={async () => {}}
+				newlyUnlocked={[]}
 				onLaunchNewLesson={noop}
 			/>,
 		);
@@ -172,6 +195,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error={null}
 				verify={async () => {}}
+				newlyUnlocked={[]}
 				onLaunchNewLesson={noop}
 			/>,
 		);
@@ -192,6 +216,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error={null}
 				verify={async () => {}}
+				newlyUnlocked={[]}
 				onLaunchNewLesson={onLaunchNewLesson}
 			/>,
 		);
@@ -206,6 +231,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error={null}
 				verify={async () => {}}
+				newlyUnlocked={[]}
 				onLaunchNewLesson={onLaunchNewLesson}
 			/>,
 		);
@@ -214,6 +240,110 @@ describe("CheckpointsDialog", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Launch new lesson" }));
 		expect(onOpenChange).toHaveBeenCalledWith(false);
 		expect(onLaunchNewLesson).toHaveBeenCalledTimes(1);
+	});
+
+	test("celebration lists newly-unlocked lessons when given any", () => {
+		const { rerender } = render(
+			<CheckpointsDialog
+				open
+				onOpenChange={noop}
+				state={AVAILABLE_STATE}
+				loading={false}
+				verifying={false}
+				error={null}
+				verify={async () => {}}
+				newlyUnlocked={[]}
+				onLaunchNewLesson={noop}
+			/>,
+		);
+
+		rerender(
+			<CheckpointsDialog
+				open
+				onOpenChange={noop}
+				state={ALL_PASSED_STATE}
+				loading={false}
+				verifying={false}
+				error={null}
+				verify={async () => {}}
+				newlyUnlocked={[UNLOCKED_MODULE]}
+				onLaunchNewLesson={noop}
+			/>,
+		);
+
+		expect(screen.getByText("Lesson unlocked")).toBeInTheDocument();
+		expect(screen.getByText("Recursion")).toBeInTheDocument();
+	});
+
+	test("celebration says 'Lessons unlocked' (plural) for more than one", () => {
+		const { rerender } = render(
+			<CheckpointsDialog
+				open
+				onOpenChange={noop}
+				state={AVAILABLE_STATE}
+				loading={false}
+				verifying={false}
+				error={null}
+				verify={async () => {}}
+				newlyUnlocked={[]}
+				onLaunchNewLesson={noop}
+			/>,
+		);
+
+		rerender(
+			<CheckpointsDialog
+				open
+				onOpenChange={noop}
+				state={ALL_PASSED_STATE}
+				loading={false}
+				verifying={false}
+				error={null}
+				verify={async () => {}}
+				newlyUnlocked={[
+					UNLOCKED_MODULE,
+					{ ...UNLOCKED_MODULE, id: "java-inheritance", title: "Inheritance" },
+				]}
+				onLaunchNewLesson={noop}
+			/>,
+		);
+
+		expect(screen.getByText("Lessons unlocked")).toBeInTheDocument();
+		expect(screen.getByText("Recursion")).toBeInTheDocument();
+		expect(screen.getByText("Inheritance")).toBeInTheDocument();
+	});
+
+	test("celebration shows no unlock list when nothing newly unlocked", () => {
+		const { rerender } = render(
+			<CheckpointsDialog
+				open
+				onOpenChange={noop}
+				state={AVAILABLE_STATE}
+				loading={false}
+				verifying={false}
+				error={null}
+				verify={async () => {}}
+				newlyUnlocked={[]}
+				onLaunchNewLesson={noop}
+			/>,
+		);
+
+		rerender(
+			<CheckpointsDialog
+				open
+				onOpenChange={noop}
+				state={ALL_PASSED_STATE}
+				loading={false}
+				verifying={false}
+				error={null}
+				verify={async () => {}}
+				newlyUnlocked={[]}
+				onLaunchNewLesson={noop}
+			/>,
+		);
+
+		expect(screen.getByText("Lesson complete!")).toBeInTheDocument();
+		expect(screen.queryByText("Lesson unlocked")).toBeNull();
+		expect(screen.queryByText("Lessons unlocked")).toBeNull();
 	});
 
 	test("'Continue experimenting' dismisses the celebration without opening the picker", () => {
@@ -228,6 +358,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error={null}
 				verify={async () => {}}
+				newlyUnlocked={[]}
 				onLaunchNewLesson={onLaunchNewLesson}
 			/>,
 		);
@@ -240,6 +371,7 @@ describe("CheckpointsDialog", () => {
 				verifying={false}
 				error={null}
 				verify={async () => {}}
+				newlyUnlocked={[]}
 				onLaunchNewLesson={onLaunchNewLesson}
 			/>,
 		);
