@@ -3,5 +3,7 @@
 	"compilerOptions": {
 		"tsBuildInfoFile": "../node_modules/.cache/tsbuild/scripts.tsbuildinfo"
 	},
-	"include": ["*.ts"]
+	// Several scripts import control-plane code, so they also need its ambient
+	// module shims (e.g. markdown-it-container, which ships no types).
+	"include": ["*.ts", "../apps/control/src/types/*.d.ts"]
 }
