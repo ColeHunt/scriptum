@@ -298,14 +298,16 @@ export class CheckpointManager {
 	 * Resolves `module.requires` against `allModules` and reports which of
 	 * them are still incomplete. Hard lock: any incomplete prerequisite locks
 	 * the module. An unknown prerequisite id (a manifest typo) is skipped
-	 * rather than permanently locking the module.
+	 * rather than permanently locking the module. Demo mode waives
+	 * prerequisites entirely - a standalone demo has no instructor around to
+	 * explain why a module is greyed out, so every module stays open.
 	 */
 	lockState(
 		workspaceId: WorkspaceId,
 		module: LessonModule,
 		allModules: LessonModule[],
 	): { locked: boolean; missingPrerequisites: string[] } {
-		if (module.requires.length === 0) {
+		if (this.storage.config.demo || module.requires.length === 0) {
 			return { locked: false, missingPrerequisites: [] };
 		}
 		const byId = new Map(allModules.map((m) => [m.id, m]));

@@ -24,7 +24,11 @@ import { useScopeHandshake } from "@/hooks/useScopeHandshake";
 import { useScopeLogOpener } from "@/hooks/useScopeLogOpener";
 import { useSession } from "@/hooks/useSession";
 import { useSimulationState } from "@/hooks/useSimulationState";
-import { isWorkspaceSlug } from "@/lib/contracts";
+import {
+	isWorkspaceSlug,
+	type LessonModuleWithLockState,
+	lessonCatalogResponseSchema,
+} from "@/lib/contracts";
 import { gamepadFrameToWpilib } from "@/lib/gamepad-mapping";
 import {
 	gamepadStateToVisualizerFrame,
@@ -92,6 +96,60 @@ export function WorkspacePage() {
 		[scopeMounted],
 	);
 	const checkpoints = useCheckpoints(workspaceSlug, getScopeLayout);
+
+	// Tracks which other lessons a completion just unlocked, for the
+	// CheckpointsDialog celebration screen. Mirrors that component's own
+	// "just transitioned into all-passed" detection (see its comment) so this
+	// only fires once per real completion, not on loading an already-done
+	// module - but does its own one-off `/api/lessons` fetch rather than
+	// reusing `lessons`'s state, since that hook's refetch lands on its own
+	// render cycle and there's no clean way to await it from here.
+	const [newlyUnlocked, setNewlyUnlocked] = useState<
+		LessonModuleWithLockState[]
+	>([]);
+	const prevModuleIdForUnlockRef = useRef<string | null>(null);
+	const prevAllPassedForUnlockRef = useRef(false);
+	useEffect(() => {
+		const required = checkpoints.state.checkpoints.filter((c) => !c.optional);
+		const allRequiredPassed =
+			required.length > 0 &&
+			required.every((c) => c.result?.status === "passed");
+
+		if (checkpoints.state.moduleId !== prevModuleIdForUnlockRef.current) {
+			prevModuleIdForUnlockRef.current = checkpoints.state.moduleId;
+			prevAllPassedForUnlockRef.current = allRequiredPassed;
+			setNewlyUnlocked([]);
+			return;
+		}
+		if (
+			allRequiredPassed &&
+			!prevAllPassedForUnlockRef.current &&
+			workspaceSlug
+		) {
+			const previouslyLockedIds = new Set(
+				lessons.modules.filter((m) => m.locked).map((m) => m.id),
+			);
+			void (async () => {
+				try {
+					const response = await fetch(`/u/${workspaceSlug}/api/lessons`, {
+						credentials: "same-origin",
+					});
+					const parsed = lessonCatalogResponseSchema.parse(
+						await response.json(),
+					);
+					setNewlyUnlocked(
+						parsed.modules.filter(
+							(m) => previouslyLockedIds.has(m.id) && !m.locked,
+						),
+					);
+					lessons.refetch();
+				} catch {
+					// Best-effort - the celebration still shows without the unlock list.
+				}
+			})();
+		}
+		prevAllPassedForUnlockRef.current = allRequiredPassed;
+	}, [checkpoints.state, lessons.modules, lessons.refetch, workspaceSlug]);
 
 	const { connection: runConnection, consoleLines } = useRunChannel(simSlug);
 	const simulation = useSimulationState(simSlug);
@@ -371,6 +429,7 @@ export function WorkspacePage() {
 				verifying={checkpoints.verifying}
 				error={checkpoints.error}
 				verify={checkpoints.verify}
+				newlyUnlocked={newlyUnlocked}
 				onLaunchNewLesson={() => setSwitchOpen(true)}
 			/>
 		</PaneVisibilityRoot>
