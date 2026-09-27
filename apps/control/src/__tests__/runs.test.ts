@@ -85,7 +85,12 @@ describe("run lifecycle and log streaming", () => {
 			};
 		};
 
-		return { commands, commandFactory };
+		// Runs for different workspaces start concurrently, so their commands
+		// can be created in either order - find one by workspace, not by index.
+		const commandFor = (slug: string) =>
+			commands.find((command) => command.context.workspace.slug === slug);
+
+		return { commands, commandFactory, commandFor };
 	}
 
 	test("streams logs, persists run jobs, and releases the build slot after readiness", async () => {
@@ -114,15 +119,16 @@ describe("run lifecycle and log streaming", () => {
 				const bobRunId = app.runs.start(bobWorkspace, bobConnection);
 
 				await waitFor(() => controlled.commands.length === 2);
-				expect(controlled.commands[0]?.context.workspace.slug).toBe("alice");
-				expect(controlled.commands[1]?.context.workspace.slug).toBe("bob");
+				const aliceCommand = controlled.commandFor("alice");
+				expect(aliceCommand).toBeDefined();
+				expect(controlled.commandFor("bob")).toBeDefined();
 				expect(bobMessages).toContainEqual({
 					type: "status",
 					status: "building",
 				});
 
-				controlled.commands[0]?.writeStdout("NT4 listening on 5810");
-				controlled.commands[0]?.writeStdout("robot periodic tick");
+				aliceCommand?.writeStdout("NT4 listening on 5810");
+				aliceCommand?.writeStdout("robot periodic tick");
 				await waitFor(() => JSON.stringify(aliceMessages).includes("running"));
 
 				const aliceRun = app.storage.getRunJob(aliceRunId);
@@ -136,11 +142,11 @@ describe("run lifecycle and log streaming", () => {
 				expect(app.storage.getRunJob(bobRunId)).toMatchObject({
 					state: "building",
 				});
-				expect(controlled.commands[0]?.killed).toBe(false);
+				expect(aliceCommand?.killed).toBe(false);
 				expect(app.runs.activeBuildCount()).toBe(1);
 
 				app.runs.stopWorkspace(aliceWorkspace.id);
-				expect(controlled.commands[0]?.killed).toBe(true);
+				expect(aliceCommand?.killed).toBe(true);
 				await waitFor(
 					() => app.storage.getRunJob(aliceRunId)?.state === "stopped",
 				);
@@ -183,7 +189,7 @@ describe("run lifecycle and log streaming", () => {
 				app.runs.start(bobWorkspace, bobConnection);
 
 				await waitFor(() => controlled.commands.length === 2);
-				await waitFor(() => controlled.commands[0]?.killed === true);
+				await waitFor(() => controlled.commandFor("alice")?.killed === true);
 				expect(app.storage.getRunJob(aliceRunId)).toMatchObject({
 					state: "failed",
 					exit_code: null,
@@ -191,7 +197,7 @@ describe("run lifecycle and log streaming", () => {
 				expect(JSON.stringify(aliceMessages)).toContain(
 					"timed out before simulator readiness",
 				);
-				expect(controlled.commands[1]?.context.workspace.slug).toBe("bob");
+				expect(controlled.commandFor("bob")).toBeDefined();
 				expect(bobMessages).toContainEqual({
 					type: "status",
 					status: "building",
