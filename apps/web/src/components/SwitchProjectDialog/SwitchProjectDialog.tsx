@@ -348,7 +348,7 @@ export function SwitchProjectDialog({
 												}}
 												className="mb-5 last:mb-0"
 											>
-												<CollapsibleTrigger className="mb-2.5 flex w-full items-center gap-2 text-left">
+												<CollapsibleTrigger className="group -mx-1.5 mb-2.5 flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-accent/50">
 													<BookOpen className="size-3.5 shrink-0 text-muted-foreground" />
 													<h3 className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
 														<span className="truncate">
@@ -360,7 +360,7 @@ export function SwitchProjectDialog({
 															</span>
 														)}
 													</h3>
-													<ChevronDown className="ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform group-data-panel-open/collapsible-trigger:rotate-180" />
+													<ChevronDown className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform group-hover:text-foreground group-data-panel-open/collapsible-trigger:rotate-180" />
 												</CollapsibleTrigger>
 												<CollapsibleContent>
 													<div className="grid grid-cols-1 gap-2.5 pt-px sm:grid-cols-2">
