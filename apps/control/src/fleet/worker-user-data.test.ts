@@ -16,12 +16,12 @@ describe("renderWorkerUserData", () => {
 	test("substitutes every placeholder in the real template file", async () => {
 		const rendered = await renderWorkerUserData(TEMPLATE_PATH, {
 			storagePrivateIp: "10.10.0.5",
-			mountPoint: "/mnt/coderunner-data",
-			remoteExportPath: "/mnt/coderunner-data/users",
+			mountPoint: "/mnt/scriptum-data",
+			remoteExportPath: "/mnt/scriptum-data/users",
 		});
 
 		expect(rendered).toContain(
-			"10.10.0.5:/mnt/coderunner-data/users /mnt/coderunner-data nfs4",
+			"10.10.0.5:/mnt/scriptum-data/users /mnt/scriptum-data nfs4",
 		);
 		expect(rendered).not.toMatch(/\$\{[a-z_]+\}/);
 	});
@@ -39,8 +39,8 @@ describe("renderWorkerUserData", () => {
 			await expect(
 				renderWorkerUserData(path, {
 					storagePrivateIp: "10.10.0.5",
-					mountPoint: "/mnt/coderunner-data",
-					remoteExportPath: "/mnt/coderunner-data/users",
+					mountPoint: "/mnt/scriptum-data",
+					remoteExportPath: "/mnt/scriptum-data/users",
 				}),
 			).rejects.toThrow(/unresolved placeholder/);
 		} finally {

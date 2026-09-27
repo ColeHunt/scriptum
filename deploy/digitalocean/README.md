@@ -17,7 +17,7 @@ available, per decision 048's phased roadmap.
   by the head via `DigitalOceanFleetProvisioner`
   (`apps/control/src/fleet/digitalocean-fleet-provisioner.ts`), matching
   decision 048's "Terraform is too slow/stateful for runtime autoscaling"
-  reasoning. The worker firewall rule targets the `coderunner-worker` tag,
+  reasoning. The worker firewall rule targets the `scriptum-worker` tag,
   not `droplet_ids`, so it automatically covers every worker the head
   creates after `terraform apply` runs once.
 - `storage-node-user-data.yaml.tftpl` — cloud-init for the storage node,
@@ -48,7 +48,7 @@ available, per decision 048's phased roadmap.
 - Wiring `RemoteDockerRuntimeProvider`/`FleetManager`/
   `DigitalOceanFleetProvisioner` into `createApp()` — none of this is called
   from the running app yet (Phase 3).
-- Adding `coderunner-head` as a new compose service on the shared MARS/WARS
+- Adding `scriptum-head` as a new compose service on the shared MARS/WARS
   droplet (`/prj/frc/apps/apps-infra`), following that repo's existing
   per-app pattern — not part of this directory, since the head isn't
   DigitalOcean-provisioned infrastructure of its own.

@@ -15,5 +15,5 @@ output "storage_node_public_ip" {
 
 output "worker_tag" {
   description = "Tag every worker droplet must carry to be covered by the worker firewall - DigitalOceanFleetProvisioner already applies this automatically."
-  value       = digitalocean_tag.coderunner_worker.name
+  value       = digitalocean_tag.scriptum_worker.name
 }

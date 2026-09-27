@@ -21,4 +21,4 @@ runcmd:
       echo "${storage_private_ip}:${remote_export_path} ${mount_point} nfs4 _netdev,noatime 0 0" >> /etc/fstab
     fi
   - mount -a
-  - touch /var/log/coderunner-worker-ready
+  - touch /var/log/scriptum-worker-ready

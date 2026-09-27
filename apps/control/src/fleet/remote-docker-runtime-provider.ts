@@ -1,4 +1,4 @@
-import type { WorkspaceId } from "@frc-coderunner/contracts";
+import type { WorkspaceId } from "@frc-scriptum/contracts";
 import { runDockerCli } from "../containers/docker-client";
 import { LocalDockerRuntimeProvider } from "../containers/local-docker-runtime-provider";
 import type { DockerRunner } from "../containers/types";

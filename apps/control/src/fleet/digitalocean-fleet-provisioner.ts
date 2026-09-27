@@ -86,7 +86,7 @@ export class DigitalOceanFleetProvisioner implements FleetProvisioner {
 			"POST",
 			"/v2/droplets",
 			{
-				name: `coderunner-worker-${randomNameSuffix()}`,
+				name: `scriptum-worker-${randomNameSuffix()}`,
 				region: this.options.region,
 				size: this.options.sizeSlug,
 				image: this.options.imageId,
@@ -96,7 +96,7 @@ export class DigitalOceanFleetProvisioner implements FleetProvisioner {
 				backups: false,
 				ipv6: false,
 				monitoring: true,
-				tags: [...(this.options.tags ?? []), "coderunner-worker"],
+				tags: [...(this.options.tags ?? []), "scriptum-worker"],
 			},
 		);
 		const dropletId = String(response.droplet.id);

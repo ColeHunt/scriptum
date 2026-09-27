@@ -8,7 +8,7 @@
 # as DigitalOceanFleetProvisionerOptions.imageId on the head.
 #
 # Run this once to produce the first golden image, and again whenever
-# CODERUNNER_TAG changes (re-run it as a step appended to
+# SCRIPTUM_TAG changes (re-run it as a step appended to
 # .github/workflows/release.yml once real DO infrastructure exists - not
 # wired up yet, this script is meant to be run by hand for now).
 #
@@ -21,10 +21,10 @@ set -euo pipefail
 : "${DO_REGION:?Set DO_REGION (e.g. nyc3) - match deploy/digitalocean/terraform's var.region}"
 : "${DO_SSH_KEY_FINGERPRINT:?Set DO_SSH_KEY_FINGERPRINT - fingerprint of a key already in your DO account}"
 : "${DO_VPC_UUID:?Set DO_VPC_UUID - output of terraform apply in deploy/digitalocean/terraform}"
-CODERUNNER_IMAGE_NS="${CODERUNNER_IMAGE_NS:-ghcr.io/mathewdunne}"
-CODERUNNER_TAG="${CODERUNNER_TAG:-latest}"
+SCRIPTUM_IMAGE_NS="${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}"
+SCRIPTUM_TAG="${SCRIPTUM_TAG:-latest}"
 BUILDER_SIZE="${BUILDER_SIZE:-s-2vcpu-4gb}"
-BUILDER_NAME="coderunner-golden-image-builder-$(date +%s)"
+BUILDER_NAME="scriptum-golden-image-builder-$(date +%s)"
 SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10)
 
 echo "==> Creating throwaway builder droplet ($BUILDER_NAME)"
@@ -35,9 +35,9 @@ doctl compute droplet create "$BUILDER_NAME" \
   --vpc-uuid "$DO_VPC_UUID" \
   --ssh-keys "$DO_SSH_KEY_FINGERPRINT" \
   --wait \
-  --format ID --no-header > /tmp/coderunner-builder-id
+  --format ID --no-header > /tmp/scriptum-builder-id
 
-BUILDER_ID="$(cat /tmp/coderunner-builder-id)"
+BUILDER_ID="$(cat /tmp/scriptum-builder-id)"
 trap 'echo "==> Cleaning up builder droplet $BUILDER_ID"; doctl compute droplet delete "$BUILDER_ID" --force || true' EXIT
 
 BUILDER_IP="$(doctl compute droplet get "$BUILDER_ID" --format PublicIPv4 --no-header)"
@@ -69,7 +69,7 @@ apt-get update
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 systemctl enable --now docker
 
-docker pull "$CODERUNNER_IMAGE_NS/coderunner-workspace:$CODERUNNER_TAG"
+docker pull "$SCRIPTUM_IMAGE_NS/coderunner-workspace:$SCRIPTUM_TAG"
 EOF
 
 echo "==> Sealing the image (unique machine-id/host keys/cloud-init state per clone)"
@@ -87,7 +87,7 @@ EOF
 echo "==> Powering off before snapshotting"
 doctl compute droplet-action power-off "$BUILDER_ID" --wait
 
-SNAPSHOT_NAME="coderunner-worker-golden-$(date +%Y%m%d-%H%M%S)"
+SNAPSHOT_NAME="scriptum-worker-golden-$(date +%Y%m%d-%H%M%S)"
 echo "==> Taking snapshot: $SNAPSHOT_NAME"
 doctl compute droplet-action snapshot "$BUILDER_ID" --snapshot-name "$SNAPSHOT_NAME" --wait
 

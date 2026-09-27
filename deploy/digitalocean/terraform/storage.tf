@@ -4,14 +4,14 @@
 #
 # NFS uid/gid consistency: every worker mounts this export using the same
 # local uid the golden image bakes in (matches docker-compose.yml's existing
-# CODERUNNER_UID/CODERUNNER_GID convention - "bun"/1000:1000 by default), so
+# SCRIPTUM_UID/SCRIPTUM_GID convention - "bun"/1000:1000 by default), so
 # ownership set by ensureWorkspaceFiles() (storage.ts) round-trips correctly
 # without NFSv4 idmapping getting involved. Verify this against the real
 # golden image's actual uid once Phase 2 testing is possible - not verifiable
 # without real droplets.
 
 resource "digitalocean_volume" "data" {
-  name   = "coderunner-fleet-data"
+  name   = "scriptum-fleet-data"
   region = var.region
   size   = var.storage_volume_size_gb
   # No initial_filesystem_type: formatted by cloud-init instead - see the
@@ -21,18 +21,18 @@ resource "digitalocean_volume" "data" {
 }
 
 resource "digitalocean_droplet" "storage" {
-  name     = "coderunner-storage"
+  name     = "scriptum-storage"
   region   = var.region
   size     = var.storage_node_size
   image    = "ubuntu-24-04-x64"
   vpc_uuid = digitalocean_vpc.fleet.id
   ssh_keys = var.ssh_key_fingerprints
   ipv6     = false
-  tags     = ["coderunner-storage"]
+  tags     = ["scriptum-storage"]
 
   user_data = templatefile("${path.module}/../storage-node-user-data.yaml.tftpl", {
     volume_name        = digitalocean_volume.data.name
-    mount_point        = "/mnt/coderunner-data"
+    mount_point        = "/mnt/scriptum-data"
     worker_subnet_cidr = var.worker_subnet_cidr
   })
 }

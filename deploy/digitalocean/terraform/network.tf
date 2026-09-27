@@ -3,7 +3,7 @@
 # comment in variables.tf.
 
 resource "digitalocean_vpc" "fleet" {
-  name     = "coderunner-fleet"
+  name     = "scriptum-fleet"
   region   = var.region
   ip_range = var.worker_subnet_cidr
 }
@@ -11,14 +11,14 @@ resource "digitalocean_vpc" "fleet" {
 # Applied by tag, not droplet_ids, so it automatically covers every worker
 # the head creates dynamically after this Terraform run -
 # DigitalOceanFleetProvisioner.createWorker() always tags new droplets
-# "coderunner-worker" (apps/control/src/fleet/digitalocean-fleet-provisioner.ts).
-resource "digitalocean_tag" "coderunner_worker" {
-  name = "coderunner-worker"
+# "scriptum-worker" (apps/control/src/fleet/digitalocean-fleet-provisioner.ts).
+resource "digitalocean_tag" "scriptum_worker" {
+  name = "scriptum-worker"
 }
 
 resource "digitalocean_firewall" "workers" {
-  name = "coderunner-worker-firewall"
-  tags = [digitalocean_tag.coderunner_worker.name]
+  name = "scriptum-worker-firewall"
+  tags = [digitalocean_tag.scriptum_worker.name]
 
   # SSH from the head only - this is how the head runs Docker CLI commands
   # against each worker's daemon (decision 048, design point #2).
@@ -43,7 +43,7 @@ resource "digitalocean_firewall" "workers" {
 }
 
 resource "digitalocean_firewall" "storage_node" {
-  name        = "coderunner-storage-firewall"
+  name        = "scriptum-storage-firewall"
   droplet_ids = [digitalocean_droplet.storage.id]
 
   # NFSv4 only (a single port - no portmapper/mountd/statd to open), from

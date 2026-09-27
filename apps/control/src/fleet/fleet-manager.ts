@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { WorkspaceId } from "@frc-coderunner/contracts";
+import type { WorkspaceId } from "@frc-scriptum/contracts";
 import type { AppStorage } from "../storage";
 import {
 	deriveWorkerCapacity,

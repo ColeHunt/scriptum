@@ -27,10 +27,10 @@ describe("runDockerCli dockerEnv", () => {
 			[],
 			{},
 			{
-				DOCKER_HOST: "ssh://coderunner-agent@10.0.0.5",
+				DOCKER_HOST: "ssh://scriptum-agent@10.0.0.5",
 			},
 		);
-		expect(result.stdout.trim()).toBe("ssh://coderunner-agent@10.0.0.5");
+		expect(result.stdout.trim()).toBe("ssh://scriptum-agent@10.0.0.5");
 	});
 
 	test("without dockerEnv, the subprocess still inherits the parent environment", async () => {

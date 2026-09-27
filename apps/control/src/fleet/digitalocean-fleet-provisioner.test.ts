@@ -95,7 +95,7 @@ describe("DigitalOceanFleetProvisioner.createWorker", () => {
 			ssh_keys: ["key-1"],
 			vpc_uuid: "vpc-abc",
 			user_data: BASE_OPTIONS.userData,
-			tags: ["coderunner-worker"],
+			tags: ["scriptum-worker"],
 		});
 		expect(calls[1]?.method).toBe("GET");
 		expect(calls[1]?.path).toBe("/v2/droplets/111");
