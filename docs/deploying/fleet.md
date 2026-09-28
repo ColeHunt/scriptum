@@ -28,23 +28,52 @@ spent on compute when nobody is using Scriptum. Design: decision 048.
   record of (older than 15 minutes), and drops records of workers deleted
   from the DigitalOcean console.
 
+## Deploying
+
+Like the team's other apps, merging to `main` deploys (the **Deploy**
+workflow, after CI Verify passes; it can also be run by hand). Nothing is
+built on the droplet. The workflow:
+
+1. Builds the amd64 control image (`scriptum-control:sha-<commit>`) and, only
+   when something that goes into it changed, the workspace image
+   (`scriptum-workspace:ws-<hash of its inputs>`).
+2. Bakes a new worker snapshot for a new workspace image
+   (`bake-golden-image.sh`: a throwaway droplet provisions itself through
+   cloud-init, powers off, is snapshotted and destroyed). The two newest
+   snapshots are kept.
+3. SSHes into the droplet and runs apps-infra's `deploy-scriptum.sh`, which
+   records the tags and snapshot and restarts only the head.
+
+A deploy takes about 25–35 minutes when the workspace image changed, less
+otherwise. Workers that are already running keep their image until they are
+destroyed for idleness; new ones use the new snapshot. Version tags (`v*`)
+still publish multi-arch images through `release.yml`, for anyone running
+Scriptum elsewhere.
+
 ## One-time setup
 
-1. **Release.** Tag a Scriptum release so `scriptum-control` and
-   `scriptum-workspace` are published, then make both GHCR packages public.
-2. **Static resources** (`deploy/digitalocean/terraform`): the worker
-   firewall (only the head's private IP may connect) and the data Volume
-   attached to the head.
-3. **NFS** on the head: `setup-head-nfs.sh` mounts the Volume at
+1. **Static resources**: the `scriptum-worker` tag, a firewall on that tag
+   admitting only the head's private IP, and a data Volume attached to the
+   head (`deploy/digitalocean/terraform`, or the equivalent `doctl`
+   commands).
+2. **NFS** on the head: `setup-head-nfs.sh` mounts the Volume at
    `/mnt/scriptum-data` and exports `/mnt/scriptum-data/users` to the VPC.
-4. **Worker image**: `bake-golden-image.sh` → a snapshot id.
-5. **Head SSH key**: generate an ed25519 key for the head, add its public key
-   to the DigitalOcean account (its id goes in `SCRIPTUM_WORKER_SSH_KEYS`),
-   and install the private key plus `head-ssh.conf` in the head's container
-   (see apps-infra).
-6. **Head service**: the `scriptum` service in apps-infra, with the settings
-   below, and an NPM proxy host for `scriptum.marswars.org` → `scriptum:4000`
-   with websockets on.
+3. **Head SSH key**: an ed25519 key for the head, its public key added to the
+   DigitalOcean account (its id goes in `SCRIPTUM_WORKER_SSH_KEYS`), and the
+   private key plus `head-ssh.conf` installed for the head's container (see
+   apps-infra).
+4. **Secrets**: a DigitalOcean token for the head (`SCRIPTUM_DO_TOKEN` in its
+   `.env`: create/delete droplets, read tags, images, VPCs and SSH keys) and
+   one for the Deploy workflow (repo secret `SCRIPTUM_DO_TOKEN`: create/delete
+   droplets, read/delete snapshots and images, read actions, create/read
+   tags, read VPCs and SSH keys).
+5. **Head config**: `scriptum/.env` on the droplet with the settings below,
+   and an NPM proxy host for `scriptum.marswars.org` → `scriptum:4000` with
+   websockets on.
+6. **First deploy**: GHCR creates the two packages private. After the first
+   Deploy run pushes them, make both public (GitHub → the org's Packages →
+   each package → Package settings → Change visibility), then re-run the
+   failed jobs: workers and the bake droplet pull without credentials.
 
 ## Settings
 
@@ -52,7 +81,7 @@ spent on compute when nobody is using Scriptum. Design: decision 048.
 |---|---|---|
 | `SCRIPTUM_FLEET` | off | `1` turns fleet mode on. |
 | `SCRIPTUM_DO_TOKEN` | required | DigitalOcean token scoped to create/delete droplets and read tags, images, VPCs and SSH keys. |
-| `SCRIPTUM_WORKER_IMAGE` | required | Golden snapshot id. |
+| `SCRIPTUM_WORKER_IMAGE` | required | Worker snapshot id; written by each deploy. |
 | `SCRIPTUM_WORKER_VPC_UUID` | required | The head's VPC. |
 | `SCRIPTUM_WORKER_SSH_KEYS` | required | Comma-separated DO SSH key ids/fingerprints (the head's key). |
 | `SCRIPTUM_NFS_SERVER_IP` | required | The head's private IP. |
@@ -76,6 +105,5 @@ socket in fleet mode: it only drives worker daemons over SSH.
   two minutes, not on every poll.
 - `doctl compute droplet list --tag-name scriptum-worker` shows the workers
   that exist right now. Outside use there should be none.
-- After a new release, re-bake the worker image and update
-  `SCRIPTUM_WORKER_IMAGE`, or new workers pull the workspace image on first
-  use (several minutes).
+- `doctl compute snapshot list --resource droplet | grep scriptum-worker`
+  shows the worker snapshots; the newest is what new workers boot from.
