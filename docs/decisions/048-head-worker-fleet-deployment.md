@@ -1,7 +1,7 @@
 # 048 — Head/worker fleet deployment redesign
 
-Status: **Proposed** — 2026-09-15 (design/roadmap; Phase 1 scaffolding
-implemented, no DigitalOcean infrastructure exists yet)
+Status: **Accepted** — implemented 2026-09-28 (see Implementation notes);
+not yet run against real DigitalOcean infrastructure
 
 > **Update 2026-09-27:** the Google Compute Engine deployment described in
 > Context below was inherited from upstream and never used by this fork; it
@@ -193,3 +193,30 @@ mount — no CodeRunner code is ever deployed to them.
   provider concretely *is* a `LocalDockerRuntimeProvider`; reconciling that is
   Phase 3 work when the head is actually wired to use
   `RemoteDockerRuntimeProvider` in `createApp()`, not part of this pass.
+
+## Implementation notes (2026-09-28)
+
+Phases 2 and 3 were built together, behind `SCRIPTUM_FLEET=1`
+(operator guide: `docs/deploying/fleet.md`). Where the build departed from
+or filled in the design above:
+
+- **Non-blocking placement.** Creating a worker takes a minute or two, so
+  `FleetManager.placeWorkspace` returns immediately: the workspace is
+  reserved against the in-flight droplet and reports `starting` until a poll
+  finds its worker ready. Readiness is an SSH probe (first-boot marker, NFS
+  mounted, `docker info`), not a heartbeat.
+- **Cost guards.** A hard `SCRIPTUM_MAX_WORKERS` (booting workers included);
+  a two-minute backoff after a failed create instead of retrying on every
+  poll; destroy of any `scriptum-worker`-tagged droplet the head has no row
+  for once it is 15 minutes old; and release of worker slots held by
+  workspaces idle past `IDLE_STOP_MINUTES` even when they never got a
+  running container (IdleManager only stops running ones).
+- **Proxy target.** Port-mode containers publish on the worker's private IP
+  and the head proxies there (`publishHost`); loopback publishing only works
+  when the daemon is local. Build/run exec streams go to the worker too.
+- **Shared path.** The head exports `<data>/users` and workers mount it at
+  the identical path, so every bind-mount path the head computes is valid on
+  the worker.
+- **No Docker socket on the head.** Fleet mode skips self-inspection and
+  takes its data dir and container user from settings, so the shared droplet
+  never hands Scriptum control of the other apps' containers.
