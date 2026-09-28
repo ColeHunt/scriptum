@@ -100,15 +100,16 @@ describe("IDELayout", () => {
 			"react-resizable-panels:ide-rows",
 			JSON.stringify({ "ide-workbench": 30, "ide-console": 70 }),
 		);
+		// Two independent persisted layouts: the outer workbench row
+		// (editor/tools/preview) and the tools sub-group's own split
+		// (scope/elastic/choreo) - see IDELayout's nested ToolsPanels.
 		sessionStorage.setItem(
 			"react-resizable-panels:ide-columns",
-			JSON.stringify({
-				"ide-editor": 40,
-				"ide-scope": 15,
-				"ide-choreo": 15,
-				"ide-elastic": 15,
-				"ide-preview": 15,
-			}),
+			JSON.stringify({ "ide-editor": 40, "ide-tools": 30, "ide-preview": 30 }),
+		);
+		sessionStorage.setItem(
+			"react-resizable-panels:ide-tools-columns",
+			JSON.stringify({ "ide-scope": 50, "ide-elastic": 30, "ide-choreo": 20 }),
 		);
 
 		renderLayout();
@@ -116,10 +117,38 @@ describe("IDELayout", () => {
 		expect(document.getElementById("ide-workbench")?.style.flexGrow).toBe("30");
 		expect(document.getElementById("ide-console")?.style.flexGrow).toBe("70");
 		expect(document.getElementById("ide-editor")?.style.flexGrow).toBe("40");
-		expect(document.getElementById("ide-scope")?.style.flexGrow).toBe("15");
-		expect(document.getElementById("ide-choreo")?.style.flexGrow).toBe("15");
-		expect(document.getElementById("ide-elastic")?.style.flexGrow).toBe("15");
-		expect(document.getElementById("ide-preview")?.style.flexGrow).toBe("15");
+		expect(document.getElementById("ide-tools")?.style.flexGrow).toBe("30");
+		expect(document.getElementById("ide-preview")?.style.flexGrow).toBe("30");
+		expect(document.getElementById("ide-scope")?.style.flexGrow).toBe("50");
+		expect(document.getElementById("ide-elastic")?.style.flexGrow).toBe("30");
+		expect(document.getElementById("ide-choreo")?.style.flexGrow).toBe("20");
+	});
+
+	test("Preview's separator always pairs with exactly the tools panel, never scope/choreo/elastic directly", () => {
+		// Regression test for the resize bug this nesting fixes: Preview's own
+		// handle sits between the tools sub-group and Preview at every level,
+		// never flush against scope/choreo/elastic - so there is only ever one
+		// collapsed neighbor to walk through, not up to three stacked ones.
+		renderLayout();
+
+		const workbench = document.getElementById("ide-editor")?.parentElement;
+		const directChildIds = Array.from(workbench?.children ?? [])
+			.filter(
+				(el) =>
+					el.hasAttribute("data-panel") || el.hasAttribute("data-separator"),
+			)
+			.map((el) =>
+				el.hasAttribute("data-separator")
+					? el.getAttribute("data-pane")
+					: el.id,
+			);
+		expect(directChildIds).toEqual([
+			"ide-editor",
+			"tools-handle",
+			"ide-tools",
+			"preview-handle",
+			"ide-preview",
+		]);
 	});
 
 	test("a pane toggled off in shared state stays mounted (not removed)", () => {
