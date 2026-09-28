@@ -22,6 +22,7 @@ Record active architecture decisions here.
 
 - [`050-project-preview.md`](050-project-preview.md) — reads project Markdown and generated HTML reports in the right pane, isolating student HTML in an opaque-origin sandbox and authorising its resources with a signed path token instead of the session cookie.
 - [`051-split-catalog-manifest.md`](051-split-catalog-manifest.md) — `modules.json` shrinks to a curriculum-order index (`id`/`order`/`track`); each module's title/description/checkpoints/etc. move to its own `modules-meta/<id>.json`, merged back into the full shape by `CatalogSource.getManifest()`.
+- [`052-host-with-marswars-apps.md`](052-host-with-marswars-apps.md) — Scriptum is hosted like the other MARS/WARS apps (an `apps-infra` compose service behind Nginx Proxy Manager, Legion sign-in); the inherited GCP/Cloudflare deploy setup is removed and upstream defaults (images, repo links, docs site) now point at `FRC-Team-4143`.
 
 ## Archive
 

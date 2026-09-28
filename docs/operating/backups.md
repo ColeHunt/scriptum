@@ -32,7 +32,7 @@ their workspace.
 which sees the data directory at `/data`:
 
 ```bash
-docker compose exec control coderunner backup
+docker compose exec control scriptum backup
 docker compose run --rm control restore <backup-dir>
 ```
 
@@ -122,7 +122,7 @@ file under Legion auth.
 
 ## Moving an instance between machines
 
-To migrate a local deployment to the cloud VM (or to a new machine):
+To migrate an instance to a new machine:
 
 ```bash
 # On the source machine, stop the control plane and create a backup
@@ -136,7 +136,3 @@ bun run restore -- data/backups/<timestamp>
 bun run start
 ```
 
-For the Google Cloud deployment, the data disk holds all runtime state and
-persists independently of the VM. The seasonal teardown procedure covers how to
-snapshot and restore the data disk across seasons; see
-[Seasonal Teardown](./seasonal-teardown.md).

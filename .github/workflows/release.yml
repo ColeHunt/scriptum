@@ -3,8 +3,7 @@ name: Build & Release
 # Publishes multi-arch (linux/amd64 + linux/arm64) images to GHCR and attaches
 # the web/ascope dist tarballs to a GitHub release. Triggered by pushing a
 # semver tag. Tags outside main's history or with a prerelease suffix are
-# published as prereleases and do not update latest. Deploying a published tag is a
-# separate manual step (deploy.yml).
+# published as prereleases and do not update latest.
 #
 # Build strategy: one native runner per architecture (no QEMU — the workspace
 # image runs a full Gradle/JVM build), each pushing by digest, then a merge job
@@ -22,8 +21,10 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  WORKSPACE_IMAGE: ghcr.io/${{ github.repository_owner }}/scriptum-workspace
-  CONTROL_IMAGE: ghcr.io/${{ github.repository_owner }}/scriptum-control
+  # Lowercase on purpose: image names can't contain uppercase, and the repo
+  # owner is FRC-Team-4143.
+  WORKSPACE_IMAGE: ghcr.io/frc-team-4143/scriptum-workspace
+  CONTROL_IMAGE: ghcr.io/frc-team-4143/scriptum-control
 
 jobs:
   validate:
@@ -245,9 +246,9 @@ jobs:
 
       # Harvest the prebuilt dists straight from the build cache via the
       # dist-export stage (near-instant cache hit against the push above).
-      # They feed three consumers: the GitHub release tarballs, the
-      # deploy-cloudflare job, and the arm64 control build below, which reuses
-      # ascope-dist instead of rerunning the emsdk stage.
+      # They feed two consumers: the GitHub release tarballs and the arm64
+      # control build below, which reuses ascope-dist instead of rerunning the
+      # emsdk stage.
       - name: Export dists from build
         uses: docker/build-push-action@v6
         with:

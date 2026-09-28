@@ -4,11 +4,6 @@
 #   SCRIPTUM_DEMO_MODE=1 docker compose up -d
 #                                → demo mode (auth bypassed, shared workspace)
 #
-# Overrides:
-#   docker-compose.prod.yml     adds Caddy (TLS) + Grafana Alloy for the
-#                               production VM; selected there via COMPOSE_FILE
-#                               in /opt/scriptum/.env
-#
 # Configuration lives in .env (see .env.example). The control plane drives the
 # HOST's Docker daemon through the bind-mounted socket, so per-student
 # workspace containers run as siblings of this one, joined to the shared
@@ -31,7 +26,7 @@ services:
     # currently-published GHCR artifact name (upstream's own release
     # channel), not a local identifier. Renaming this string would just point
     # zero-config installs at an image that doesn't exist. See decision 049.
-    image: ${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-control:${SCRIPTUM_TAG:-latest}
+    image: ${SCRIPTUM_IMAGE_NS:-ghcr.io/frc-team-4143}/scriptum-control:${SCRIPTUM_TAG:-latest}
     restart: unless-stopped
     # Run as the host owner of the data dir (keeps ./data host-owned, drops
     # root). group_add grants the non-root process access to the bind-mounted
@@ -44,8 +39,8 @@ services:
     # on macOS and native Windows (hence the 0 default, which makes those
     # zero-config), a `docker` group on Linux and WSL2 (WSL2 integration
     # included), where you must set
-    # SCRIPTUM_DOCKER_GID — find it with `stat -c '%g' /var/run/docker.sock`
-    # (prod writes it into .env from cloud-init). Supplementary groups do not
+    # SCRIPTUM_DOCKER_GID — find it with `stat -c '%g' /var/run/docker.sock`.
+    # Supplementary groups do not
     # affect the ownership of files the process creates, so ./data stays
     # host-owned either way.
     user: "${SCRIPTUM_UID:-1000}:${SCRIPTUM_GID:-1000}"
@@ -66,7 +61,7 @@ services:
       # Do not relabel the whole tree: it includes student container mounts.
       - ${SCRIPTUM_HOST_DATA_DIR:-./data}:/data
     environment:
-      CODE_IMAGE: ${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${SCRIPTUM_TAG:-latest}
+      CODE_IMAGE: ${SCRIPTUM_IMAGE_NS:-ghcr.io/frc-team-4143}/scriptum-workspace:${SCRIPTUM_TAG:-latest}
       # Demo mode: auth bypassed, everyone shares one admin workspace. Unset
       # (or any falsy value) keeps normal auth. Never expose a demo instance
       # publicly.
@@ -90,7 +85,7 @@ services:
   # not a running service.
   workspace-template:
     container_name: scriptum-workspace-template
-    image: ${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-workspace:${SCRIPTUM_TAG:-latest}
+    image: ${SCRIPTUM_IMAGE_NS:-ghcr.io/frc-team-4143}/scriptum-workspace:${SCRIPTUM_TAG:-latest}
     entrypoint: ["/bin/true"]
     restart: "no"
     network_mode: "none"

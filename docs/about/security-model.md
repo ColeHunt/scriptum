@@ -62,7 +62,7 @@ by container name over Docker's internal DNS. Either way, no container port is
 reachable from outside the host, even if the host firewall is misconfigured,
 and there is no way for a student to connect to another student's container
 directly from a browser. See
-[decision 031](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/031-containerized-control-plane.md) for the two
+[decision 031](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/031-containerized-control-plane.md) for the two
 modes.
 
 ## Control plane container privileges
@@ -84,7 +84,7 @@ the same trust level as the pre-containerized deployment (the host user running
 the control plane process was a member of the `docker` group), just repackaged.
 Operators evaluating CodeRunner for a shared network should weigh this alongside
 the [demo mode](#demo-mode) warning below. See
-[decision 031](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/031-containerized-control-plane.md) for the full
+[decision 031](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/031-containerized-control-plane.md) for the full
 rationale.
 
 ## Per-workspace access enforcement
@@ -129,7 +129,7 @@ a signed, workspace-specific path token that expires after fifteen minutes.
 Preview routes are read-only, capability URLs are not logged, and responses are
 not cached. Path validation, file type allowlists, symlink checks, and read
 limits keep the endpoint inside the student's project. The full rationale is in
-[decision 050](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/050-project-preview.md).
+[decision 050](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/050-project-preview.md).
 
 ## Container isolation
 
@@ -140,7 +140,7 @@ Each student's container:
   process's own UID/GID; in containerized (`docker compose`) deployments the
   control plane derives it by `stat()`ing the bind-mounted data directory
   (or an explicit `FRC_CONTAINER_USER` override) and refuses to start if that
-  resolves to root — see [decision 031](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/031-containerized-control-plane.md).
+  resolves to root — see [decision 031](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/031-containerized-control-plane.md).
 - Has a hard memory cap enforced by Docker's cgroup limit (default `4096m`,
   set by `CODE_MEMORY_LIMIT`). A runaway robot program cannot exhaust host
   memory. Disk reads are likewise throttled per device (default `64mb`, set

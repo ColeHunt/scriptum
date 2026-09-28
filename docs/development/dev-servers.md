@@ -31,7 +31,7 @@ needs only Bun — no submodule, no separate fork download). Elastic Dashboard
 is the exception: it needs a local Flutter SDK (`bun run build:elastic`), so
 it's deliberately left out of `bun run build` entirely — `fetch:dist` treats
 it as optional (a missing/failed fetch leaves `/elastic/` serving a 503). See
-[decision 043](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/043-vendor-tool-manifest.md)
+[decision 043](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/043-vendor-tool-manifest.md)
 for how each vendored tool's build is wired.
 
 :::note[Dev runs use published host ports, not a Docker network]
@@ -40,7 +40,7 @@ The dev loop runs the control plane as a host Bun process, which reaches each
 workspace container over a loopback port (`FRC_CONTAINER_NETWORK` unset). This is
 unchanged from before containerization — the shared-network mode is only used
 when the control plane *itself* runs in a container (see
-[decision 031](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/031-containerized-control-plane.md)).
+[decision 031](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/031-containerized-control-plane.md)).
 A host process can't resolve container DNS names, so don't set
 `FRC_CONTAINER_NETWORK` for `bun run dev:control`.
 

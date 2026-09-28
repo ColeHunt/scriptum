@@ -8,7 +8,7 @@ const repoRoot = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
 const dockerPath = process.env.FRC_DOCKER_PATH ?? "docker";
 const image =
 	process.env.CODE_IMAGE ??
-	`${process.env.SCRIPTUM_IMAGE_NS ?? "ghcr.io/mathewdunne"}/coderunner-workspace:${process.env.SCRIPTUM_TAG ?? "latest"}`;
+	`${process.env.SCRIPTUM_IMAGE_NS ?? "ghcr.io/frc-team-4143"}/scriptum-workspace:${process.env.SCRIPTUM_TAG ?? "latest"}`;
 const javaReadyTimeout = 180_000;
 
 interface DockerResult {

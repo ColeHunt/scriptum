@@ -14,8 +14,8 @@ The control plane emits structured logs to stdout (info/debug) and stderr
 14:23:01.482 INFO  [control.runs]  run started workspaceId=alice-1 runId=run_abc
 ```
 
-On the cloud VM, `LOG_FORMAT=json` is set in the generated `.env`, so each line
-is a single-line JSON object:
+With `LOG_FORMAT=json`, each line is a single-line JSON object, which is easier
+for log shippers to parse:
 
 ```json
 {"timestamp":"2026-05-21T14:23:01.482Z","level":"info","category":"control.runs","message":"run started","workspaceId":"alice-1","runId":"run_abc"}
@@ -24,7 +24,7 @@ is a single-line JSON object:
 ### Log verbosity
 
 Set `LOG_LEVEL` to one of: `trace`, `debug`, `info`, `warning`, `error`,
-`fatal`. The default is `debug`. The cloud VM uses `info` to reduce noise.
+`fatal`. The default is `debug`; `info` is quieter for production.
 Log categories follow the pattern `control.<subsystem>`, for example
 `control.runs`, `control.containers`, `control.auth`, `control.idle`.
 
@@ -140,8 +140,7 @@ Signs to watch for:
 - If `runs_total{terminal_status="failed"}` is rising, check for build timeouts
   or container OOMs in the logs.
 
-## Grafana Cloud
+## Dashboards
 
-For the cloud VM deployment, Grafana Alloy can optionally ship metrics and logs
-to Grafana Cloud. See [Grafana Cloud](./grafana.md) for setup, credentials,
-LogQL queries, and the pre-built ops dashboard.
+Pre-built Grafana dashboard JSON for these metrics lives in `dashboards/` in
+the repo, for import into any Grafana instance that scrapes `/metrics`.

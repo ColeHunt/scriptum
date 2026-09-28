@@ -53,8 +53,8 @@ Each workspace container's disk reads are throttled to `CODE_DISK_READ_LIMIT`
 per physical block device (default: `64mb`, via Docker `--device-read-bps`).
 This keeps one container that is thrashing, indexing, or scanning from
 monopolizing the host's provisioned disk throughput — on cloud VMs that
-budget is small (a default GCP Hyperdisk Balanced volume is ~140 MiB/s) and a
-single unthrottled container can freeze the entire host, including SSH.
+budget is often small (on the order of 150 MiB/s) and a single unthrottled
+container can freeze the entire host, including SSH.
 
 Devices are auto-detected from `/sys/block` when the control plane runs
 containerized (compose deployments). Host/dev runs apply no limit, because a
@@ -70,11 +70,6 @@ apply to newly started containers after a control-plane restart.
 | 4–6 | 16–24 GB | 4–6 cores | 40 GB | Small classroom; consider lowering `CODE_MEMORY_LIMIT` to `3072m` |
 | 7–10 | 32 GB | 6+ cores | 50 GB | Full classroom; preferred target |
 | 10+ | 48+ GB | 8+ cores | 80 GB | Large classroom; increase `CODE_MEMORY_LIMIT` and cap |
-
-The Google Cloud default VM is a `c4-standard-4` (4 vCPU / 15 GB RAM) with a
-50 GB data disk, sized for a small-to-medium classroom. Verify the current
-machine type in
-[`deploy/terraform/vm.tf`](https://github.com/mathewdunne/CodeRunner/blob/main/deploy/terraform/vm.tf).
 
 ## Concurrency cap
 
@@ -108,10 +103,9 @@ many students build at once.
 docker stats --filter label=frc-sim.managed=true --no-stream
 ```
 
-On the cloud VM, `container_cpu_percent` and `container_memory_percent` metrics
-(per workspace, sampled every 15 s) are available as Prometheus metrics and, if
-Grafana Cloud is configured, show trends over time there (see
-[Grafana Cloud](./grafana.md)). Use those to confirm that your memory cap and
+The `container_cpu_percent` and `container_memory_percent` metrics (per
+workspace, sampled every 15 s) are exposed as Prometheus metrics at `/metrics`
+(see [Monitoring](./monitoring.md)). Use those to confirm that your memory cap and
 concurrency limit are well-matched to actual student behaviour.
 
 ## Disk growth

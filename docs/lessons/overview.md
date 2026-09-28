@@ -43,7 +43,7 @@ Enable it by setting environment variables on the control plane:
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `LESSONS_CATALOG_REPO` | The public GitHub lessons repo. Accepts either `owner/repo` shorthand (for example `mathewdunne/coderunner-lessons`) or a full `https://github.com/owner/repo` URL. Leave unset to use the bundled catalog. | _unset_ |
+| `LESSONS_CATALOG_REPO` | The public GitHub lessons repo. Accepts either `owner/repo` shorthand (for example `FRC-Team-4143/scriptum-lessons`) or a full `https://github.com/owner/repo` URL. Leave unset to use the bundled catalog. | _unset_ |
 | `LESSONS_CATALOG_BRANCH` | Branch to read the catalog from. | `main` |
 | `LESSONS_CATALOG_DIR` | Path to the bundled catalog inside the image. You rarely need to change this. | `catalog` |
 
@@ -93,7 +93,7 @@ a full curriculum.
 The full Java-fundamentals-to-robot progression — Git basics, the rest of the
 Java Basics track (variables through classes/objects), AdvantageScope and
 Elastic Dashboard tool lessons — lives in
-[github.com/mathewdunne/coderunner-lessons](https://github.com/mathewdunne/coderunner-lessons),
+[github.com/FRC-Team-4143/scriptum-lessons](https://github.com/FRC-Team-4143/scriptum-lessons),
 the maintainer's own team lessons repo, structured the way any
 [remote catalog](#remote-catalog-your-own-lessons-repo) is. Point your own
 deployment's `LESSONS_CATALOG_REPO` at it, or at your own repo written to the

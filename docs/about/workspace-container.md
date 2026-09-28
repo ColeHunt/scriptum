@@ -12,11 +12,11 @@ how the control plane manages it.
 
 The authoritative reference for the container's runtime contract (bind mounts,
 published ports, labels, environment variables, and first-run behavior) is the
-[container README on GitHub](https://github.com/mathewdunne/CodeRunner/blob/main/containers/code/README.md).
+[container README on GitHub](https://github.com/FRC-Team-4143/scriptum/blob/main/containers/code/README.md).
 
 ## What is inside the image
 
-The image (`ghcr.io/mathewdunne/coderunner-workspace:latest` by default,
+The image (`ghcr.io/frc-team-4143/scriptum-workspace:latest` by default,
 overridden via `CODE_IMAGE`) is
 built on [linuxserver/vscodium-web](https://github.com/linuxserver/docker-vscodium-web)
 (Ubuntu 24.04 with s6-overlay process supervision) and adds the following on

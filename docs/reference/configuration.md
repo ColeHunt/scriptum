@@ -9,7 +9,7 @@ CodeRunner is configured entirely through environment variables. Copy `.env.exam
 
 :::note[Docker Compose deployments]
 
-With the containerized control plane (the default deployment — see [decision 031](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/031-containerized-control-plane.md)) the same `.env` is read twice: Compose interpolates the `SCRIPTUM_*` values (see [Docker Compose deployment](#docker-compose-deployment) below) into `docker-compose*.yml`, and the whole file is passed into the control container. The image **fixes the in-container paths** (`/data`, `/app/...`), so the **Paths** section below and the `bun run build:*` notes apply only to a from-source host run — leave them unset for a compose deployment. The control plane also auto-detects `FRC_CONTAINER_NETWORK`, `FRC_HOST_DATA_DIR`, and `FRC_CONTAINER_USER` by inspecting its own container at startup (see **Docker and Containers** below), so those need no manual setting either.
+With the containerized control plane (the default deployment — see [decision 031](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/031-containerized-control-plane.md)) the same `.env` is read twice: Compose interpolates the `SCRIPTUM_*` values (see [Docker Compose deployment](#docker-compose-deployment) below) into `docker-compose*.yml`, and the whole file is passed into the control container. The image **fixes the in-container paths** (`/data`, `/app/...`), so the **Paths** section below and the `bun run build:*` notes apply only to a from-source host run — leave them unset for a compose deployment. The control plane also auto-detects `FRC_CONTAINER_NETWORK`, `FRC_HOST_DATA_DIR`, and `FRC_CONTAINER_USER` by inspecting its own container at startup (see **Docker and Containers** below), so those need no manual setting either.
 
 :::
 
@@ -31,15 +31,15 @@ These rarely need changing in a standard deployment. Override them only if you n
 | `FRC_WEB_DIST_DIR` | `apps/web/dist` | Built React web shell assets. Must exist before starting; run `bun run build:web` first. |
 | `FRC_ASCOPE_DIST_DIR` | `dist/advantagescope` | Built AdvantageScope Lite assets. Populated by `bun run build:ascope`. |
 | `FRC_CHOREO_DIST_DIR` | `dist/choreo` | Built Choreo web frontend assets. Populated by `bun run build:choreo` or `bun run fetch:dist`. |
-| `FRC_ELASTIC_DIST_DIR` | `dist/elastic` | Built Elastic Dashboard web assets. Populated by `bun run build:elastic` (needs the Flutter SDK — see [decision 041](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/041-elastic-dashboard-integration.md)) or `bun run fetch:dist`. Optional: when missing, `/elastic/` serves a 503 and nothing else is affected. |
+| `FRC_ELASTIC_DIST_DIR` | `dist/elastic` | Built Elastic Dashboard web assets. Populated by `bun run build:elastic` (needs the Flutter SDK — see [decision 041](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/041-elastic-dashboard-integration.md)) or `bun run fetch:dist`. Optional: when missing, `/elastic/` serves a 503 and nothing else is affected. |
 
 `fetch:dist` gets the web shell, AdvantageScope, and Choreo from the CodeRunner
 release. It also fetches `elastic-dist.tar.gz` from the same release, but
 treats it as optional (a missing/failed download only warns) — see
-[decision 041](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/041-elastic-dashboard-integration.md).
+[decision 041](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/041-elastic-dashboard-integration.md).
 Every vendored tool's repo/pin is single-sourced from
-[`vendor/tools.json`](https://github.com/mathewdunne/CodeRunner/blob/main/vendor/tools.json) —
-see [decision 043](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/043-vendor-tool-manifest.md).
+[`vendor/tools.json`](https://github.com/FRC-Team-4143/scriptum/blob/main/vendor/tools.json) —
+see [decision 043](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/043-vendor-tool-manifest.md).
 
 ## Lessons Catalog
 
@@ -76,14 +76,14 @@ prerequisites (shared parent domain) and how to grant admin access.
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `FRC_DOCKER_PATH` | `docker` | Path to the Docker CLI binary. Override if Docker is not on `PATH`. |
-| `CODE_IMAGE` | `${SCRIPTUM_IMAGE_NS}/coderunner-workspace:${SCRIPTUM_TAG}` | Docker image name for student workspace containers. Set it to override the canonical name entirely. |
+| `CODE_IMAGE` | `${SCRIPTUM_IMAGE_NS}/scriptum-workspace:${SCRIPTUM_TAG}` | Docker image name for student workspace containers. Set it to override the canonical name entirely. |
 | `CODE_MEMORY_LIMIT` | `4096m` | Memory cap applied to each workspace container via Docker `--memory`. A cold Gradle build plus the Java language server needs most of this; setting it too low causes cgroup page-cache thrashing (the container re-reads its jars from disk in a loop) that can saturate host disk throughput. Lower with care on RAM-constrained hosts. |
-| `CODE_DISK_READ_LIMIT` | `64mb` | Per-device disk read cap applied to each workspace container via Docker `--device-read-bps`, so one thrashing or scan-heavy container cannot monopolize host disk throughput and stall the VM. Devices are auto-detected from `/sys/block` when the control plane runs containerized; host/dev runs apply no limit (a VM-backed Docker daemon such as Docker Desktop has different devices than the host). Set to `0` or `off` to disable. See [decision 033](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/033-workspace-disk-read-limit.md). |
+| `CODE_DISK_READ_LIMIT` | `64mb` | Per-device disk read cap applied to each workspace container via Docker `--device-read-bps`, so one thrashing or scan-heavy container cannot monopolize host disk throughput and stall the VM. Devices are auto-detected from `/sys/block` when the control plane runs containerized; host/dev runs apply no limit (a VM-backed Docker daemon such as Docker Desktop has different devices than the host). Set to `0` or `off` to disable. See [decision 033](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/033-workspace-disk-read-limit.md). |
 | `SIM_PORT_RANGE` | `25810-25899` | Loopback port range allocated for HALSim NT4 connections. Format: `start-end`. |
 | `VSCODE_PORT_RANGE` | `33000-33099` | Loopback port range for codium-server instances. Format: `start-end`. |
 | `HALSIM_PORT_RANGE` | `34000-34099` | Loopback port range for HALSim WebSocket bridges. Format: `start-end`. |
 | `FRC_CONTAINER_AUTO_START` | `true` | Automatically start a student's workspace container when their session page loads. Also readable as `CONTAINER_AUTO_START`. |
-| `FRC_CONTAINER_USER` | auto-detected | UID:GID for container processes. On a host/dev run, defaults to the current user's UID and GID (Linux), keeping file ownership consistent with bind-mounted project directories. Inside a container, auto-detected from the data directory's owner (`stat /data`) — see [decision 031](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/031-containerized-control-plane.md#self-inspection-zero-config-containerized-mode). Set this only to override that detection. Also configurable via `FRC_UID` + `FRC_GID` separately. |
+| `FRC_CONTAINER_USER` | auto-detected | UID:GID for container processes. On a host/dev run, defaults to the current user's UID and GID (Linux), keeping file ownership consistent with bind-mounted project directories. Inside a container, auto-detected from the data directory's owner (`stat /data`) — see [decision 031](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/031-containerized-control-plane.md#self-inspection-zero-config-containerized-mode). Set this only to override that detection. Also configurable via `FRC_UID` + `FRC_GID` separately. |
 | `FRC_CONTAINER_NETWORK` | none | Docker network that workspace containers join instead of publishing loopback host ports. Inside a container, auto-detected from the control plane's own network attachment; leave **unset** for a host/dev run (`bun run dev:control`) — a host process can't resolve container DNS names. Set this only to override detection (for example, if the container is attached to more than one user-defined network). |
 | `FRC_HOST_DATA_DIR` | none | Host-side absolute path of `FRC_DATA_DIR`, used to translate workspace bind-mount sources when the control plane itself runs in a container (the Docker daemon resolves mounts against the host). Inside a container, auto-detected from the container's own bind mounts (`docker inspect`); leave unset on the host. Set this only to override detection. |
 
@@ -93,17 +93,16 @@ Each active student workspace uses approximately 2.5 GB of RAM at the default me
 
 ## Docker Compose deployment
 
-These variables are consumed by `docker compose` itself (interpolated into `docker-compose*.yml`), **not** read directly by the control plane. They only apply to the containerized deployment; see [Local Deployment](../deploying/local.md) and [decision 031](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/031-containerized-control-plane.md).
+These variables are consumed by `docker compose` itself (interpolated into `docker-compose*.yml`), **not** read directly by the control plane. They only apply to the containerized deployment; see [Local Deployment](../deploying/local.md) and [decision 031](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/031-containerized-control-plane.md).
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `SCRIPTUM_TAG` | `latest` | Image tag to run for both the control and workspace images (a release tag like `v2.5.0`, or `latest`). |
-| `SCRIPTUM_IMAGE_NS` | `ghcr.io/mathewdunne` | Registry + owner for both coderunner images. Forks publishing their own images set this once. Unlike the other variables in this table it is also read by the control plane and the image build/pull script, so the same `.env` line covers every consumer. |
+| `SCRIPTUM_IMAGE_NS` | `ghcr.io/frc-team-4143` | Registry + owner for both coderunner images. Forks publishing their own images set this once. Unlike the other variables in this table it is also read by the control plane and the image build/pull script, so the same `.env` line covers every consumer. |
 | `SCRIPTUM_HOST_DATA_DIR` | `./data` (in the checkout) | Host path of the data directory, bind-mounted into the control container at `/data`. Compose resolves `./data` against the project directory. Set this to relocate the data directory (for example, onto a mounted disk); the control plane derives the matching `FRC_HOST_DATA_DIR` itself by inspecting its own container, so this variable does not need to be passed through by hand. |
 | `SCRIPTUM_UID` | `1000` | uid the **control container** runs as (compose `user:`). Should own `SCRIPTUM_HOST_DATA_DIR` so `./data` stays host-owned rather than root-owned. The `1000` default is correct for the first user on most single-user hosts. Distinct from `FRC_CONTAINER_USER`, which governs the workspace siblings. |
 | `SCRIPTUM_GID` | `1000` | gid the control container runs as (paired with `SCRIPTUM_UID` in compose `user:`). |
 | `SCRIPTUM_DOCKER_GID` | `0` | Gid owning the bind-mounted Docker socket, added to the non-root control process as a supplementary group (compose `group_add:`) so it can reach it. The `0` default matches Docker Desktop on macOS and native Windows, whose socket is root-owned, so neither needs a setting here. **Linux and WSL2** own the socket by the `docker` group instead and must set this — that includes Docker Desktop's WSL2 integration, which behaves like a native Linux host. Find it with `stat -c '%g' /var/run/docker.sock` (stock Debian/Ubuntu installs often use `999`/`998`). |
-| `COMPOSE_FILE` | none | Production VM only: selects the prod stack (`docker-compose.yml:docker-compose.prod.yml`) so a plain `docker compose up -d` runs Caddy + Alloy too. |
 
 ## Run Lifecycle
 
@@ -155,8 +154,6 @@ The flag takes precedence and sets the same behavior: authentication is skipped,
 ## How environment is loaded
 
 The control plane reads `.env` from the repo root at startup using Bun's built-in dotenv support. Variables already set in the shell environment take precedence over `.env` values. There is no hot-reload; restart the process after any change.
-
-On a cloud VM the `.env` file is regenerated on every boot by `render-env.sh`, so hand-edits are overwritten on the next reboot. Make permanent changes in the cloud-init template instead. See [Google Cloud deployment](../deploying/gcloud.md) for details.
 
 ---
 

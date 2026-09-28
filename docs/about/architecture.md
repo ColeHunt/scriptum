@@ -58,7 +58,7 @@ At a high level there are three moving parts:
 The control plane itself typically runs as a container too — the standard
 deploy is `docker compose up`, with the control image managing per-student
 containers as Docker siblings over the bind-mounted host socket. See
-[decision 031](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/031-containerized-control-plane.md) for that
+[decision 031](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/031-containerized-control-plane.md) for that
 packaging and the two ways it reaches student containers, below.
 
 ## The single front door
@@ -135,7 +135,7 @@ positions, signals, and plots update in real time as their robot runs.
 ## How Choreo and Elastic reach the browser
 
 Unlike PathPlanner (removed — see
-[decision 042](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/042-choreo-integration.md)),
+[decision 042](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/042-choreo-integration.md)),
 Choreo and Elastic Dashboard don't share one file-access pattern:
 
 - **Choreo** runs `choreo-server`, a small Rust sidecar, inside each
@@ -160,7 +160,7 @@ directory. Markdown is rendered by the control plane; HTML and its local assets
 are served in a sandboxed frame. A short-lived path token authorizes framed
 requests because the sandbox does not receive the session cookie. See
 [Preview isolation](./security-model.md#preview-isolation) and
-[decision 050](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/050-project-preview.md).
+[decision 050](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/050-project-preview.md).
 
 ## Persistence and data layout
 

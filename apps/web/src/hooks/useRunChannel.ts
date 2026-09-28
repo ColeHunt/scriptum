@@ -131,7 +131,8 @@ export function useRunChannel(
 		};
 	}, [workspaceSlug, logLine]);
 
-	// Keep the WS alive through Cloudflare's 100-second idle timeout.
+	// Keep the WS alive through reverse-proxy idle timeouts (Nginx Proxy
+	// Manager / nginx close an idle proxied WebSocket after 60 s by default).
 	useEffect(() => {
 		if (connection !== "connected" || runStatus !== "idle") return;
 		const interval = setInterval(() => {

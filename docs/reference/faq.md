@@ -76,14 +76,10 @@ Yes. All computation (Java compilation, Gradle builds, the WPILib simulator, and
 
 Yes. Lessons are Gradle WPILib projects with a small metadata file. You can author them in the bundled `catalog/` directory (rebuilt into the image) or in a separate public GitHub repository pointed to by `LESSONS_CATALOG_REPO`. The remote-repo option lets you iterate on lesson content without rebuilding the Docker image. See [Authoring modules](../lessons/authoring-modules.md) for structure and tooling details.
 
-### How much does cloud hosting cost?
-
-The reference deployment uses a `c4-standard-4` VM (4 vCPU, 15 GB RAM) on Google Cloud with a 50 GB Hyperdisk data disk and daily snapshots. At us-central1 on-demand pricing that is roughly **$120–150/month** for the VM alone, plus a small amount for disk and snapshot storage. Grafana Cloud's free tier covers metrics and logs for a small deployment. Running the VM only during build season (a few months) and using the [seasonal teardown](../deploying/gcloud.md) procedure to snapshot and delete resources between seasons can bring the annual total well under $300. These are rough estimates; actual cost depends on region, committed-use discounts, and bandwidth.
-
 ### Why is the first build or run slow?
 
 Two separate warm-up steps happen on first use:
 
-1. **Docker image pull.** The first `docker compose pull` (or `up`) downloads `ghcr.io/mathewdunne/coderunner-workspace:latest`, which is several gigabytes (it bundles Java runtimes, WPILib, and VS Code). This only happens once per machine; subsequent starts reuse Docker's cached layers.
+1. **Docker image pull.** The first `docker compose pull` (or `up`) downloads `ghcr.io/frc-team-4143/scriptum-workspace:latest`, which is several gigabytes (it bundles Java runtimes, WPILib, and VS Code). This only happens once per machine; subsequent starts reuse Docker's cached layers.
 
 2. **Gradle cache warm-up.** The workspace image primes the Gradle and WPILib dependency cache during its build by running a full `./gradlew build` against the bundled `robot-starter` module. This cache is stored at `/opt/frc-gradle-cache` inside the image and copied into each student's container on first start. Despite this priming, the very first build in a fresh container still runs the Java language server index and compiles the project from scratch. After that first run, incremental builds are much faster.

@@ -18,13 +18,13 @@ see [How Lessons Work](./overview.md).
 Real examples to read alongside this page:
 
 - **A complete standalone lessons repo:**
-  [github.com/mathewdunne/coderunner-lessons](https://github.com/mathewdunne/coderunner-lessons),
+  [github.com/FRC-Team-4143/scriptum-lessons](https://github.com/FRC-Team-4143/scriptum-lessons),
   the upstream maintainer's own team lessons, exercising all three `kind`s,
   `track`/`requires` grouping, and both checkpoint verifier types. It predates
   the split `modules.json`/`modules-meta/<id>.json` manifest (decision 051) -
   everything else about its structure still applies.
 - **The bundled demo catalog:**
-  [`catalog/` in the CodeRunner repo](https://github.com/mathewdunne/CodeRunner/tree/main/catalog),
+  [`catalog/` in the CodeRunner repo](https://github.com/FRC-Team-4143/scriptum/tree/main/catalog),
   intentionally minimal (just `hello-world` and `robot-starter`, for a
   zero-config/offline first run) — see
   [How Lessons Work](./overview.md#the-bundled-catalog) for why the full
@@ -279,7 +279,7 @@ A `git` module almost always pairs with `setupScript`: the module directory
 holds the starting *files*, and the setup script turns them into a real
 repository with the commit/branch history the lesson needs (`git init`,
 scripted commits, branches, etc. — see `checkpoints/git-basics/setup.sh` in
-[github.com/mathewdunne/coderunner-lessons](https://github.com/mathewdunne/coderunner-lessons)
+[github.com/FRC-Team-4143/scriptum-lessons](https://github.com/FRC-Team-4143/scriptum-lessons)
 for the real example). The script runs once,
 immediately after the module's files land in the workspace, as the same
 non-root user the student's own shell runs as, from the workspace project
@@ -357,7 +357,7 @@ this safe to run regardless of how long ago the lesson was loaded. Both run
 at the same trust level as the bundled catalog's scripts — the control plane
 runs whatever your repo ships, so don't point `LESSONS_CATALOG_REPO` at a
 repository you don't control. See
-[decision 044](https://github.com/mathewdunne/CodeRunner/blob/main/docs/decisions/044-remote-catalog-checkpoints.md)
+[decision 044](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/044-remote-catalog-checkpoints.md)
 for the full design.
 
 ## The README is the lesson text

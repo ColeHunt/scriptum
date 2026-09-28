@@ -17,8 +17,8 @@ that all share it.
 
 This page covers wiring an existing Legion instance to a CodeRunner
 deployment. The values here are used the same way whether you deploy
-[locally](./local.md) or to [Google Cloud](./gcloud.md); only the URLs
-differ (`http://localhost:4000` vs `https://<your-domain>`).
+[locally](./local.md) or [alongside the MARS/WARS apps](./overview.md#hosting-with-the-marswars-apps);
+only the URLs differ (`http://localhost:4000` vs `https://scriptum.marswars.org`).
 
 ## Deploy-topology prerequisite: a shared parent domain
 
@@ -45,8 +45,8 @@ CodeRunner reads these from environment variables (see
 Where these values live depends on the deployment:
 
 - **Local:** in your `.env` file. See [Local Deployment](./local.md).
-- **Cloud VM:** in Google Secret Manager, materialized into the VM's `.env` by
-  `render-env.sh` at boot. See [Google Cloud Deployment](./gcloud.md).
+- **MARS/WARS droplet:** in `/opt/apps/scriptum/.env`, like every other app in
+  the stack.
 
 ## Bootstrapping the first admin
 

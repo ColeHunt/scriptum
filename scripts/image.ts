@@ -1,9 +1,9 @@
 // Build or pull Scriptum's Docker images under their canonical names:
-//   ${SCRIPTUM_IMAGE_NS:-ghcr.io/mathewdunne}/coderunner-<kind>:${SCRIPTUM_TAG:-latest}
+//   ${SCRIPTUM_IMAGE_NS:-ghcr.io/frc-team-4143}/scriptum-<kind>:${SCRIPTUM_TAG:-latest}
 //
 // Usage: bun scripts/image.ts <build|pull> <workspace|control>
 //
-// The image name itself is still literally "coderunner-<kind>", not
+// The image name itself is still literally "scriptum-<kind>", not
 // "scriptum-<kind>" — that's the currently-published GHCR artifact name
 // (upstream's own release channel, unrelated to this repo's own rename).
 // Renaming it here would just point the default at an image that doesn't
@@ -26,7 +26,7 @@ type Kind = keyof typeof dockerfiles;
 
 function imageName(kind: Kind): string {
 	if (kind === "workspace" && Bun.env.CODE_IMAGE) return Bun.env.CODE_IMAGE;
-	const ns = Bun.env.SCRIPTUM_IMAGE_NS ?? "ghcr.io/mathewdunne";
+	const ns = Bun.env.SCRIPTUM_IMAGE_NS ?? "ghcr.io/frc-team-4143";
 	const tag = Bun.env.SCRIPTUM_TAG ?? "latest";
 	return `${ns}/coderunner-${kind}:${tag}`;
 }

@@ -85,7 +85,7 @@ ask your administrator to delete your account and workspace.
 CodeRunner is provided **"as is," without warranty of any kind**, express or implied,
 including but not limited to the warranties of merchantability, fitness for a particular
 purpose, and noninfringement. This mirrors the disclaimer in the
-[MIT License](https://github.com/mathewdunne/CodeRunner/blob/main/LICENSE) the software is
+[MIT License](https://github.com/FRC-Team-4143/scriptum/blob/main/LICENSE) the software is
 released under.
 
 The simulator approximates robot behavior for teaching purposes. **Do not rely on it as
@@ -113,7 +113,7 @@ with CodeRunner.
 
 Changes will be posted here with an updated date above. The full revision history is public in
 the
-[project repository](https://github.com/mathewdunne/CodeRunner/commits/main/docs/legal/terms.md).
+[project repository](https://github.com/FRC-Team-4143/scriptum/commits/main/docs/legal/terms.md).
 Continuing to use CodeRunner after a change means you accept the revised terms.
 
 ## 12. Governing law
@@ -125,6 +125,6 @@ of protections under the mandatory law of your own place of residence.
 ## 13. Contact
 
 Questions about these terms or the software: open an issue at
-[github.com/mathewdunne/CodeRunner/issues](https://github.com/mathewdunne/CodeRunner/issues).
+[github.com/FRC-Team-4143/scriptum/issues](https://github.com/FRC-Team-4143/scriptum/issues).
 
 Questions about a specific installation: contact the school, team, or mentor operating it.

@@ -353,7 +353,7 @@ export function loadControlConfig(
 		codeImage:
 			input.codeImage ??
 			Bun.env.CODE_IMAGE ??
-			`${Bun.env.SCRIPTUM_IMAGE_NS ?? "ghcr.io/mathewdunne"}/coderunner-workspace:${Bun.env.SCRIPTUM_TAG ?? "latest"}`,
+			`${Bun.env.SCRIPTUM_IMAGE_NS ?? "ghcr.io/frc-team-4143"}/scriptum-workspace:${Bun.env.SCRIPTUM_TAG ?? "latest"}`,
 		codeMemoryLimit:
 			input.codeMemoryLimit ?? Bun.env.CODE_MEMORY_LIMIT ?? "4096m",
 		// `??` would turn an explicit null (disable) into the env/default value.

@@ -10,8 +10,8 @@ Run CodeRunner on one machine and let students connect over your local network.
 This is the simplest deployment: it needs no cloud account, domain, or TLS
 certificate.
 
-For an all-in-one public deployment with automated infrastructure and HTTPS,
-see [Google Cloud Deployment](./gcloud.md).
+To host Scriptum at a public URL instead, see
+[Deployment Overview](./overview.md#hosting-with-the-marswars-apps).
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ Install **Docker Engine 24+ with the Compose plugin** and **Git**. The published
 images include the control plane, web app, AdvantageScope Lite, Choreo, and
 student development environment, so you do not need Bun or the build
 toolchain. Elastic Dashboard is included when the published image was built
-with it (see [decision 041](../decisions/041-elastic-dashboard-integration.md));
+with it (see [decision 041](https://github.com/FRC-Team-4143/scriptum/blob/main/docs/decisions/041-elastic-dashboard-integration.md));
 if missing, `/elastic/` just serves a 503 and nothing else is affected.
 
 For 3–5 students, plan for at least 4 CPU cores, 16 GB RAM, and 20 GB free disk.
@@ -40,7 +40,7 @@ base URL and `SSO_SECRET`, as described in [Legion Setup](./legion-setup.md).
 ## 1. Clone and configure
 
 ```bash
-git clone https://github.com/mathewdunne/CodeRunner.git CodeRunner
+git clone https://github.com/FRC-Team-4143/scriptum.git CodeRunner
 cd CodeRunner
 cp .env.example .env
 ```
@@ -164,7 +164,7 @@ docker compose up -d
 Recreate all student containers so they use the new workspace image:
 
 ```bash
-docker compose exec control coderunner rebuild-workspaces
+docker compose exec control scriptum rebuild-workspaces
 ```
 
 This disconnects active editor sessions. Student project files are bind-mounted
@@ -200,6 +200,4 @@ also stop and remove live student workspace containers. Plain
 ## Network safety
 
 This local deployment uses plain HTTP by default. Keep it on a trusted team LAN
-or hotspot you control, or put an HTTPS reverse proxy in front of it. For a
-complete cloud setup with the infrastructure and Caddy already configured, see
-[Google Cloud Deployment](./gcloud.md).
+or hotspot you control, or put an HTTPS reverse proxy in front of it.

@@ -29,7 +29,7 @@ Demo mode bypasses authentication. Every visitor shares the same admin account, 
 Clone the repository:
 
 ```bash
-git clone https://github.com/mathewdunne/CodeRunner coderunner
+git clone https://github.com/FRC-Team-4143/scriptum coderunner
 cd coderunner
 ```
 
