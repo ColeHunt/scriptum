@@ -60,6 +60,15 @@ export function stripHopByHopHeaders(source: Headers): Headers {
 	return stripped;
 }
 
+/**
+ * How long a request waits for a just-started editor or Choreo server before
+ * answering "starting" (the shell retries). Must stay well under Bun.serve's
+ * idleTimeout (30 s, main.ts) plus the time ensureWorkspaceRunning already
+ * took, or Bun drops the connection mid-wait and the reverse proxy in front
+ * reports a 502 instead of the retryable 503.
+ */
+const UPSTREAM_READY_WAIT_MS = 20_000;
+
 async function probeVscodeReady(
 	httpBaseUrl: string,
 	basePath: string,
@@ -113,7 +122,7 @@ export async function vscodeHttpProxyResponse(
 		!(await probeVscodeReady(
 			vscode.httpBaseUrl,
 			vscode.basePath,
-			30_000,
+			UPSTREAM_READY_WAIT_MS,
 			upstreamFetch,
 		))
 	) {
@@ -206,7 +215,7 @@ export async function vscodeWebSocketResponse(
 		!(await probeVscodeReady(
 			vscode.httpBaseUrl,
 			vscode.basePath,
-			30_000,
+			UPSTREAM_READY_WAIT_MS,
 			upstreamFetch,
 		))
 	) {
@@ -284,7 +293,13 @@ export async function choreoHttpProxyResponse(
 		});
 	}
 
-	if (!(await probeChoreoReady(choreo.httpBaseUrl, 30_000, upstreamFetch))) {
+	if (
+		!(await probeChoreoReady(
+			choreo.httpBaseUrl,
+			UPSTREAM_READY_WAIT_MS,
+			upstreamFetch,
+		))
+	) {
 		log.warn("choreo upstream did not become ready", {
 			workspaceId: auth.workspace.id,
 			httpBaseUrl: choreo.httpBaseUrl,
@@ -367,7 +382,13 @@ export async function choreoWebSocketResponse(
 		});
 	}
 
-	if (!(await probeChoreoReady(choreo.httpBaseUrl, 30_000, upstreamFetch))) {
+	if (
+		!(await probeChoreoReady(
+			choreo.httpBaseUrl,
+			UPSTREAM_READY_WAIT_MS,
+			upstreamFetch,
+		))
+	) {
 		return new Response("Choreo upstream did not become ready.", {
 			status: 503,
 		});

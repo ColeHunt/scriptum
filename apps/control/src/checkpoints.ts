@@ -18,7 +18,10 @@ import { ImportError } from "./imports";
 import { getLogger } from "./logging";
 import type { Nt4AutoChooserBridge } from "./nt4-auto";
 import type { RunManager } from "./runs";
-import type { WorkspaceRuntimeProvider } from "./runtime";
+import {
+	type WorkspaceRuntimeProvider,
+	waitForWorkspaceRunning,
+} from "./runtime";
 import type { AppStorage } from "./storage";
 
 const log = getLogger("checkpoints");
@@ -131,8 +134,10 @@ export class CheckpointManager {
 		}
 		this.active.add(workspaceId);
 		try {
-			const runtime =
-				await this.runtimeProvider.ensureWorkspaceRunning(workspaceId);
+			const runtime = await waitForWorkspaceRunning(
+				this.runtimeProvider,
+				workspaceId,
+			);
 			if (runtime.state !== "running") {
 				throw new CheckpointVerifyError(
 					"The workspace isn't running. Open the editor, then try again.",

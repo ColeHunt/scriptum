@@ -9,10 +9,11 @@ import type {
 } from "@frc-scriptum/contracts";
 import { getLogger } from "./logging";
 import { runActiveDuration, runBuildDuration, runsTotal } from "./metrics";
-import type {
-	WorkspaceRuntime,
-	WorkspaceRuntimeCommand,
-	WorkspaceRuntimeProvider,
+import {
+	type WorkspaceRuntime,
+	type WorkspaceRuntimeCommand,
+	type WorkspaceRuntimeProvider,
+	waitForWorkspaceRunning,
 } from "./runtime";
 import type { AppStorage, WorkspaceRow } from "./storage";
 
@@ -358,7 +359,8 @@ export class RunManager {
 				return;
 			}
 
-			const runtime = await this.runtimeProvider.ensureWorkspaceRunning(
+			const runtime = await waitForWorkspaceRunning(
+				this.runtimeProvider,
 				job.workspace.id,
 			);
 			if (runtime.state !== "running") {

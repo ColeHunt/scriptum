@@ -7,7 +7,10 @@ import type {
 import { lessonModuleSubdirSchema } from "@frc-scriptum/contracts";
 import { IMAGE_CATALOG_DIR } from "./catalog";
 import { getLogger } from "./logging";
-import type { WorkspaceRuntimeProvider } from "./runtime";
+import {
+	type WorkspaceRuntimeProvider,
+	waitForWorkspaceRunning,
+} from "./runtime";
 import type { AppStorage, WorkspaceRow } from "./storage";
 
 const log = getLogger("imports");
@@ -242,7 +245,7 @@ export class ImportManager {
 			stage: "container",
 			detail: "Ensuring workspace runtime is running…",
 		});
-		await this.ensureRunning(workspace.id);
+		await this.ensureRunning(workspace.id, send);
 
 		try {
 			// 2. All-branches shallow clone of the repo root (D8). Keeps `.git`/origin.
@@ -316,7 +319,7 @@ export class ImportManager {
 			stage: "container",
 			detail: "Ensuring workspace runtime is running…",
 		});
-		await this.ensureRunning(workspace.id);
+		await this.ensureRunning(workspace.id, send);
 
 		let projectRoot: string;
 		let remoteSourceDir: string | null = null;
@@ -461,9 +464,22 @@ export class ImportManager {
 		send({ type: "progress", stage: "complete", detail: "Lesson loaded." });
 	}
 
-	private async ensureRunning(workspaceId: WorkspaceId): Promise<void> {
-		const runtime =
-			await this.runtimeProvider.ensureWorkspaceRunning(workspaceId);
+	private async ensureRunning(
+		workspaceId: WorkspaceId,
+		send: ImportSend,
+	): Promise<void> {
+		const runtime = await waitForWorkspaceRunning(
+			this.runtimeProvider,
+			workspaceId,
+			{
+				onStarting: () =>
+					send({
+						type: "progress",
+						stage: "container",
+						detail: "Starting a workspace server (about two minutes)…",
+					}),
+			},
+		);
 		if (runtime.state !== "running") {
 			throw new ImportError(
 				runtime.error ?? "Workspace runtime is not running.",
