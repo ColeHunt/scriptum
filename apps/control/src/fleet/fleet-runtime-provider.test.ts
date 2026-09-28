@@ -176,4 +176,20 @@ describe("FleetRuntimeProvider", () => {
 			{ containerAutoStart: false },
 		);
 	});
+
+	test("restarting a stopped workspace never boots a worker", async () => {
+		await withApp(
+			async (app) => {
+				await login(app, "alice");
+				const alice = workspaceBySlug(app, "alice");
+				const { provider, creates } = setup(app.storage);
+
+				const result = await provider.restartWorkspace(alice.id);
+				expect(result.state).toBe("stopped");
+				expect(creates.length).toBe(0);
+				expect(app.storage.findWorkspaceById(alice.id)?.worker_id).toBeNull();
+			},
+			{ containerAutoStart: false },
+		);
+	});
 });
