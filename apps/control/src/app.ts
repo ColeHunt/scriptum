@@ -24,6 +24,8 @@ import { getSessionFromRequest, requireAdmin } from "./auth/middleware";
 import { createCatalogSource } from "./catalog";
 import { CheckpointManager } from "./checkpoints";
 import { LocalDockerRuntimeProvider } from "./containers";
+import { createFleetRuntime } from "./fleet/create-fleet";
+import { loadFleetConfig } from "./fleet/fleet-config";
 import { GamepadSessions } from "./gamepad";
 import { HalSimBridge } from "./halsim";
 import { IdleManager } from "./idle";
@@ -124,6 +126,7 @@ export async function createApp(
 		runCommandFactory,
 		halsimWebSocketFactory,
 		nt4AutoWebSocketFactory,
+		fleetConfig: configuredFleetConfig,
 		...storageConfig
 	} = configInput;
 	const upstreamFetch = configuredUpstreamFetch ?? globalThis.fetch;
@@ -132,8 +135,22 @@ export async function createApp(
 		await seedDemoUser(storage);
 		bootLog.info("demo user seeded", { slug: "demo" });
 	}
+	const fleetConfig = configuredRuntimeProvider
+		? null
+		: configuredFleetConfig !== undefined
+			? configuredFleetConfig
+			: loadFleetConfig(Bun.env, storage.config.hostDataDir);
+	const fleet = fleetConfig ? createFleetRuntime(storage, fleetConfig) : null;
+	if (fleet && fleetConfig) {
+		fleet.start();
+		bootLog.info("fleet mode: workspaces run on worker droplets", {
+			maxWorkers: fleetConfig.maxWorkers,
+			workerSize: fleetConfig.sizeSlug,
+		});
+	}
 	const runtimeProvider =
 		configuredRuntimeProvider ??
+		fleet ??
 		new LocalDockerRuntimeProvider(storage, {
 			dockerRunner,
 			portAvailable,
@@ -182,7 +199,7 @@ export async function createApp(
 		},
 	});
 	idle.start();
-	const dockerStatsPoller = new DockerStatsPoller({ containers });
+	const dockerStatsPoller = new DockerStatsPoller({ runtime: runtimeProvider });
 	dockerStatsPoller.start();
 
 	const adminCtx = { storage, runs, runtimeProvider, catalogSource };
@@ -465,6 +482,7 @@ export async function createApp(
 		close() {
 			bootLog.info("shutting down");
 			idle.stop();
+			fleet?.stop();
 			dockerStatsPoller.stop();
 			halsim.close();
 			nt4Auto.close();

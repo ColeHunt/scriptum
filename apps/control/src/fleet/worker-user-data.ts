@@ -1,41 +1,36 @@
-import { readFile } from "node:fs/promises";
+import { WORKER_READY_MARKER } from "./ssh-worker-probe";
 
 export type WorkerUserDataParams = {
 	/** The head's private IP - it serves the NFS export (setup-head-nfs.sh). */
 	nfsServerIp: string;
-	mountPoint: string;
-	remoteExportPath: string;
+	/** Exported by the head and mounted by the worker at the same path, so
+	 * every host path the head computes for a bind mount is valid on the
+	 * worker too (decision 048, design point #3). */
+	sharedPath: string;
 };
 
+const SAFE_PATH = /^\/[A-Za-z0-9._/-]+$/;
+const SAFE_IP = /^\d{1,3}(\.\d{1,3}){3}$/;
+
 /**
- * Renders deploy/digitalocean/worker-user-data.yaml.tmpl's placeholders into
- * a real cloud-init document, ready to pass as
- * DigitalOceanFleetProvisionerOptions.userData - see decision 048, design
- * point #9. Plain string substitution, not Terraform's templatefile(): this
- * runs at fleet-creation time from the head's own process (once per new
- * worker), not from a one-time `terraform apply`.
+ * Cloud-init for every new worker droplet. Deliberately minimal: Docker, the
+ * NFS client, and the workspace image are baked into the golden snapshot
+ * (bake-golden-image.sh), so first boot only mounts the head's student-data
+ * export and then drops the marker SshWorkerProbe waits for. Every extra
+ * step here is a step that can flake on every scale-up.
  */
-export async function renderWorkerUserData(
-	templatePath: string,
-	params: WorkerUserDataParams,
-): Promise<string> {
-	const template = await readFile(templatePath, "utf8");
-	const rendered = template
-		// biome-ignore lint/suspicious/noTemplateCurlyInString: matches literal cloud-init placeholder text, not a JS template literal
-		.replaceAll("${nfs_server_ip}", params.nfsServerIp)
-		// biome-ignore lint/suspicious/noTemplateCurlyInString: matches literal cloud-init placeholder text, not a JS template literal
-		.replaceAll("${mount_point}", params.mountPoint)
-		// biome-ignore lint/suspicious/noTemplateCurlyInString: matches literal cloud-init placeholder text, not a JS template literal
-		.replaceAll("${remote_export_path}", params.remoteExportPath);
-
-	const unresolved = rendered.match(/\$\{[a-z_]+\}/);
-	if (unresolved) {
-		throw new Error(
-			`worker-user-data template has an unresolved placeholder: ${unresolved[0]}. ` +
-				// biome-ignore lint/suspicious/noTemplateCurlyInString: literal placeholder syntax in the error message, not a JS template literal
-				"Check WorkerUserDataParams covers every ${...} in worker-user-data.yaml.tmpl.",
-		);
+export function renderWorkerUserData(params: WorkerUserDataParams): string {
+	if (!SAFE_IP.test(params.nfsServerIp)) {
+		throw new Error(`Invalid NFS server IP: ${params.nfsServerIp}`);
 	}
-
-	return rendered;
+	if (!SAFE_PATH.test(params.sharedPath)) {
+		throw new Error(`Invalid shared path: ${params.sharedPath}`);
+	}
+	const path = params.sharedPath;
+	return `#cloud-config
+runcmd:
+  - mkdir -p ${path}
+  - grep -q " ${path} " /etc/fstab || echo "${params.nfsServerIp}:${path} ${path} nfs4 _netdev,noatime,hard 0 0" >> /etc/fstab
+  - mount ${path} && touch ${WORKER_READY_MARKER}
+`;
 }

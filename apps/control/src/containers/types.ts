@@ -10,6 +10,15 @@ export type ContainerOrchestratorOptions = {
 	portAvailable?: ((port: number) => Promise<boolean>) | undefined;
 	/** Host block devices for `--device-read-bps`; default: auto-detected. */
 	blockDevices?: string[] | undefined;
+	/** Extra env for every `docker` CLI subprocess this provider spawns -
+	 * `DOCKER_HOST=ssh://...` targets a fleet worker's daemon (decision 048). */
+	dockerEnv?: Record<string, string> | undefined;
+	/** Host IP port-mode containers publish on, and the head proxies to.
+	 * Default loopback; a fleet worker's private IP for a remote daemon. */
+	publishHost?: string | undefined;
+	/** Overrides config.containerNetwork. A fleet worker is always port mode
+	 * (null): the head's own compose network doesn't exist on the worker. */
+	containerNetwork?: string | null | undefined;
 };
 
 export type CodeContainerStatus = ContainersStatusResponse["code"];

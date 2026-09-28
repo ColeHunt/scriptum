@@ -927,6 +927,20 @@ export class AppStorage {
 		return row.n;
 	}
 
+	/** Workspaces holding a worker slot that nobody has touched since
+	 * `cutoffIso` - the fleet releases these so an idle worker can empty out
+	 * even when its workspace never got a running container to idle-stop. */
+	listPlacedWorkspacesIdleSince(cutoffIso: string): WorkspaceId[] {
+		const rows = this.db
+			.query(
+				`SELECT id FROM workspaces
+				 WHERE worker_id IS NOT NULL
+				   AND (last_accessed_at IS NULL OR last_accessed_at < ?)`,
+			)
+			.all(cutoffIso) as Array<{ id: WorkspaceId }>;
+		return rows.map((row) => row.id);
+	}
+
 	/** Assign (or clear, with workerId null) which worker owns a workspace's
 	 * container. The single source of truth for placement - see the
 	 * countWorkspacesOnWorker comment above for why this isn't also mirrored

@@ -149,10 +149,11 @@ FROM oven/bun:${BUN_VERSION}
 
 # Docker CLI only — the daemon is the host's, reached through the bind-mounted
 # /var/run/docker.sock (docker-out-of-docker; workspace containers are
-# siblings). curl serves the compose healthcheck.
+# siblings). curl serves the compose healthcheck. openssh-client is for fleet
+# mode, where the CLI drives worker daemons over DOCKER_HOST=ssh:// (048).
 COPY --from=docker:27.5.1-cli /usr/local/bin/docker /usr/local/bin/docker
 RUN apt-get update -qq \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && apt-get install -y --no-install-recommends curl ca-certificates openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

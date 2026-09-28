@@ -1,4 +1,9 @@
-import type { FleetProvisioner, ProvisionedWorker, WorkerSpec } from "./types";
+import type {
+	FleetProvisioner,
+	ProvisionedWorker,
+	WorkerDroplet,
+	WorkerSpec,
+} from "./types";
 
 /**
  * Real DigitalOcean implementation of FleetProvisioner - see
@@ -17,12 +22,20 @@ type DigitalOceanNetwork = {
 type DigitalOceanDroplet = {
 	id: number;
 	status: "new" | "active" | "off" | "archive";
+	created_at?: string;
 	networks: {
 		v4?: DigitalOceanNetwork[];
 	};
 };
 
 type DigitalOceanDropletResponse = { droplet: DigitalOceanDroplet };
+type DigitalOceanDropletListResponse = {
+	droplets: DigitalOceanDroplet[];
+	links?: { pages?: { next?: string } };
+};
+
+/** Every worker droplet carries this tag; the orphan sweep lists by it. */
+export const WORKER_TAG = "scriptum-worker";
 
 export type DigitalOceanFleetProvisionerOptions = {
 	apiToken: string;
@@ -96,7 +109,7 @@ export class DigitalOceanFleetProvisioner implements FleetProvisioner {
 				backups: false,
 				ipv6: false,
 				monitoring: true,
-				tags: [...(this.options.tags ?? []), "scriptum-worker"],
+				tags: [...(this.options.tags ?? []), WORKER_TAG],
 			},
 		);
 		const dropletId = String(response.droplet.id);
@@ -105,7 +118,31 @@ export class DigitalOceanFleetProvisioner implements FleetProvisioner {
 	}
 
 	async destroyWorker(doDropletId: string): Promise<void> {
-		await this.request("DELETE", `/v2/droplets/${doDropletId}`);
+		await this.request(
+			"DELETE",
+			`/v2/droplets/${doDropletId}`,
+			undefined,
+			[404],
+		);
+	}
+
+	async listWorkerDroplets(): Promise<WorkerDroplet[]> {
+		const droplets: WorkerDroplet[] = [];
+		let path: string | null =
+			`/v2/droplets?tag_name=${WORKER_TAG}&per_page=200`;
+		while (path) {
+			const page: DigitalOceanDropletListResponse =
+				await this.request<DigitalOceanDropletListResponse>("GET", path);
+			for (const droplet of page.droplets) {
+				droplets.push({
+					doDropletId: String(droplet.id),
+					createdAtMs: droplet.created_at ? Date.parse(droplet.created_at) : 0,
+				});
+			}
+			const next = page.links?.pages?.next;
+			path = next ? new URL(next).pathname + new URL(next).search : null;
+		}
+		return droplets;
 	}
 
 	private async waitForPrivateIp(dropletId: string): Promise<string> {
@@ -138,6 +175,7 @@ export class DigitalOceanFleetProvisioner implements FleetProvisioner {
 		method: string,
 		path: string,
 		body?: unknown,
+		okStatuses: number[] = [],
 	): Promise<T> {
 		const response = await this.fetchImpl(`${this.apiBaseUrl}${path}`, {
 			method,
@@ -147,6 +185,9 @@ export class DigitalOceanFleetProvisioner implements FleetProvisioner {
 			},
 			...(body ? { body: JSON.stringify(body) } : {}),
 		});
+		if (okStatuses.includes(response.status)) {
+			return null as T;
+		}
 		if (!response.ok) {
 			const detail = await response.text().catch(() => "");
 			throw new Error(

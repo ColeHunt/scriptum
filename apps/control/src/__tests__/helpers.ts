@@ -322,6 +322,9 @@ export async function withApp<T>(
 		// it actually wins the `??` chain. Tests that want the remote path can
 		// still override via `options`, spread below.
 		catalogRepo: "",
+		// Same reason as catalogRepo: never let a developer's .env turn on
+		// fleet mode (real DigitalOcean calls) inside tests.
+		fleetConfig: null,
 		webDistDir,
 		advantageScopeDistDir,
 		choreoDistDir,

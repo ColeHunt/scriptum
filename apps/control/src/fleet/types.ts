@@ -1,8 +1,7 @@
+import type { WorkerRow } from "../storage";
+
 /**
- * Head/worker fleet abstractions - see docs/decisions/048. Phase 1 (current)
- * defines these interfaces and a scheduler/runtime-provider that work against
- * a fake FleetProvisioner in tests; a real DigitalOceanFleetProvisioner
- * (Phase 2) needs an actual DO account to build and verify against.
+ * Head/worker fleet abstractions - see docs/decisions/048.
  */
 
 export type WorkerSpec = {
@@ -24,7 +23,21 @@ export type ProvisionedWorker = {
  * persistence" answer for why that's safe (nothing worth keeping lives on a
  * worker's own disk).
  */
+export type WorkerDroplet = {
+	doDropletId: string;
+	createdAtMs: number;
+};
+
 export interface FleetProvisioner {
 	createWorker(spec: WorkerSpec): Promise<ProvisionedWorker>;
+	/** Idempotent: destroying a droplet that is already gone succeeds. */
 	destroyWorker(doDropletId: string): Promise<void>;
+	/** Every droplet carrying the worker tag, known to the head or not. */
+	listWorkerDroplets(): Promise<WorkerDroplet[]>;
+}
+
+/** Answers whether a booting worker can take workspaces yet: SSH answers,
+ * the shared filesystem is mounted, and its Docker daemon responds. */
+export interface WorkerProbe {
+	isReady(worker: WorkerRow): Promise<boolean>;
 }

@@ -162,7 +162,7 @@ describe("DigitalOceanFleetProvisioner.destroyWorker", () => {
 		]);
 	});
 
-	test("throws on a failed destroy instead of silently succeeding", async () => {
+	test("treats destroying an already-gone droplet as done", async () => {
 		const { fetchImpl } = createFakeDoApi([
 			{ status: 404, body: { id: "not_found", message: "not found" } },
 		]);
@@ -171,8 +171,72 @@ describe("DigitalOceanFleetProvisioner.destroyWorker", () => {
 			fetchImpl,
 		});
 
-		await expect(provisioner.destroyWorker("does-not-exist")).rejects.toThrow(
-			/404/,
+		await provisioner.destroyWorker("already-gone");
+	});
+
+	test("throws on a failed destroy instead of silently succeeding", async () => {
+		const { fetchImpl } = createFakeDoApi([
+			{ status: 500, body: { id: "server_error", message: "oops" } },
+		]);
+		const provisioner = new DigitalOceanFleetProvisioner({
+			...BASE_OPTIONS,
+			fetchImpl,
+		});
+
+		await expect(provisioner.destroyWorker("123")).rejects.toThrow(/500/);
+	});
+});
+
+describe("DigitalOceanFleetProvisioner.listWorkerDroplets", () => {
+	test("lists every tagged droplet across pages", async () => {
+		const { fetchImpl, calls } = createFakeDoApi([
+			{
+				status: 200,
+				body: {
+					droplets: [
+						{
+							id: 1,
+							status: "active",
+							created_at: "2026-09-28T10:00:00Z",
+							networks: {},
+						},
+					],
+					links: {
+						pages: {
+							next: "https://api.digitalocean.test/v2/droplets?page=2&per_page=200&tag_name=scriptum-worker",
+						},
+					},
+				},
+			},
+			{
+				status: 200,
+				body: {
+					droplets: [
+						{
+							id: 2,
+							status: "new",
+							created_at: "2026-09-28T10:05:00Z",
+							networks: {},
+						},
+					],
+					links: {},
+				},
+			},
+		]);
+		const provisioner = new DigitalOceanFleetProvisioner({
+			...BASE_OPTIONS,
+			fetchImpl,
+		});
+
+		expect(await provisioner.listWorkerDroplets()).toEqual([
+			{ doDropletId: "1", createdAtMs: Date.parse("2026-09-28T10:00:00Z") },
+			{ doDropletId: "2", createdAtMs: Date.parse("2026-09-28T10:05:00Z") },
+		]);
+		expect(calls[0]?.path).toBe(
+			"/v2/droplets?tag_name=scriptum-worker&per_page=200",
+		);
+		expect(calls[1]?.path).toBe(
+			"/v2/droplets?page=2&per_page=200&tag_name=scriptum-worker",
 		);
 	});
 });

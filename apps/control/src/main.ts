@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import type { ControlAppOptions } from "./app";
 import { envContainerUser } from "./config";
 import { selfInspect } from "./containers/self-inspect";
+import { isFleetMode } from "./fleet/fleet-config";
 import {
 	configureLogging,
 	defaultLogFormat,
@@ -31,18 +32,23 @@ const port = Number(Bun.env.PORT ?? 4000);
 // finals (env wins, inspection fills the gaps); we pass those finals as input.
 // Empty/whitespace values count as unset — a bare "FRC_CONTAINER_NETWORK="
 // line in .env must not read as an explicit override that skips detection.
-const inspection = await selfInspect({
-	dataDir: resolve(Bun.env.FRC_DATA_DIR ?? "data"),
-	envHostDataDir: Bun.env.FRC_HOST_DATA_DIR?.trim() || null,
-	envContainerNetwork: Bun.env.FRC_CONTAINER_NETWORK?.trim() || null,
-	envContainerUser: envContainerUser(),
-});
+// Fleet mode (decision 048) runs no local workspaces and gets no Docker socket
+// on the shared droplet, so there is nothing to inspect: its data dir and
+// container user are explicit settings (see fleet/fleet-config.ts).
+const inspection = isFleetMode(Bun.env)
+	? null
+	: await selfInspect({
+			dataDir: resolve(Bun.env.FRC_DATA_DIR ?? "data"),
+			envHostDataDir: Bun.env.FRC_HOST_DATA_DIR?.trim() || null,
+			envContainerNetwork: Bun.env.FRC_CONTAINER_NETWORK?.trim() || null,
+			envContainerUser: envContainerUser(),
+		});
 
 const configInput: ControlAppOptions = {};
 if (demoFlag) {
 	configInput.demo = true;
 }
-if (inspection.containerized) {
+if (inspection?.containerized) {
 	configInput.hostDataDir = inspection.hostDataDir;
 	configInput.containerNetwork = inspection.containerNetwork;
 	// Stamp workspace containers with the control plane's compose project so they
@@ -79,7 +85,11 @@ const maxStudents = c.containerNetwork
 			c.vscodePortRange.end - c.vscodePortRange.start + 1,
 		);
 
-const detected = inspection.autoDetected;
+const detected = inspection?.autoDetected ?? {
+	hostDataDir: false,
+	containerNetwork: false,
+	containerUser: false,
+};
 log.info("control plane configuration", {
 	logLevel: c.logLevel,
 	dataDir: c.dataDir,

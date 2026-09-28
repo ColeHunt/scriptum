@@ -15,7 +15,11 @@ import type {
 } from "../runtime";
 import type { AppStorage, WorkspaceRow } from "../storage";
 import { listWorkspaceDiskLimitDevices } from "./block-devices";
-import { runtimeFromLease, statusFromLease } from "./converters";
+import {
+	LOOPBACK_PUBLISH_HOST,
+	runtimeFromLease,
+	statusFromLease,
+} from "./converters";
 import {
 	dockerPortBindError,
 	inspectContainer as inspectContainerCli,
@@ -55,6 +59,7 @@ import {
 	type DockerRunner,
 	HALSIM_CONTAINER_PORT,
 	type ManagedContainerStats,
+	type PublishedPort,
 	SCOPE_STATE_CONTAINER_DIR,
 	SIM_CONTAINER_PORT,
 	VSCODE_CONTAINER_PORT,
@@ -84,6 +89,9 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 	private readonly customDockerRunner: DockerRunner | null;
 	private readonly portAvailable: (port: number) => Promise<boolean>;
 	private readonly blockDevices: string[];
+	private readonly dockerEnv: Record<string, string> | undefined;
+	private readonly publishHost: string;
+	private readonly containerNetworkOverride: string | null | undefined;
 	private readonly activeEnsures = new Map<
 		string,
 		Promise<CodeContainerStatus>
@@ -96,10 +104,14 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		private readonly storage: AppStorage,
 		options: ContainerOrchestratorOptions = {},
 	) {
+		this.dockerEnv = options.dockerEnv;
+		this.publishHost = options.publishHost ?? LOOPBACK_PUBLISH_HOST;
+		this.containerNetworkOverride = options.containerNetwork;
 		this.customDockerRunner = options.dockerRunner ?? null;
 		this.dockerRunner =
 			options.dockerRunner ??
-			((args) => runDockerCli(this.storage.config.dockerPath, args));
+			((args) =>
+				runDockerCli(this.storage.config.dockerPath, args, {}, this.dockerEnv));
 		this.portAvailable = options.portAvailable ?? portIsFree;
 		this.blockDevices =
 			this.storage.config.codeDiskReadLimit === null
@@ -112,7 +124,9 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 	 * of publishing loopback host ports (the containerized-control-plane mode).
 	 */
 	private get containerNetwork(): string | null {
-		return this.storage.config.containerNetwork;
+		return this.containerNetworkOverride !== undefined
+			? this.containerNetworkOverride
+			: this.storage.config.containerNetwork;
 	}
 
 	/**
@@ -165,6 +179,7 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			lease,
 			code.state,
 			code.error,
+			this.publishHost,
 		);
 	}
 
@@ -183,6 +198,7 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			lease,
 			code.state,
 			code.error,
+			this.publishHost,
 		);
 	}
 
@@ -208,6 +224,8 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			workspace,
 			lease,
 			state,
+			null,
+			this.publishHost,
 		);
 	}
 
@@ -219,7 +237,12 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		const name = codeContainerName(workspaceId);
 		const execArgs = ["exec", ...dockerExecFlags(options), name, ...command];
 		if (!this.customDockerRunner) {
-			return runDockerCli(this.storage.config.dockerPath, execArgs, options);
+			return runDockerCli(
+				this.storage.config.dockerPath,
+				execArgs,
+				options,
+				this.dockerEnv,
+			);
 		}
 		const run = this.runDocker(execArgs, true);
 		if (!options.timeoutMs) {
@@ -264,6 +287,9 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 				stdout: "pipe",
 				stderr: "pipe",
 				stdin: "ignore",
+				...(this.dockerEnv
+					? { env: { ...process.env, ...this.dockerEnv } }
+					: {}),
 			},
 		);
 		let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -510,10 +536,17 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		const simPublished = publishedPortFor(container, SIM_CONTAINER_PORT);
 		const vscodePublished = publishedPortFor(container, VSCODE_CONTAINER_PORT);
 		const halsimPublished = publishedPortFor(container, HALSIM_CONTAINER_PORT);
+		const onPublishHost = (
+			published: PublishedPort | null,
+		): published is PublishedPort =>
+			published !== null &&
+			(this.publishHost === LOOPBACK_PUBLISH_HOST
+				? published.loopback
+				: published.hostIp === this.publishHost);
 		if (
-			!simPublished?.loopback ||
-			!vscodePublished?.loopback ||
-			!halsimPublished?.loopback
+			!onPublishHost(simPublished) ||
+			!onPublishHost(vscodePublished) ||
+			!onPublishHost(halsimPublished)
 		) {
 			return null;
 		}
@@ -701,11 +734,11 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		} else {
 			args.push(
 				"-p",
-				`127.0.0.1:${vscodePort}:${VSCODE_CONTAINER_PORT}`,
+				`${this.publishHost}:${vscodePort}:${VSCODE_CONTAINER_PORT}`,
 				"-p",
-				`127.0.0.1:${simPort}:${SIM_CONTAINER_PORT}`,
+				`${this.publishHost}:${simPort}:${SIM_CONTAINER_PORT}`,
 				"-p",
-				`127.0.0.1:${halsimPort}:${HALSIM_CONTAINER_PORT}`,
+				`${this.publishHost}:${halsimPort}:${HALSIM_CONTAINER_PORT}`,
 			);
 		}
 

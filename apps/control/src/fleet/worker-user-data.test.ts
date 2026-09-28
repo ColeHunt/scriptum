@@ -1,50 +1,36 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { WORKER_READY_MARKER } from "./ssh-worker-probe";
 import { renderWorkerUserData } from "./worker-user-data";
 
-// Renders the REAL template file at its real repo path - catches drift
-// between this code's placeholder names and worker-user-data.yaml.tmpl's,
-// which a synthetic in-test template string would not.
-const TEMPLATE_PATH = resolve(
-	import.meta.dirname,
-	"../../../../deploy/digitalocean/worker-user-data.yaml.tmpl",
-);
-
 describe("renderWorkerUserData", () => {
-	test("substitutes every placeholder in the real template file", async () => {
-		const rendered = await renderWorkerUserData(TEMPLATE_PATH, {
+	test("mounts the head's export at the identical path, then marks ready", () => {
+		const rendered = renderWorkerUserData({
 			nfsServerIp: "10.116.0.3",
-			mountPoint: "/mnt/scriptum-data",
-			remoteExportPath: "/mnt/scriptum-data/users",
+			sharedPath: "/mnt/scriptum-data/users",
 		});
 
+		expect(rendered.startsWith("#cloud-config\n")).toBe(true);
 		expect(rendered).toContain(
-			"10.116.0.3:/mnt/scriptum-data/users /mnt/scriptum-data nfs4",
+			"10.116.0.3:/mnt/scriptum-data/users /mnt/scriptum-data/users nfs4",
 		);
-		expect(rendered).not.toMatch(/\$\{[a-z_]+\}/);
+		// The ready marker only appears if the mount succeeded.
+		expect(rendered).toContain(
+			`mount /mnt/scriptum-data/users && touch ${WORKER_READY_MARKER}`,
+		);
 	});
 
-	test("throws instead of silently shipping an unresolved placeholder", async () => {
-		const dir = await mkdtemp(join(tmpdir(), "frc-worker-user-data-"));
-		const path = join(dir, "template.yaml.tmpl");
-		try {
-			await Bun.write(
-				path,
-				// biome-ignore lint/suspicious/noTemplateCurlyInString: fake template file content, not a JS template literal
-				"runcmd: [mount ${mount_point}, echo ${unknown_key}]\n",
-			);
-
-			await expect(
-				renderWorkerUserData(path, {
-					nfsServerIp: "10.116.0.3",
-					mountPoint: "/mnt/scriptum-data",
-					remoteExportPath: "/mnt/scriptum-data/users",
-				}),
-			).rejects.toThrow(/unresolved placeholder/);
-		} finally {
-			await rm(dir, { recursive: true, force: true });
-		}
+	test("rejects values that would break out of the cloud-init script", () => {
+		expect(() =>
+			renderWorkerUserData({
+				nfsServerIp: "10.116.0.3; rm -rf /",
+				sharedPath: "/mnt/scriptum-data/users",
+			}),
+		).toThrow(/Invalid NFS server IP/);
+		expect(() =>
+			renderWorkerUserData({
+				nfsServerIp: "10.116.0.3",
+				sharedPath: '/mnt/x" >> /etc/passwd',
+			}),
+		).toThrow(/Invalid shared path/);
 	});
 });

@@ -127,6 +127,7 @@ export const test = base.extend<AppFixtures & AppOptions>({
 				// apps/control/src/__tests__/helpers.ts's withApp().
 				catalogRepo: "",
 				demo: false,
+				fleetConfig: null,
 				webDistDir,
 				advantageScopeDistDir: ascopeDistDir,
 				choreoDistDir,

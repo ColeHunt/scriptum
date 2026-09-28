@@ -1,5 +1,6 @@
 import type { ControlConfigInput } from "../config";
 import type { DockerRunner, LocalDockerRuntimeProvider } from "../containers";
+import type { FleetConfig } from "../fleet/fleet-config";
 import type { GamepadSessions } from "../gamepad";
 import type { HalSimBridge, HalSimWebSocketFactory } from "../halsim";
 import type { IdleManager } from "../idle";
@@ -52,6 +53,9 @@ export type ControlAppOptions = ControlConfigInput & {
 	runCommandFactory?: RunCommandFactory | undefined;
 	halsimWebSocketFactory?: HalSimWebSocketFactory | undefined;
 	nt4AutoWebSocketFactory?: Nt4AutoWebSocketFactory | undefined;
+	/** Fleet mode settings; undefined reads them from the environment, null
+	 * forces fleet mode off (tests, so a developer's .env can't enable it). */
+	fleetConfig?: FleetConfig | null | undefined;
 };
 
 export type RunSocketData = {

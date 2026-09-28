@@ -1,27 +1,27 @@
-import type { LocalDockerRuntimeProvider } from "./containers";
 import { getLogger } from "./logging";
 import {
 	activeWorkspaces,
 	containerCpuPercent,
 	containerMemoryPercent,
 } from "./metrics";
+import type { WorkspaceRuntimeProvider } from "./runtime";
 
 const log = getLogger("metrics");
 
 export type DockerStatsPollerOptions = {
-	containers: LocalDockerRuntimeProvider;
+	runtime: Pick<WorkspaceRuntimeProvider, "listRuntimes">;
 	intervalMs?: number;
 };
 
 const DEFAULT_INTERVAL_MS = 15_000;
 
 export class DockerStatsPoller {
-	private readonly containers: LocalDockerRuntimeProvider;
+	private readonly runtime: Pick<WorkspaceRuntimeProvider, "listRuntimes">;
 	private readonly intervalMs: number;
 	private timer: ReturnType<typeof setInterval> | null = null;
 
 	constructor(options: DockerStatsPollerOptions) {
-		this.containers = options.containers;
+		this.runtime = options.runtime;
 		this.intervalMs = options.intervalMs ?? DEFAULT_INTERVAL_MS;
 	}
 
@@ -38,7 +38,7 @@ export class DockerStatsPoller {
 
 	async tick(): Promise<void> {
 		try {
-			const stats = await this.containers.managedContainerStats();
+			const stats = await this.runtime.listRuntimes();
 			containerCpuPercent.reset();
 			containerMemoryPercent.reset();
 			let running = 0;
