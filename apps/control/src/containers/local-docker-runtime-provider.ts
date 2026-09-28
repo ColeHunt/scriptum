@@ -15,7 +15,11 @@ import type {
 } from "../runtime";
 import type { AppStorage, WorkspaceRow } from "../storage";
 import { listWorkspaceDiskLimitDevices } from "./block-devices";
-import { runtimeFromLease, statusFromLease } from "./converters";
+import {
+	LOOPBACK_PUBLISH_HOST,
+	runtimeFromLease,
+	statusFromLease,
+} from "./converters";
 import {
 	dockerPortBindError,
 	inspectContainer as inspectContainerCli,
@@ -48,6 +52,7 @@ import {
 import { toHostPath } from "./paths";
 import { allocatePortFromRange, portIsFree } from "./ports";
 import {
+	CHOREO_CONTAINER_PORT,
 	type CodeContainerStatus,
 	type ContainerOrchestratorOptions,
 	type DockerCommandResult,
@@ -55,6 +60,7 @@ import {
 	type DockerRunner,
 	HALSIM_CONTAINER_PORT,
 	type ManagedContainerStats,
+	type PublishedPort,
 	SCOPE_STATE_CONTAINER_DIR,
 	SIM_CONTAINER_PORT,
 	VSCODE_CONTAINER_PORT,
@@ -84,6 +90,9 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 	private readonly customDockerRunner: DockerRunner | null;
 	private readonly portAvailable: (port: number) => Promise<boolean>;
 	private readonly blockDevices: string[];
+	private readonly dockerEnv: Record<string, string> | undefined;
+	private readonly publishHost: string;
+	private readonly containerNetworkOverride: string | null | undefined;
 	private readonly activeEnsures = new Map<
 		string,
 		Promise<CodeContainerStatus>
@@ -96,10 +105,14 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		private readonly storage: AppStorage,
 		options: ContainerOrchestratorOptions = {},
 	) {
+		this.dockerEnv = options.dockerEnv;
+		this.publishHost = options.publishHost ?? LOOPBACK_PUBLISH_HOST;
+		this.containerNetworkOverride = options.containerNetwork;
 		this.customDockerRunner = options.dockerRunner ?? null;
 		this.dockerRunner =
 			options.dockerRunner ??
-			((args) => runDockerCli(this.storage.config.dockerPath, args));
+			((args) =>
+				runDockerCli(this.storage.config.dockerPath, args, {}, this.dockerEnv));
 		this.portAvailable = options.portAvailable ?? portIsFree;
 		this.blockDevices =
 			this.storage.config.codeDiskReadLimit === null
@@ -112,7 +125,9 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 	 * of publishing loopback host ports (the containerized-control-plane mode).
 	 */
 	private get containerNetwork(): string | null {
-		return this.storage.config.containerNetwork;
+		return this.containerNetworkOverride !== undefined
+			? this.containerNetworkOverride
+			: this.storage.config.containerNetwork;
 	}
 
 	/**
@@ -165,6 +180,7 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			lease,
 			code.state,
 			code.error,
+			this.publishHost,
 		);
 	}
 
@@ -183,6 +199,7 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			lease,
 			code.state,
 			code.error,
+			this.publishHost,
 		);
 	}
 
@@ -208,6 +225,8 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			workspace,
 			lease,
 			state,
+			null,
+			this.publishHost,
 		);
 	}
 
@@ -219,7 +238,12 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		const name = codeContainerName(workspaceId);
 		const execArgs = ["exec", ...dockerExecFlags(options), name, ...command];
 		if (!this.customDockerRunner) {
-			return runDockerCli(this.storage.config.dockerPath, execArgs, options);
+			return runDockerCli(
+				this.storage.config.dockerPath,
+				execArgs,
+				options,
+				this.dockerEnv,
+			);
 		}
 		const run = this.runDocker(execArgs, true);
 		if (!options.timeoutMs) {
@@ -264,6 +288,9 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 				stdout: "pipe",
 				stderr: "pipe",
 				stdin: "ignore",
+				...(this.dockerEnv
+					? { env: { ...process.env, ...this.dockerEnv } }
+					: {}),
 			},
 		);
 		let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -445,7 +472,13 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		rejectedSimPorts: Set<number>,
 		rejectedVscodePorts: Set<number>,
 		rejectedHalsimPorts: Set<number>,
-	): Promise<{ simPort: number; vscodePort: number; halsimPort: number }> {
+		rejectedChoreoPorts: Set<number>,
+	): Promise<{
+		simPort: number;
+		vscodePort: number;
+		halsimPort: number;
+		choreoPort: number;
+	}> {
 		return await this.withPortReservationLock(async () => {
 			const lease = this.storage.getContainerLease(workspace.id);
 			const simPort = await allocatePortFromRange(
@@ -472,6 +505,14 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 				lease?.halsim_port ?? null,
 				rejectedHalsimPorts,
 			);
+			const choreoPort = await allocatePortFromRange(
+				this.storage,
+				this.portAvailable,
+				"choreo",
+				workspace.id,
+				lease?.choreo_port ?? null,
+				rejectedChoreoPorts,
+			);
 			const name = codeContainerName(workspace.id);
 			this.storage.upsertCodeContainerLease({
 				workspaceId: workspace.id,
@@ -479,9 +520,10 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 				simPort,
 				vscodePort,
 				halsimPort,
+				choreoPort,
 				state: "starting",
 			});
-			return { simPort, vscodePort, halsimPort };
+			return { simPort, vscodePort, halsimPort, choreoPort };
 		});
 	}
 
@@ -495,6 +537,7 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		simPort: number | null;
 		vscodePort: number | null;
 		halsimPort: number | null;
+		choreoPort: number | null;
 	} | null {
 		const network = this.containerNetwork;
 		if (network !== null) {
@@ -504,16 +547,32 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			) {
 				return null;
 			}
-			return { simPort: null, vscodePort: null, halsimPort: null };
+			return {
+				simPort: null,
+				vscodePort: null,
+				halsimPort: null,
+				choreoPort: null,
+			};
 		}
 
 		const simPublished = publishedPortFor(container, SIM_CONTAINER_PORT);
 		const vscodePublished = publishedPortFor(container, VSCODE_CONTAINER_PORT);
 		const halsimPublished = publishedPortFor(container, HALSIM_CONTAINER_PORT);
+		const choreoPublished = publishedPortFor(container, CHOREO_CONTAINER_PORT);
+		const onPublishHost = (
+			published: PublishedPort | null,
+		): published is PublishedPort =>
+			published !== null &&
+			(this.publishHost === LOOPBACK_PUBLISH_HOST
+				? published.loopback
+				: published.hostIp === this.publishHost);
 		if (
-			!simPublished?.loopback ||
-			!vscodePublished?.loopback ||
-			!halsimPublished?.loopback
+			!onPublishHost(simPublished) ||
+			!onPublishHost(vscodePublished) ||
+			!onPublishHost(halsimPublished) ||
+			// Containers from before choreo_port was leased don't publish it;
+			// recreating them once is what gives them a working Choreo pane.
+			!onPublishHost(choreoPublished)
 		) {
 			return null;
 		}
@@ -521,6 +580,7 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			simPort: simPublished.port,
 			vscodePort: vscodePublished.port,
 			halsimPort: halsimPublished.port,
+			choreoPort: choreoPublished.port,
 		};
 	}
 
@@ -621,6 +681,7 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		simPort: number | null,
 		vscodePort: number | null,
 		halsimPort: number | null,
+		choreoPort: number | null,
 	): Promise<CodeContainerStatus> {
 		await this.ensureImage();
 		const config = this.storage.config;
@@ -655,6 +716,7 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			simPort,
 			vscodePort,
 			halsimPort,
+			choreoPort,
 			state: "starting",
 		});
 
@@ -701,11 +763,13 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		} else {
 			args.push(
 				"-p",
-				`127.0.0.1:${vscodePort}:${VSCODE_CONTAINER_PORT}`,
+				`${this.publishHost}:${vscodePort}:${VSCODE_CONTAINER_PORT}`,
 				"-p",
-				`127.0.0.1:${simPort}:${SIM_CONTAINER_PORT}`,
+				`${this.publishHost}:${simPort}:${SIM_CONTAINER_PORT}`,
 				"-p",
-				`127.0.0.1:${halsimPort}:${HALSIM_CONTAINER_PORT}`,
+				`${this.publishHost}:${halsimPort}:${HALSIM_CONTAINER_PORT}`,
+				"-p",
+				`${this.publishHost}:${choreoPort}:${CHOREO_CONTAINER_PORT}`,
 			);
 		}
 
@@ -748,6 +812,7 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			simPort,
 			vscodePort,
 			halsimPort,
+			choreoPort,
 			configMount: configVolume
 				? `volume ${configVolume} (demo mode)`
 				: `bind ${toHostPath(config, homePath)}`,
@@ -774,12 +839,17 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			created && this.containerNetwork === null
 				? publishedPortFor(created, HALSIM_CONTAINER_PORT)
 				: null;
+		const createdChoreo =
+			created && this.containerNetwork === null
+				? publishedPortFor(created, CHOREO_CONTAINER_PORT)
+				: null;
 		const lease = this.storage.upsertCodeContainerLease({
 			workspaceId: workspace.id,
 			containerName: name,
 			simPort: createdSim?.port ?? simPort,
 			vscodePort: createdVscode?.port ?? vscodePort,
 			halsimPort: createdHalsim?.port ?? halsimPort,
+			choreoPort: createdChoreo?.port ?? choreoPort,
 			state: created ? containerRuntimeState(created) : "starting",
 		});
 
@@ -863,34 +933,40 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 		// Network mode has no host port allocation, so port-bind conflicts cannot
 		// happen and there is nothing to retry.
 		if (this.containerNetwork !== null) {
-			return this.createCodeContainer(workspace, null, null, null);
+			return this.createCodeContainer(workspace, null, null, null, null);
 		}
 
 		const simRange = this.storage.config.simPortRange;
 		const vscodeRange = this.storage.config.vscodePortRange;
 		const halsimRange = this.storage.config.halsimPortRange;
+		const choreoRange = this.storage.config.choreoPortRange;
 		const maxAttempts = Math.max(
 			simRange.end - simRange.start + 1,
 			vscodeRange.end - vscodeRange.start + 1,
 			halsimRange.end - halsimRange.start + 1,
+			choreoRange.end - choreoRange.start + 1,
 		);
 		const rejectedSimPorts = new Set<number>();
 		const rejectedVscodePorts = new Set<number>();
 		const rejectedHalsimPorts = new Set<number>();
+		const rejectedChoreoPorts = new Set<number>();
 
 		for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-			const { simPort, vscodePort, halsimPort } = await this.reserveCodePorts(
-				workspace,
-				rejectedSimPorts,
-				rejectedVscodePorts,
-				rejectedHalsimPorts,
-			);
+			const { simPort, vscodePort, halsimPort, choreoPort } =
+				await this.reserveCodePorts(
+					workspace,
+					rejectedSimPorts,
+					rejectedVscodePorts,
+					rejectedHalsimPorts,
+					rejectedChoreoPorts,
+				);
 			try {
 				return await this.createCodeContainer(
 					workspace,
 					simPort,
 					vscodePort,
 					halsimPort,
+					choreoPort,
 				);
 			} catch (error) {
 				if (!dockerPortBindError(error)) {
@@ -899,9 +975,11 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 				rejectedSimPorts.add(simPort);
 				rejectedVscodePorts.add(vscodePort);
 				rejectedHalsimPorts.add(halsimPort);
+				rejectedChoreoPorts.add(choreoPort);
 				this.storage.clearReservedPort("sim", workspace.id, simPort);
 				this.storage.clearReservedPort("code", workspace.id, vscodePort);
 				this.storage.clearReservedPort("halsim", workspace.id, halsimPort);
+				this.storage.clearReservedPort("choreo", workspace.id, choreoPort);
 			}
 		}
 
@@ -910,6 +988,7 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			simRange: `${simRange.start}-${simRange.end}`,
 			vscodeRange: `${vscodeRange.start}-${vscodeRange.end}`,
 			halsimRange: `${halsimRange.start}-${halsimRange.end}`,
+			choreoRange: `${choreoRange.start}-${choreoRange.end}`,
 		});
 		throw new Error("No free ports are available for the code container.");
 	}
@@ -934,6 +1013,7 @@ export class LocalDockerRuntimeProvider implements WorkspaceRuntimeProvider {
 			simPort: previous?.nt4_port ?? null,
 			vscodePort: previous?.vscode_port ?? null,
 			halsimPort: previous?.halsim_port ?? null,
+			choreoPort: previous?.choreo_port ?? null,
 			state: "error",
 		});
 		return statusFromLease(

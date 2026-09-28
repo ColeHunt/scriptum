@@ -36,9 +36,6 @@ export type WorkspaceRuntime = {
 		nt4: number | null;
 		vscode: number | null;
 		halsim: number | null;
-		// Always null for now: choreo-server is not yet leased a loopback port
-		// in port mode, only reachable in network mode. See
-		// docs/decisions/042-choreo-integration.md.
 		choreo: number | null;
 	};
 	endpoints: {

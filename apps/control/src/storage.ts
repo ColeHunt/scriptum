@@ -28,17 +28,34 @@ export type WorkspaceRow = {
 	last_accessed_at: string;
 	current_module: string | null;
 	current_module_kind: LessonModuleKind | null;
+	/** Which worker droplet's Docker daemon owns this workspace's container,
+	 * if any. NULL means unplaced (never started, or idle-stopped and free to
+	 * be re-placed on next start). See docs/decisions/048. */
+	worker_id: string | null;
 };
 
 export type ContainerLeaseRow = {
 	workspace_id: WorkspaceId;
 	nt4_port: number | null;
 	halsim_port: number | null;
+	choreo_port: number | null;
 	vscode_container: string | null;
 	vscode_port: number | null;
 	code_state: ContainerState;
 	last_used_at: string;
 	created_at: string;
+};
+
+export type WorkerStatus = "provisioning" | "ready" | "draining" | "destroying";
+
+export type WorkerRow = {
+	id: string;
+	do_droplet_id: string;
+	private_ip: string;
+	status: WorkerStatus;
+	capacity: number;
+	created_at: string;
+	last_heartbeat_at: string | null;
 };
 
 export type RunJobState = "building" | "running" | "failed" | "stopped";
@@ -418,7 +435,9 @@ export class AppStorage {
 				? "nt4_port"
 				: role === "halsim"
 					? "halsim_port"
-					: "vscode_port";
+					: role === "choreo"
+						? "choreo_port"
+						: "vscode_port";
 		const rows = (
 			exceptWorkspaceId
 				? this.db
@@ -467,6 +486,19 @@ export class AppStorage {
           `,
 				)
 				.run("error", timestamp, workspaceId, port);
+		} else if (role === "choreo") {
+			this.db
+				.query(
+					`
+            UPDATE container_leases
+            SET choreo_port = NULL,
+                code_state = ?,
+                last_used_at = ?
+            WHERE workspace_id = ?
+              AND choreo_port = ?
+          `,
+				)
+				.run("error", timestamp, workspaceId, port);
 		} else {
 			this.db
 				.query(
@@ -489,6 +521,7 @@ export class AppStorage {
 		simPort: number | null;
 		vscodePort: number | null;
 		halsimPort: number | null;
+		choreoPort: number | null;
 		state: ContainerState;
 	}): ContainerLeaseRow {
 		const timestamp = nowIso();
@@ -501,16 +534,18 @@ export class AppStorage {
             nt4_port,
             vscode_port,
             halsim_port,
+            choreo_port,
             code_state,
             last_used_at,
             created_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(workspace_id) DO UPDATE SET
             vscode_container = excluded.vscode_container,
             nt4_port = excluded.nt4_port,
             vscode_port = excluded.vscode_port,
             halsim_port = excluded.halsim_port,
+            choreo_port = excluded.choreo_port,
             code_state = excluded.code_state,
             last_used_at = excluded.last_used_at
         `,
@@ -521,6 +556,7 @@ export class AppStorage {
 				input.simPort,
 				input.vscodePort,
 				input.halsimPort,
+				input.choreoPort,
 				input.state,
 				timestamp,
 				timestamp,
@@ -564,10 +600,11 @@ export class AppStorage {
             w.last_accessed_at AS w_last_accessed_at,
             w.current_module AS w_current_module,
             w.current_module_kind AS w_current_module_kind,
+            w.worker_id AS w_worker_id,
             u.id AS u_id, u.name AS u_name, u.email AS u_email,
             u.role AS u_role, u.slug AS u_slug,
             cl.workspace_id AS cl_workspace_id, cl.nt4_port,
-            cl.vscode_container, cl.vscode_port, cl.halsim_port, cl.code_state AS cl_code_state,
+            cl.vscode_container, cl.vscode_port, cl.halsim_port, cl.choreo_port, cl.code_state AS cl_code_state,
             cl.last_used_at AS cl_last_used_at, cl.created_at AS cl_created_at
           FROM workspaces w
           LEFT JOIN user u ON u.id = w.user_id
@@ -584,6 +621,7 @@ export class AppStorage {
 			w_last_accessed_at: string;
 			w_current_module: string | null;
 			w_current_module_kind: LessonModuleKind | null;
+			w_worker_id: string | null;
 			u_id: string | null;
 			u_name: string | null;
 			u_email: string | null;
@@ -592,6 +630,7 @@ export class AppStorage {
 			cl_workspace_id: WorkspaceId | null;
 			nt4_port: number | null;
 			halsim_port: number | null;
+			choreo_port: number | null;
 			vscode_container: string | null;
 			vscode_port: number | null;
 			cl_code_state: ContainerState | null;
@@ -609,6 +648,7 @@ export class AppStorage {
 				last_accessed_at: row.w_last_accessed_at,
 				current_module: row.w_current_module,
 				current_module_kind: row.w_current_module_kind,
+				worker_id: row.w_worker_id,
 			},
 			user: {
 				id: row.u_id ?? row.w_user_id,
@@ -622,6 +662,7 @@ export class AppStorage {
 						workspace_id: row.cl_workspace_id,
 						nt4_port: row.nt4_port,
 						halsim_port: row.halsim_port,
+						choreo_port: row.choreo_port,
 						vscode_container: row.vscode_container,
 						vscode_port: row.vscode_port,
 						code_state: (row.cl_code_state ?? "missing") as ContainerState,
@@ -842,6 +883,94 @@ export class AppStorage {
 			.query("DELETE FROM lesson_assignments WHERE id = ?")
 			.run(id);
 		return result.changes > 0;
+	}
+
+	// --- Worker fleet (head/worker deployment redesign - see docs/decisions/048) ---
+
+	listWorkers(): WorkerRow[] {
+		return this.db
+			.query("SELECT * FROM workers ORDER BY created_at")
+			.all() as WorkerRow[];
+	}
+
+	getWorker(id: string): WorkerRow | null {
+		return this.db
+			.query("SELECT * FROM workers WHERE id = ?")
+			.get(id) as WorkerRow | null;
+	}
+
+	createWorker(input: {
+		id: string;
+		doDropletId: string;
+		privateIp: string;
+		capacity: number;
+	}): WorkerRow {
+		const now = nowIso();
+		this.db
+			.query(
+				`INSERT INTO workers (id, do_droplet_id, private_ip, status, capacity, created_at)
+				 VALUES (?, ?, ?, 'provisioning', ?, ?)`,
+			)
+			.run(input.id, input.doDropletId, input.privateIp, input.capacity, now);
+		const row = this.getWorker(input.id);
+		if (!row) {
+			throw new Error("Failed to reload newly created worker.");
+		}
+		return row;
+	}
+
+	setWorkerStatus(id: string, status: WorkerStatus): void {
+		this.db.query("UPDATE workers SET status = ? WHERE id = ?").run(status, id);
+	}
+
+	recordWorkerHeartbeat(id: string): void {
+		this.db
+			.query("UPDATE workers SET last_heartbeat_at = ? WHERE id = ?")
+			.run(nowIso(), id);
+	}
+
+	/** Returns true if a row was deleted. Workspaces/leases pointing at this
+	 * worker fall back to NULL (unplaced) via ON DELETE SET NULL. */
+	deleteWorker(id: string): boolean {
+		const result = this.db.query("DELETE FROM workers WHERE id = ?").run(id);
+		return result.changes > 0;
+	}
+
+	/** Count of workspaces currently placed on this worker - the scheduler's
+	 * fill level. Counts from workspaces.worker_id (set as soon as placement
+	 * is decided), not container_leases, so a just-assigned workspace whose
+	 * first ensureWorkspaceRunning call hasn't happened yet still occupies its
+	 * slot - otherwise the scheduler could double-book a worker between two
+	 * placement decisions that both land before either container starts. */
+	countWorkspacesOnWorker(workerId: string): number {
+		const row = this.db
+			.query("SELECT COUNT(*) as n FROM workspaces WHERE worker_id = ?")
+			.get(workerId) as { n: number };
+		return row.n;
+	}
+
+	/** Workspaces holding a worker slot that nobody has touched since
+	 * `cutoffIso` - the fleet releases these so an idle worker can empty out
+	 * even when its workspace never got a running container to idle-stop. */
+	listPlacedWorkspacesIdleSince(cutoffIso: string): WorkspaceId[] {
+		const rows = this.db
+			.query(
+				`SELECT id FROM workspaces
+				 WHERE worker_id IS NOT NULL
+				   AND (last_accessed_at IS NULL OR last_accessed_at < ?)`,
+			)
+			.all(cutoffIso) as Array<{ id: WorkspaceId }>;
+		return rows.map((row) => row.id);
+	}
+
+	/** Assign (or clear, with workerId null) which worker owns a workspace's
+	 * container. The single source of truth for placement - see the
+	 * countWorkspacesOnWorker comment above for why this isn't also mirrored
+	 * onto container_leases. */
+	setWorkspaceWorker(workspaceId: WorkspaceId, workerId: string | null): void {
+		this.db
+			.query("UPDATE workspaces SET worker_id = ? WHERE id = ?")
+			.run(workerId, workspaceId);
 	}
 }
 

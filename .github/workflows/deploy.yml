@@ -1,0 +1,229 @@
+name: Deploy
+
+# Deploys main to the MARS/WARS droplet, like the team's other apps: runs after
+# CI Verify passes on main (or by hand). Unlike them, nothing is built on the
+# droplet - Scriptum's images are far too heavy for it - so this builds amd64
+# images here, pushes them to GHCR, rebakes the worker snapshot when the
+# workspace image changed, and then has the droplet pull and restart the head
+# (apps-infra's deploy-scriptum.sh). See docs/deploying/fleet.md.
+#
+# Secrets: SCRIPTUM_DO_TOKEN (repo; droplet create/delete + snapshot/image
+# read/delete, for the bake), and the org-wide MARSWARS_APPS_DEPLOY_HOST /
+# _USER / _SSH_KEY the other apps deploy with.
+
+on:
+  workflow_run:
+    workflows: ["CI Verify"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-scriptum
+  cancel-in-progress: false
+
+env:
+  WORKSPACE_IMAGE: ghcr.io/frc-team-4143/scriptum-workspace
+  CONTROL_IMAGE: ghcr.io/frc-team-4143/scriptum-control
+  # Not secrets: the head's VPC and the DO SSH key put on bake droplets.
+  DO_VPC_UUID: 05c1e8d6-990d-4df3-a114-ef4f8b18d0df
+  DO_SSH_KEY: "59654829"
+
+jobs:
+  prepare:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      sha: ${{ steps.ids.outputs.sha }}
+      tag: ${{ steps.ids.outputs.tag }}
+      ws_tag: ${{ steps.ids.outputs.ws_tag }}
+      ws_exists: ${{ steps.exists.outputs.ws_exists }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      # The workspace image is rebuilt (and the worker snapshot rebaked) only
+      # when something that goes into it changed: its tag is a hash of exactly
+      # those inputs (containers/code/Dockerfile's COPY sources).
+      - name: Compute image tags
+        id: ids
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse HEAD)"
+          key="$(git ls-tree -r HEAD -- containers/code patches/choreo catalog vendor/Choreo LICENSE THIRD_PARTY_NOTICES.md | sha256sum | cut -c1-12)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-${sha:0:12}" >> "$GITHUB_OUTPUT"
+          echo "ws_tag=ws-$key" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Is this workspace image already built?
+        id: exists
+        run: |
+          if docker buildx imagetools inspect "$WORKSPACE_IMAGE:${{ steps.ids.outputs.ws_tag }}" >/dev/null 2>&1; then
+            echo "ws_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ws_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-workspace:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.ws_exists != 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          submodules: recursive
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push workspace image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: containers/code/Dockerfile
+          platforms: linux/amd64
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.prepare.outputs.sha }}
+          tags: ${{ env.WORKSPACE_IMAGE }}:${{ needs.prepare.outputs.ws_tag }}
+          push: true
+          cache-from: type=gha,scope=workspace-amd64
+          cache-to: type=gha,mode=max,scope=workspace-amd64
+
+  # Elastic Dashboard's Flutter web bundle is built on a runner, never in the
+  # control Dockerfile (decision 041) - same as release.yml.
+  build-elastic:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          submodules: recursive
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - run: bun install --frozen-lockfile
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: bun run build:elastic
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: elastic-dist
+          path: dist/elastic
+          if-no-files-found: error
+          retention-days: 1
+
+  build-control:
+    needs: [prepare, build-elastic]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          submodules: recursive
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: elastic-dist
+          path: dist/elastic
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push control image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: containers/control/Dockerfile
+          platforms: linux/amd64
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.prepare.outputs.sha }}
+          tags: |
+            ${{ env.CONTROL_IMAGE }}:${{ needs.prepare.outputs.tag }}
+            ${{ env.CONTROL_IMAGE }}:main
+          push: true
+          cache-from: type=gha,scope=control-amd64
+          cache-to: type=gha,mode=max,scope=control-amd64
+
+  # A no-op when a snapshot for this workspace image already exists.
+  bake-worker-image:
+    needs: [prepare, build-workspace]
+    if: ${{ !cancelled() && needs.prepare.result == 'success' && (needs.build-workspace.result == 'success' || needs.build-workspace.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      snapshot_id: ${{ steps.bake.outputs.snapshot_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.SCRIPTUM_DO_TOKEN }}
+
+      - name: Bake (or reuse) the worker snapshot
+        id: bake
+        env:
+          WORKSPACE_IMAGE: ${{ env.WORKSPACE_IMAGE }}:${{ needs.prepare.outputs.ws_tag }}
+          SNAPSHOT_NAME: scriptum-worker-${{ needs.prepare.outputs.ws_tag }}
+        run: |
+          set -euo pipefail
+          bash deploy/digitalocean/bake-golden-image.sh | tee bake.out
+          grep '^snapshot_id=' bake.out | tail -1 >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: [prepare, build-control, bake-worker-image]
+    if: ${{ !cancelled() && needs.build-control.result == 'success' && needs.bake-worker-image.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restart the head on the new images
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.MARSWARS_APPS_DEPLOY_HOST }}
+          username: ${{ secrets.MARSWARS_APPS_DEPLOY_USER }}
+          key: ${{ secrets.MARSWARS_APPS_DEPLOY_SSH_KEY }}
+          command_timeout: 20m
+          script: >-
+            /opt/apps/deploy-scriptum.sh
+            ${{ needs.prepare.outputs.tag }}
+            ${{ needs.prepare.outputs.ws_tag }}
+            ${{ needs.bake-worker-image.outputs.snapshot_id }}

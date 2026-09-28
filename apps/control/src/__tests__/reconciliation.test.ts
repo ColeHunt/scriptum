@@ -107,11 +107,12 @@ describe("container reconciliation", () => {
 						"frc-sim.role": "code",
 						"frc-sim.workspace": workspace.id,
 					},
-					// Otherwise adoptable: correct labels, all three loopback ports.
+					// Otherwise adoptable: correct labels, all four loopback ports.
 					ports: [
 						{ hostPort: 25836, containerPort: 5810, hostIp: "127.0.0.1" },
 						{ hostPort: 33056, containerPort: 3000, hostIp: "127.0.0.1" },
 						{ hostPort: 34056, containerPort: 3300, hostIp: "127.0.0.1" },
+						{ hostPort: 35056, containerPort: 5900, hostIp: "127.0.0.1" },
 					],
 					mounts: [{ Type: "bind", Destination: "/config" }],
 				});
@@ -142,6 +143,51 @@ describe("container reconciliation", () => {
 		);
 	});
 
+	test("a container from before choreo ports were leased is recreated once, with one", async () => {
+		const fakeDocker = createFakeDocker();
+		await withApp(
+			async (app) => {
+				await login(app, "alice");
+				const workspace = workspaceBySlug(app, "alice");
+				const name = codeContainerName(workspace.id);
+				fakeDocker.containers.set(name, {
+					name,
+					running: true,
+					labels: {
+						"frc-sim.managed": "true",
+						"frc-sim.version": "v2",
+						"frc-sim.role": "code",
+						"frc-sim.workspace": workspace.id,
+					},
+					ports: [
+						{ hostPort: 25834, containerPort: 5810, hostIp: "127.0.0.1" },
+						{ hostPort: 33054, containerPort: 3000, hostIp: "127.0.0.1" },
+						{ hostPort: 34054, containerPort: 3300, hostIp: "127.0.0.1" },
+					],
+				});
+
+				await app.containers.ensureCodeContainer(workspace);
+				expect(fakeDocker.calls).toContainEqual(["rm", "-f", name]);
+				const runCall =
+					fakeDocker.calls.find((call) => call[0] === "run") ?? [];
+				expect(runCall.some((arg) => arg.endsWith(":5900"))).toBe(true);
+				expect(
+					app.storage.getContainerLease(workspace.id)?.choreo_port,
+				).not.toBeNull();
+
+				await app.containers.ensureCodeContainer(workspace);
+				expect(
+					fakeDocker.calls.filter((call) => call[0] === "run"),
+				).toHaveLength(1);
+			},
+			{
+				dockerRunner: fakeDocker.runner,
+				codeImage: "coderunner-workspace:test",
+				containerAutoStart: false,
+			},
+		);
+	});
+
 	test("adoption restarts a stopped code container instead of creating a new one", async () => {
 		const fakeDocker = createFakeDocker();
 
@@ -165,6 +211,7 @@ describe("container reconciliation", () => {
 						{ hostPort: 25834, containerPort: 5810, hostIp: "127.0.0.1" },
 						{ hostPort: 33054, containerPort: 3000, hostIp: "127.0.0.1" },
 						{ hostPort: 34054, containerPort: 3300, hostIp: "127.0.0.1" },
+						{ hostPort: 35054, containerPort: 5900, hostIp: "127.0.0.1" },
 					],
 				});
 
@@ -202,6 +249,7 @@ describe("container reconciliation", () => {
 					simPort: 25836,
 					vscodePort: 33056,
 					halsimPort: 34056,
+					choreoPort: 35056,
 					state: "running",
 				});
 

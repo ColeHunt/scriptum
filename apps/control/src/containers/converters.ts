@@ -10,6 +10,9 @@ import {
 	VSCODE_CONTAINER_PORT,
 } from "./types";
 
+/** Where port-mode containers publish their ports on a local daemon. */
+export const LOOPBACK_PUBLISH_HOST = "127.0.0.1";
+
 export function statusFromLease(
 	image: string,
 	containerNetwork: string | null,
@@ -38,14 +41,17 @@ export function statusFromLease(
 
 /**
  * Build upstream endpoints for a workspace container. Port mode (dev/host
- * deployments) targets the loopback ports published by `docker run -p`;
- * network mode (containerized control plane) targets the container by name on
- * the shared Docker network using the fixed internal ports.
+ * deployments) targets the ports published by `docker run -p` on
+ * `publishHost` - loopback for a local daemon, a worker's private IP for a
+ * fleet worker (decision 048); network mode (containerized control plane)
+ * targets the container by name on the shared Docker network using the fixed
+ * internal ports.
  */
 export function upstreamEndpoints(
 	containerNetwork: string | null,
 	workspace: WorkspaceRow,
 	lease: ContainerLeaseRow | null,
+	publishHost: string = LOOPBACK_PUBLISH_HOST,
 ): Pick<WorkspaceRuntime, "ports" | "endpoints"> {
 	const basePath = `/u/${workspace.slug}/vscode/`;
 
@@ -89,38 +95,43 @@ export function upstreamEndpoints(
 	const vscodePort = lease?.vscode_port ?? null;
 	const nt4Port = lease?.nt4_port ?? null;
 	const halsimPort = lease?.halsim_port ?? null;
+	const choreoPort = lease?.choreo_port ?? null;
 	return {
 		ports: {
 			nt4: nt4Port,
 			vscode: vscodePort,
 			halsim: halsimPort,
-			// Not leased in port mode yet - see docs/decisions/042-choreo-integration.md.
-			choreo: null,
+			choreo: choreoPort,
 		},
 		endpoints: {
 			vscode:
 				vscodePort === null
 					? null
 					: {
-							httpBaseUrl: `http://127.0.0.1:${vscodePort}`,
-							wsBaseUrl: `ws://127.0.0.1:${vscodePort}`,
+							httpBaseUrl: `http://${publishHost}:${vscodePort}`,
+							wsBaseUrl: `ws://${publishHost}:${vscodePort}`,
 							basePath,
 						},
 			nt4:
 				nt4Port === null
 					? null
 					: {
-							httpUrl: `http://127.0.0.1:${nt4Port}/`,
-							wsUrl: `ws://127.0.0.1:${nt4Port}/nt/AdvantageScopeLite`,
+							httpUrl: `http://${publishHost}:${nt4Port}/`,
+							wsUrl: `ws://${publishHost}:${nt4Port}/nt/AdvantageScopeLite`,
 						},
 			halsim:
 				halsimPort === null
 					? null
 					: {
-							wsUrl: `ws://127.0.0.1:${halsimPort}/wpilibws`,
+							wsUrl: `ws://${publishHost}:${halsimPort}/wpilibws`,
 						},
-			// Port mode has no choreo-server endpoint yet.
-			choreo: null,
+			choreo:
+				choreoPort === null
+					? null
+					: {
+							httpBaseUrl: `http://${publishHost}:${choreoPort}`,
+							wsBaseUrl: `ws://${publishHost}:${choreoPort}`,
+						},
 		},
 	};
 }
@@ -132,13 +143,14 @@ export function runtimeFromLease(
 	lease: ContainerLeaseRow | null,
 	state: ContainerState,
 	error: string | null = null,
+	publishHost: string = LOOPBACK_PUBLISH_HOST,
 ): WorkspaceRuntime {
 	return {
 		workspaceId: workspace.id,
 		state,
 		image,
 		runtimeName: lease?.vscode_container ?? null,
-		...upstreamEndpoints(containerNetwork, workspace, lease),
+		...upstreamEndpoints(containerNetwork, workspace, lease, publishHost),
 		lastUsedAt: lease?.last_used_at ?? null,
 		error,
 	};

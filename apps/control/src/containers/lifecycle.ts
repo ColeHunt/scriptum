@@ -37,6 +37,7 @@ export async function stopCodeContainer(
 			simPort: lease.nt4_port,
 			vscodePort: lease.vscode_port,
 			halsimPort: lease.halsim_port,
+			choreoPort: lease.choreo_port,
 			state: "stopped",
 		});
 	}
@@ -76,6 +77,7 @@ export async function removeCodeContainer(
 			simPort: null,
 			vscodePort: null,
 			halsimPort: null,
+			choreoPort: null,
 			state: "missing",
 		});
 	}

@@ -1,0 +1,7 @@
+# do_token is intentionally NOT set here - pass it via TF_VAR_do_token so it
+# never lands in a file, checked in or not.
+region              = "nyc1"          # The head droplet's region.
+vpc_name            = "default-nyc1"  # The head droplet's VPC.
+head_droplet_id     = 604139246       # apps-core (the shared MARS/WARS droplet).
+head_private_ip     = "10.116.0.3"    # apps-core's private IP in that VPC.
+data_volume_size_gb = 100

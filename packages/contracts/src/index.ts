@@ -288,7 +288,7 @@ export type TopLevelSessionResponse = z.infer<
 	typeof topLevelSessionResponseSchema
 >;
 export type HeartbeatResponse = z.infer<typeof heartbeatResponseSchema>;
-export type ContainerRole = "sim" | "code" | "halsim";
+export type ContainerRole = "sim" | "code" | "halsim" | "choreo";
 export type ContainerState = z.infer<typeof containerStateSchema>;
 export type ContainersStatusResponse = z.infer<
 	typeof containersStatusResponseSchema
