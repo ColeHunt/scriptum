@@ -82,6 +82,13 @@ export function WorkspacePage() {
 	const allowedTools = currentModuleInfo?.restrictTools;
 
 	const [switchOpen, setSwitchOpen] = useState(false);
+	// A specific module to jump straight to when SwitchProjectDialog opens
+	// (clicking a newly-unlocked lesson on the completion celebration), rather
+	// than the browse list. Cleared whenever the dialog closes, so the next
+	// ordinary "Switch Project" open starts from the browse list again.
+	const [switchInitialModuleId, setSwitchInitialModuleId] = useState<
+		string | null
+	>(null);
 	const [checkpointsOpen, setCheckpointsOpen] = useState(false);
 	const scopeFrameRef = useRef<HTMLIFrameElement>(null);
 	// Must match the condition that actually mounts the Scope pane below
@@ -416,10 +423,14 @@ export function WorkspacePage() {
 			/>
 			<SwitchProjectDialog
 				open={switchOpen}
-				onOpenChange={setSwitchOpen}
+				onOpenChange={(next) => {
+					setSwitchOpen(next);
+					if (!next) setSwitchInitialModuleId(null);
+				}}
 				workspaceSlug={workspaceSlug}
 				currentModule={currentModule}
 				onSwapComplete={onSwapComplete}
+				initialModuleId={switchInitialModuleId}
 			/>
 			<CheckpointsDialog
 				open={checkpointsOpen}
@@ -431,6 +442,10 @@ export function WorkspacePage() {
 				verify={checkpoints.verify}
 				newlyUnlocked={newlyUnlocked}
 				onLaunchNewLesson={() => setSwitchOpen(true)}
+				onLaunchModule={(moduleId) => {
+					setSwitchInitialModuleId(moduleId);
+					setSwitchOpen(true);
+				}}
 			/>
 		</PaneVisibilityRoot>
 	);

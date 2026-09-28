@@ -8,7 +8,7 @@ import {
 	RotateCcw,
 	Terminal,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SiGithub } from "react-icons/si";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,11 @@ interface SwitchProjectDialogProps {
 	currentModule: string | null;
 	/** Called after a project swap finishes successfully. */
 	onSwapComplete: () => void;
+	/** A module to jump straight to (its confirm screen) as soon as it opens,
+	 * skipping the browse list - e.g. clicking a newly-unlocked lesson on the
+	 * completion celebration. Applied once per time the dialog opens; falls
+	 * back to the normal browse list if the id doesn't match any module. */
+	initialModuleId?: string | null;
 }
 
 type Pending =
@@ -207,11 +212,28 @@ export function SwitchProjectDialog({
 	workspaceSlug,
 	currentModule,
 	onSwapComplete,
+	initialModuleId,
 }: SwitchProjectDialogProps) {
 	const { modules, error, loading } = useLessons(open ? workspaceSlug : null);
 	const { state, startSwap, reset } = useProjectSwap(workspaceSlug);
 
 	const [pending, setPending] = useState<Pending | null>(null);
+
+	// Jump straight to initialModuleId's confirm screen, once per time the
+	// dialog opens with one set. Retries as `modules` finishes loading; gives
+	// up silently (falls back to the browse list) if the id never matches.
+	const appliedInitialModuleRef = useRef(false);
+	useEffect(() => {
+		if (!open) {
+			appliedInitialModuleRef.current = false;
+			return;
+		}
+		if (appliedInitialModuleRef.current || !initialModuleId) return;
+		const module = modules.find((m) => m.id === initialModuleId);
+		if (!module) return;
+		appliedInitialModuleRef.current = true;
+		setPending({ kind: "lesson", module });
+	}, [open, initialModuleId, modules]);
 	const [url, setUrl] = useState("");
 	const [urlError, setUrlError] = useState("");
 	// Empty = every track expanded, which is the default.

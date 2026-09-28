@@ -453,10 +453,14 @@ export class ImportManager {
 			await this.cleanupStaging(workspace.id, stagingName);
 		}
 
-		// Record the loaded module + kind (captured at load time), and drop any
-		// stale checkpoint results from a previous attempt at this module.
+		// Record the loaded module + kind (captured at load time). Prior
+		// checkpoint results for this module are deliberately left alone: a
+		// student reopening a lesson they already passed (e.g. to review it, or
+		// because it's a locked prerequisite for another module) should not
+		// un-complete it just by loading it again. This used to wipe results
+		// on every load, which reset "Completed" badges and could re-lock
+		// downstream lessons on nothing more than a revisit.
 		this._storage.setCurrentModule(workspace.id, moduleId, kind);
-		this._storage.clearCheckpointResults(workspace.id, moduleId);
 
 		send({ type: "progress", stage: "complete", detail: "Lesson loaded." });
 	}

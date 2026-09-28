@@ -375,6 +375,65 @@ describe("SwitchProjectDialog — whole-lesson locking", () => {
 	});
 });
 
+describe("SwitchProjectDialog — jump straight to a lesson", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	test("initialModuleId skips the browse list and opens that lesson's confirm screen", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: () => Promise.resolve(TRACKED_CATALOG),
+			}),
+		);
+
+		render(
+			<SwitchProjectDialog
+				open
+				onOpenChange={noop}
+				workspaceSlug="test-slug"
+				currentModule={null}
+				onSwapComplete={noop}
+				initialModuleId="hello-world"
+			/>,
+		);
+
+		await waitFor(() =>
+			expect(screen.getByText("Discard current work?")).toBeInTheDocument(),
+		);
+		// Landed on the confirm screen for that exact lesson, not the browse list.
+		expect(screen.getByText("Hello, World")).toBeInTheDocument();
+		expect(screen.queryByText("Java Basics")).toBeNull();
+		expect(screen.queryByRole("button", { name: "Load" })).toBeNull();
+	});
+
+	test("without a matching initialModuleId, it shows the normal browse list", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: () => Promise.resolve(TRACKED_CATALOG),
+			}),
+		);
+
+		render(
+			<SwitchProjectDialog
+				open
+				onOpenChange={noop}
+				workspaceSlug="test-slug"
+				currentModule={null}
+				onSwapComplete={noop}
+				initialModuleId="does-not-exist"
+			/>,
+		);
+
+		await waitFor(() => expect(screen.getByText("Tools")).toBeInTheDocument());
+		expect(screen.queryByText("Discard current work?")).toBeNull();
+	});
+});
+
 describe("SwitchProjectDialog — completed lessons", () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();

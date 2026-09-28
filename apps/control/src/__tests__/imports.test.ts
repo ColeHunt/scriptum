@@ -379,6 +379,60 @@ describe("ImportManager — bundled catalog load", () => {
 		});
 	});
 
+	test("reopening an already-passed lesson does not wipe its checkpoint results", async () => {
+		await withApp(async (app) => {
+			await login(app, "alice");
+			const workspace = app.storage.db
+				.query("SELECT * FROM workspaces WHERE slug = ?")
+				.get("alice") as WorkspaceRow;
+
+			const mock = new MockWorkspaceRuntimeProvider([
+				runningRuntime(workspace.id),
+			]);
+			const manager = new ImportManager(app.storage, mock);
+			const ctx: CatalogLoadContext = {
+				source: "catalog",
+				workspace,
+				userId: workspace.user_id,
+				moduleId: "robot-starter",
+				subdir: "modules/robot-starter",
+				kind: "robot",
+				remote: null,
+				send: () => {},
+			};
+
+			// First load, then the student passes a checkpoint.
+			await manager.run(ctx);
+			app.storage.setCheckpointResult(workspace.id, "robot-starter", {
+				checkpointId: "builds",
+				status: "passed",
+				message: null,
+				verifiedAt: new Date().toISOString(),
+			});
+			expect(
+				app.storage.getCheckpointResults(workspace.id, "robot-starter"),
+			).toHaveLength(1);
+
+			// Student switches to another lesson and later comes back to this one
+			// (or just re-loads it) - loading it again must not un-complete it.
+			const messages: ImportServerMessage[] = [];
+			await manager.run({ ...ctx, send: (m) => messages.push(m) });
+
+			expect(messages).toContainEqual(
+				expect.objectContaining({ type: "done", success: true }),
+			);
+			const results = app.storage.getCheckpointResults(
+				workspace.id,
+				"robot-starter",
+			);
+			expect(results).toHaveLength(1);
+			expect(results[0]).toMatchObject({
+				checkpointId: "builds",
+				status: "passed",
+			});
+		});
+	});
+
 	test("catalog load is not rate-limited (students switch lessons freely)", async () => {
 		await withApp(async (app) => {
 			await login(app, "alice");
