@@ -19,11 +19,13 @@
 
 set -euo pipefail
 
-: "${DO_VPC_UUID:?Set DO_VPC_UUID - the head's VPC}"
+: "${DO_VPC_UUID:?Set DO_VPC_UUID - the VPC of the head droplet}"
 : "${WORKSPACE_IMAGE:?Set WORKSPACE_IMAGE - the workspace image reference to pre-pull}"
 : "${SNAPSHOT_NAME:?Set SNAPSHOT_NAME - e.g. scriptum-worker-ws-<key>}"
 DO_REGION="${DO_REGION:-nyc1}"
-BUILDER_SIZE="${BUILDER_SIZE:-s-2vcpu-4gb}"
+# Smallest disk (50 GB): a snapshot only boots on droplets with at least its
+# builder's disk, so a small builder leaves every worker size open.
+BUILDER_SIZE="${BUILDER_SIZE:-s-1vcpu-2gb}"
 BAKE_TIMEOUT_SECONDS="${BAKE_TIMEOUT_SECONDS:-1500}"
 KEEP_SNAPSHOTS="${KEEP_SNAPSHOTS:-2}"
 # An SSH key on the builder stops DigitalOcean emailing a root password for
@@ -84,6 +86,9 @@ power_state:
 EOF
 
 echo "==> Creating builder droplet $BUILDER_NAME" >&2
+# Armed before the create call, by name, so a create that half-succeeds
+# (droplet made, --wait failed) is still cleaned up.
+trap 'rm -f "$user_data"; echo "==> Destroying builder $BUILDER_NAME" >&2; doctl compute droplet delete "$BUILDER_NAME" --force >&2 || true' EXIT
 builder_id="$(doctl compute droplet create "$BUILDER_NAME" \
   --region "$DO_REGION" --size "$BUILDER_SIZE" --image ubuntu-24-04-x64 \
   --vpc-uuid "$DO_VPC_UUID" --tag-name scriptum-builder --ssh-keys "$DO_SSH_KEY" \
