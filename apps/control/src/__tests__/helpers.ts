@@ -961,6 +961,7 @@ export async function login(
 		role: "student",
 		team_number: null,
 		groups: [
+			"scriptum-user",
 			...((options.role ?? "student") === "admin" ? ["scriptum-admin"] : []),
 			...(options.groups ?? []),
 		],
