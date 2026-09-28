@@ -1,54 +1,54 @@
 # deploy/digitalocean/
 
-**Not yet deployed.** Infrastructure-as-code for the head/worker fleet
-redesign — see [decision 048](../../docs/decisions/048-head-worker-fleet-deployment.md)
+**Not yet deployed.** Infrastructure-as-code for the head/worker fleet —
+see [decision 048](../../docs/decisions/048-head-worker-fleet-deployment.md)
 (Status: Proposed). None of this has been run against a real DigitalOcean
-account; it exists so implementation can proceed the moment that account is
-available, per decision 048's phased roadmap.
+account yet.
+
+The **head** is Scriptum's control plane, running as a service in the shared
+MARS/WARS `apps-infra` stack on `apps-core` like the other apps. It also serves
+student files over NFS. **Workers** are droplets the head creates on demand in
+the same VPC to run students' workspace containers, and destroys when idle.
 
 ## What lives here
 
-- `terraform/` — the static, one-time DigitalOcean resources: a private VPC,
-  firewall rules (worker SSH and storage-node NFS/SSH, both restricted to
-  the head's own public IP — see `variables.tf`'s `head_public_ip_cidr`
-  comment for why that's an IP allowlist rather than VPC membership), and the
-  NFS storage node (droplet + attached Volume). Worker droplets themselves
-  are **not** Terraform resources — they're created and destroyed at runtime
-  by the head via `DigitalOceanFleetProvisioner`
-  (`apps/control/src/fleet/digitalocean-fleet-provisioner.ts`), matching
-  decision 048's "Terraform is too slow/stateful for runtime autoscaling"
-  reasoning. The worker firewall rule targets the `scriptum-worker` tag,
-  not `droplet_ids`, so it automatically covers every worker the head
-  creates after `terraform apply` runs once.
-- `storage-node-user-data.yaml.tftpl` — cloud-init for the storage node,
-  rendered once by Terraform (`storage.tf`'s `templatefile()` call): installs
-  `nfs-kernel-server`, formats/mounts the attached Volume, exports it over
-  NFSv4 to the worker subnet.
-- `worker-user-data.yaml.tmpl` — cloud-init for worker droplets. Despite the
-  similar name, this is rendered by **application code**
-  (`apps/control/src/fleet/worker-user-data.ts`), not Terraform — it runs
-  once per newly created worker (dynamic, at fleet-scaling time), not once
-  ever like the storage node's. Deliberately minimal: Docker and the
-  `scriptum-workspace` image are already baked into the golden snapshot a
-  worker boots from, so this only needs to mount the shared NFS export.
+- `terraform/` — the static, one-time resources: the worker firewall (in the
+  head's existing `default-nyc1` VPC; only the head's private IP may connect
+  to a worker) and the data Volume, attached to the head. Worker droplets
+  themselves are **not** Terraform resources — the head creates and destroys
+  them at runtime via `DigitalOceanFleetProvisioner`
+  (`apps/control/src/fleet/digitalocean-fleet-provisioner.ts`), per decision
+  048's "Terraform is too slow/stateful for runtime autoscaling" reasoning.
+  The firewall targets the `scriptum-worker` tag, not `droplet_ids`, so it
+  covers every worker the head creates.
+- `setup-head-nfs.sh` — run once on the head after `terraform apply`: formats
+  the Volume if it's blank, mounts it at `/mnt/scriptum-data`, and exports its
+  `users/` directory over NFSv4 to the VPC, bound to the head's private IP.
+- `worker-user-data.yaml.tmpl` — cloud-init for worker droplets, rendered by
+  **application code** (`apps/control/src/fleet/worker-user-data.ts`) once
+  per new worker. Deliberately minimal: Docker and the `scriptum-workspace`
+  image are already baked into the golden snapshot, so it only mounts the
+  head's NFS export.
 - `bake-golden-image.sh` — builds that golden snapshot: boots a throwaway
-  droplet from a stock Ubuntu image, installs Docker + the NFS client,
-  pre-pulls the workspace image, seals it (unique machine-id/SSH host
-  keys/cloud-init state per clone), snapshots it, and destroys the throwaway
-  droplet. Run by hand for now; decision 048 proposes appending this as a
-  step to `.github/workflows/release.yml` once real DO infrastructure
-  exists, so the golden image stays current with each release.
+  droplet, installs Docker + the NFS client, pre-pulls the workspace image,
+  seals it (unique machine-id/SSH host keys/cloud-init state per clone),
+  snapshots it, and destroys the throwaway droplet. Run by hand for now.
 
-## What's still missing before this can actually be deployed
+## Order of operations (Phase 2)
 
-- A real DigitalOcean account, API token, and SSH key.
-- Running `bake-golden-image.sh` at least once to produce a real snapshot id.
-- `terraform apply` against a throwaway DO project first (not the shared
-  droplet), per decision 048's Phase 2.
+1. A published `ghcr.io/frc-team-4143/scriptum-workspace` image (tag a
+   Scriptum release), public so droplets can pull it.
+2. A DigitalOcean API token with Droplet/VPC/Firewall/Volume scope.
+3. `terraform apply` (fill in `terraform.tfvars` from the `.example`).
+4. `setup-head-nfs.sh` on the head, with the values from `terraform output`.
+5. `bake-golden-image.sh` to produce the worker snapshot id.
+6. End-to-end test: create one worker, run one workspace container on it with
+   the NFS mount, destroy it.
+
+## What's still missing
+
+- A remote Terraform state backend (state is local until one is chosen).
 - Wiring `RemoteDockerRuntimeProvider`/`FleetManager`/
-  `DigitalOceanFleetProvisioner` into `createApp()` — none of this is called
+  `DigitalOceanFleetProvisioner` into `createApp()` — none of it is called
   from the running app yet (Phase 3).
-- Adding `scriptum-head` as a new compose service on the shared MARS/WARS
-  droplet (`/prj/frc/apps/apps-infra`), following that repo's existing
-  per-app pattern — not part of this directory, since the head isn't
-  DigitalOcean-provisioned infrastructure of its own.
+- Scriptum's `apps-infra` compose service (lives in that repo, not here).

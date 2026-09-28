@@ -1,7 +1,8 @@
 # Static, one-time DigitalOcean infrastructure for the head/worker fleet
 # redesign (docs/decisions/048) - NOT YET DEPLOYED. This provisions only the
-# pieces that don't change per-session: the private VPC, firewall rules, and
-# the NFS storage node. Worker droplets themselves are dynamic and created
+# pieces that don't change per-session: the worker firewall (in the head's
+# existing VPC) and the data Volume attached to the head, which serves it to
+# workers over NFS (../setup-head-nfs.sh). Worker droplets themselves are dynamic and created
 # directly via the DigitalOcean API by the head's fleet manager
 # (apps/control/src/fleet/digitalocean-fleet-provisioner.ts), not by
 # Terraform - see decision 048's "Provisioning" design point for why

@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 
 export type WorkerUserDataParams = {
-	storagePrivateIp: string;
+	/** The head's private IP - it serves the NFS export (setup-head-nfs.sh). */
+	nfsServerIp: string;
 	mountPoint: string;
 	remoteExportPath: string;
 };
@@ -12,9 +13,7 @@ export type WorkerUserDataParams = {
  * DigitalOceanFleetProvisionerOptions.userData - see decision 048, design
  * point #9. Plain string substitution, not Terraform's templatefile(): this
  * runs at fleet-creation time from the head's own process (once per new
- * worker), not from a one-time `terraform apply` - unlike
- * storage-node-user-data.yaml.tftpl, which really is Terraform-rendered
- * since the storage node is a one-time resource.
+ * worker), not from a one-time `terraform apply`.
  */
 export async function renderWorkerUserData(
 	templatePath: string,
@@ -23,7 +22,7 @@ export async function renderWorkerUserData(
 	const template = await readFile(templatePath, "utf8");
 	const rendered = template
 		// biome-ignore lint/suspicious/noTemplateCurlyInString: matches literal cloud-init placeholder text, not a JS template literal
-		.replaceAll("${storage_private_ip}", params.storagePrivateIp)
+		.replaceAll("${nfs_server_ip}", params.nfsServerIp)
 		// biome-ignore lint/suspicious/noTemplateCurlyInString: matches literal cloud-init placeholder text, not a JS template literal
 		.replaceAll("${mount_point}", params.mountPoint)
 		// biome-ignore lint/suspicious/noTemplateCurlyInString: matches literal cloud-init placeholder text, not a JS template literal

@@ -9,7 +9,9 @@ implemented, no DigitalOcean infrastructure exists yet)
 > the other MARS/WARS apps. This design now only covers where student
 > workspaces run: the head is Scriptum's `apps-infra` service, and workers
 > carry the per-student containers the shared droplet can't hold. There is no
-> GCE cutover.
+> GCE cutover. The same day, the storage droplet and the separate VPC were
+> dropped in favour of the head serving NFS inside its existing VPC (design
+> points 5 and 6).
 
 ## Context
 
@@ -49,18 +51,19 @@ Browser
    │  HTTPS/WSS (one port, unchanged)
    ▼
 Shared droplet — apps-infra compose stack
-   rev-proxy (NPM) ──▶ coderunner-head (new compose service)
+   rev-proxy (NPM) ──▶ scriptum-head (new compose service)
                          - Legion SSO (unchanged)
                          - SQLite: workspaces/leases/audit + NEW workers table
                          - Fleet manager (DO API client)
                          - RemoteDockerRuntimeProvider
-                              │  private DO VPC (new)
-                ┌─────────────┼─────────────┐
-                ▼             ▼             ▼
-          worker droplet worker droplet  storage droplet
-          (Docker only,  (Docker only,   (NFS server + DO
-           bin-packed)    bin-packed)     Volume, persistent)
-                └─────────────┴─────────────┘
+                       host: NFS server for an attached DO Volume
+                              │  the droplet's existing private VPC
+                       ┌──────┴──────┐
+                       ▼             ▼
+                 worker droplet worker droplet
+                 (Docker only,  (Docker only,
+                  bin-packed)    bin-packed)
+                       └──────┬──────┘
                 NFS-mounted data/users/<id>/{project,home}
 ```
 
@@ -96,15 +99,20 @@ mount — no CodeRunner code is ever deployed to them.
    single source of truth for placement, set as soon as the scheduler decides
    it, deliberately **not** mirrored onto `container_leases` (a workspace can
    be assigned before any lease exists; a second copy is only a drift risk).
-5. **Persistence**: a small dedicated storage droplet running an NFS server
-   backed by a resizable DO Volume, on the private VPC, mounted by every
-   worker and the head.
-6. **Networking**: a new DigitalOcean VPC spanning the head, storage node,
-   and workers; firewall rules restrict worker SSH (22) and the storage
-   node's NFS port (2049) to only the head's/storage node's private IPs —
-   workers never get a public CodeRunner-facing port, matching the shared
-   droplet's existing convention that nothing but `rev-proxy` touches the
-   public internet.
+5. **Persistence**: a resizable DO Volume attached to the head, which serves
+   its `users/` directory over NFSv4 to every worker
+   (`deploy/digitalocean/setup-head-nfs.sh`). *Revised 2026-09-27: originally
+   a separate always-on storage droplet; the head can serve NFS now that it
+   shares a VPC with the workers, which saves a droplet (the team's droplet
+   cap is small) and its cost.*
+6. **Networking**: workers join the shared droplet's existing VPC
+   (`default-nyc1`). A tag-based firewall admits only the head's private IP
+   into workers, and the head's nfsd binds to that private IP with NFSv3/
+   rpcbind disabled — workers never get a public Scriptum-facing port,
+   matching the shared droplet's convention that nothing but `rev-proxy`
+   touches the public internet. *Revised 2026-09-27: originally a new VPC
+   with the head outside it and allowlisted by public IP, because the old
+   shared droplet predated any VPC; the rebuilt droplet is already in one.*
 7. **Provisioning**: the head calls the DigitalOcean REST API directly to
    create workers (from a pre-baked custom image) and destroy them once
    idle. The DO API token is a scoped credential in a manually-managed

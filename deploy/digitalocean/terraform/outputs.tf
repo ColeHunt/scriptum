@@ -1,16 +1,21 @@
 output "vpc_uuid" {
   description = "Pass as DigitalOceanFleetProvisionerOptions.vpcUuid on the head."
-  value       = digitalocean_vpc.fleet.id
+  value       = data.digitalocean_vpc.shared.id
 }
 
-output "storage_node_private_ip" {
-  description = "NFS server address for the worker cloud-init template's $${storage_private_ip} placeholder (see worker-user-data.yaml.tmpl)."
-  value       = digitalocean_droplet.storage.ipv4_address_private
+output "vpc_ip_range" {
+  description = "Pass to setup-head-nfs.sh as the CIDR allowed to mount the NFS export."
+  value       = data.digitalocean_vpc.shared.ip_range
 }
 
-output "storage_node_public_ip" {
-  description = "For operator SSH from the head (allowed by the storage firewall's head_public_ip_cidr rule)."
-  value       = digitalocean_droplet.storage.ipv4_address
+output "nfs_server_ip" {
+  description = "The head's private IP: the worker cloud-init template's $${nfs_server_ip} and setup-head-nfs.sh's bind address."
+  value       = var.head_private_ip
+}
+
+output "data_volume_name" {
+  description = "Pass to setup-head-nfs.sh; the Volume appears on the head at /dev/disk/by-id/scsi-0DO_Volume_<name>."
+  value       = digitalocean_volume.data.name
 }
 
 output "worker_tag" {
