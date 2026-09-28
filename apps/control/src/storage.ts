@@ -38,6 +38,7 @@ export type ContainerLeaseRow = {
 	workspace_id: WorkspaceId;
 	nt4_port: number | null;
 	halsim_port: number | null;
+	choreo_port: number | null;
 	vscode_container: string | null;
 	vscode_port: number | null;
 	code_state: ContainerState;
@@ -434,7 +435,9 @@ export class AppStorage {
 				? "nt4_port"
 				: role === "halsim"
 					? "halsim_port"
-					: "vscode_port";
+					: role === "choreo"
+						? "choreo_port"
+						: "vscode_port";
 		const rows = (
 			exceptWorkspaceId
 				? this.db
@@ -483,6 +486,19 @@ export class AppStorage {
           `,
 				)
 				.run("error", timestamp, workspaceId, port);
+		} else if (role === "choreo") {
+			this.db
+				.query(
+					`
+            UPDATE container_leases
+            SET choreo_port = NULL,
+                code_state = ?,
+                last_used_at = ?
+            WHERE workspace_id = ?
+              AND choreo_port = ?
+          `,
+				)
+				.run("error", timestamp, workspaceId, port);
 		} else {
 			this.db
 				.query(
@@ -505,6 +521,7 @@ export class AppStorage {
 		simPort: number | null;
 		vscodePort: number | null;
 		halsimPort: number | null;
+		choreoPort: number | null;
 		state: ContainerState;
 	}): ContainerLeaseRow {
 		const timestamp = nowIso();
@@ -517,16 +534,18 @@ export class AppStorage {
             nt4_port,
             vscode_port,
             halsim_port,
+            choreo_port,
             code_state,
             last_used_at,
             created_at
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(workspace_id) DO UPDATE SET
             vscode_container = excluded.vscode_container,
             nt4_port = excluded.nt4_port,
             vscode_port = excluded.vscode_port,
             halsim_port = excluded.halsim_port,
+            choreo_port = excluded.choreo_port,
             code_state = excluded.code_state,
             last_used_at = excluded.last_used_at
         `,
@@ -537,6 +556,7 @@ export class AppStorage {
 				input.simPort,
 				input.vscodePort,
 				input.halsimPort,
+				input.choreoPort,
 				input.state,
 				timestamp,
 				timestamp,
@@ -584,7 +604,7 @@ export class AppStorage {
             u.id AS u_id, u.name AS u_name, u.email AS u_email,
             u.role AS u_role, u.slug AS u_slug,
             cl.workspace_id AS cl_workspace_id, cl.nt4_port,
-            cl.vscode_container, cl.vscode_port, cl.halsim_port, cl.code_state AS cl_code_state,
+            cl.vscode_container, cl.vscode_port, cl.halsim_port, cl.choreo_port, cl.code_state AS cl_code_state,
             cl.last_used_at AS cl_last_used_at, cl.created_at AS cl_created_at
           FROM workspaces w
           LEFT JOIN user u ON u.id = w.user_id
@@ -610,6 +630,7 @@ export class AppStorage {
 			cl_workspace_id: WorkspaceId | null;
 			nt4_port: number | null;
 			halsim_port: number | null;
+			choreo_port: number | null;
 			vscode_container: string | null;
 			vscode_port: number | null;
 			cl_code_state: ContainerState | null;
@@ -641,6 +662,7 @@ export class AppStorage {
 						workspace_id: row.cl_workspace_id,
 						nt4_port: row.nt4_port,
 						halsim_port: row.halsim_port,
+						choreo_port: row.choreo_port,
 						vscode_container: row.vscode_container,
 						vscode_port: row.vscode_port,
 						code_state: (row.cl_code_state ?? "missing") as ContainerState,

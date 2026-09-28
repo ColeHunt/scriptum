@@ -41,6 +41,7 @@ export type ControlConfig = {
 	simPortRange: PortRange;
 	vscodePortRange: PortRange;
 	halsimPortRange: PortRange;
+	choreoPortRange: PortRange;
 	runBuildTimeoutMs: number;
 	simStartupTimeoutMs: number;
 	containerUser: string | null;
@@ -58,6 +59,7 @@ export type ControlConfigInput = Partial<
 		| "simPortRange"
 		| "vscodePortRange"
 		| "halsimPortRange"
+		| "choreoPortRange"
 		| "logLevel"
 		| "containerAutoStart"
 		| "demo"
@@ -67,6 +69,7 @@ export type ControlConfigInput = Partial<
 	simPortRange?: PortRange | string;
 	vscodePortRange?: PortRange | string;
 	halsimPortRange?: PortRange | string;
+	choreoPortRange?: PortRange | string;
 	idleStopMinutes?: number | string;
 	idleCheckIntervalMs?: number | string;
 	maxActiveContainers?: number | string;
@@ -94,6 +97,7 @@ const defaultDataDir = resolve(repoRoot, "data");
 const defaultSimPortRange: PortRange = { start: 25810, end: 25899 };
 const defaultVscodePortRange: PortRange = { start: 33000, end: 33099 };
 const defaultHalsimPortRange: PortRange = { start: 34000, end: 34099 };
+const defaultChoreoPortRange: PortRange = { start: 35000, end: 35099 };
 
 function parsePortRange(
 	value: string | PortRange | undefined,
@@ -379,6 +383,10 @@ export function loadControlConfig(
 		halsimPortRange: parsePortRange(
 			input.halsimPortRange ?? Bun.env.HALSIM_PORT_RANGE,
 			defaultHalsimPortRange,
+		),
+		choreoPortRange: parsePortRange(
+			input.choreoPortRange ?? Bun.env.CHOREO_PORT_RANGE,
+			defaultChoreoPortRange,
 		),
 		runBuildTimeoutMs: parsePositiveInteger(
 			input.runBuildTimeoutMs ?? Bun.env.RUN_BUILD_TIMEOUT_MS,

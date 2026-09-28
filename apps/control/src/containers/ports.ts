@@ -32,7 +32,7 @@ export async function portIsFree(port: number): Promise<boolean> {
 export async function allocatePortFromRange(
 	storage: AppStorage,
 	portAvailable: (port: number) => Promise<boolean>,
-	role: "sim" | "code" | "halsim",
+	role: "sim" | "code" | "halsim" | "choreo",
 	workspaceId: WorkspaceId,
 	preferredPort: number | null,
 	rejectedPorts: Set<number>,
@@ -42,7 +42,9 @@ export async function allocatePortFromRange(
 			? storage.config.simPortRange
 			: role === "halsim"
 				? storage.config.halsimPortRange
-				: storage.config.vscodePortRange;
+				: role === "choreo"
+					? storage.config.choreoPortRange
+					: storage.config.vscodePortRange;
 	const leasedPorts = new Set(storage.listLeasedPorts(role, workspaceId));
 	const candidates: number[] = [];
 	if (preferredPort !== null) {

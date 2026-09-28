@@ -95,13 +95,13 @@ export function upstreamEndpoints(
 	const vscodePort = lease?.vscode_port ?? null;
 	const nt4Port = lease?.nt4_port ?? null;
 	const halsimPort = lease?.halsim_port ?? null;
+	const choreoPort = lease?.choreo_port ?? null;
 	return {
 		ports: {
 			nt4: nt4Port,
 			vscode: vscodePort,
 			halsim: halsimPort,
-			// Not leased in port mode yet - see docs/decisions/042-choreo-integration.md.
-			choreo: null,
+			choreo: choreoPort,
 		},
 		endpoints: {
 			vscode:
@@ -125,8 +125,13 @@ export function upstreamEndpoints(
 					: {
 							wsUrl: `ws://${publishHost}:${halsimPort}/wpilibws`,
 						},
-			// Port mode has no choreo-server endpoint yet.
-			choreo: null,
+			choreo:
+				choreoPort === null
+					? null
+					: {
+							httpBaseUrl: `http://${publishHost}:${choreoPort}`,
+							wsBaseUrl: `ws://${publishHost}:${choreoPort}`,
+						},
 		},
 	};
 }

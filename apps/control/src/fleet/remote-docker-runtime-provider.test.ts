@@ -63,11 +63,15 @@ describe("RemoteDockerRuntimeProvider", () => {
 				// Ports publish on the worker's private IP, and the head proxies there.
 				const run = fakeDocker1.calls.find((args) => args[0] === "run") ?? [];
 				const published = run.filter((_, i) => run[i - 1] === "-p");
-				expect(published.length).toBe(3);
+				expect(published.length).toBe(4);
 				for (const mapping of published) {
 					expect(mapping.startsWith("10.0.0.1:")).toBe(true);
 				}
 				expect(aliceRuntime.endpoints.vscode?.httpBaseUrl).toMatch(
+					/^http:\/\/10\.0\.0\.1:\d+$/,
+				);
+				// Choreo is reachable in port mode too, so its pane works on workers.
+				expect(aliceRuntime.endpoints.choreo?.httpBaseUrl).toMatch(
 					/^http:\/\/10\.0\.0\.1:\d+$/,
 				);
 				expect(aliceRuntime.endpoints.halsim?.wsUrl).toMatch(

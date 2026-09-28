@@ -27,6 +27,7 @@ async function tempDb(): Promise<{ db: Database; dbPath: string }> {
 			nt4_port INTEGER,
 			vscode_port INTEGER,
 			halsim_port INTEGER,
+			choreo_port INTEGER,
 			code_state TEXT NOT NULL DEFAULT 'missing',
 			last_used_at TEXT NOT NULL,
 			created_at TEXT NOT NULL

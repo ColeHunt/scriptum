@@ -74,6 +74,7 @@ function clearContainerLeases(dbPath: string): number {
 								nt4_port = NULL,
 								vscode_port = NULL,
 								halsim_port = NULL,
+								choreo_port = NULL,
 								code_state = 'missing',
 								last_used_at = ?
 					`,

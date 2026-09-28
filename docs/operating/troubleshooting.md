@@ -226,8 +226,9 @@ workspace containers, so it can't hit this failure; its concurrency limit is
 many students get "server at capacity" even when the concurrency cap has not
 been reached.
 
-**Cause.** All ports in `SIM_PORT_RANGE`, `VSCODE_PORT_RANGE`, or
-`HALSIM_PORT_RANGE` are leased (or stale leases were not cleaned up).
+**Cause.** All ports in `SIM_PORT_RANGE`, `VSCODE_PORT_RANGE`,
+`HALSIM_PORT_RANGE`, or `CHOREO_PORT_RANGE` are leased (or stale leases were
+not cleaned up).
 
 **Fix.** Each range supports 90 concurrent leases by default (e.g.
 `25810–25899`). If you have more than 90 simultaneous students, expand the
@@ -237,6 +238,7 @@ ranges:
 SIM_PORT_RANGE=25810-25999
 VSCODE_PORT_RANGE=33000-33199
 HALSIM_PORT_RANGE=34000-34199
+CHOREO_PORT_RANGE=35000-35199
 ```
 
 Stale leases can accumulate if containers were stopped without the control
