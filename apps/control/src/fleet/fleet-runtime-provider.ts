@@ -111,12 +111,18 @@ export class FleetRuntimeProvider implements WorkspaceRuntimeProvider {
 		this.fleet.unplaceWorkspace(workspaceId);
 	}
 
+	/** Restarts a running workspace only. Unlike a local daemon, starting a
+	 * stopped one can boot a paid worker, so the admin portal's Restart button
+	 * never does that - the student opening Scriptum does. */
 	async restartWorkspace(workspaceId: WorkspaceId): Promise<WorkspaceRuntime> {
 		const placement = this.fleet.lookup(workspaceId);
 		if (placement.kind === "placed" && placement.ready) {
 			return this.remote.restartWorkspace(workspaceId);
 		}
-		return this.ensureWorkspaceRunning(workspaceId);
+		return this.idleRuntime(
+			workspaceId,
+			placement.kind === "unplaced" ? "stopped" : "starting",
+		);
 	}
 
 	async removeWorkspace(workspaceId: WorkspaceId): Promise<void> {
