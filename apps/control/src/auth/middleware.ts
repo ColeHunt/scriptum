@@ -6,7 +6,11 @@
  */
 
 import type { WorkspaceSlug } from "@frc-scriptum/contracts";
-import { getLegionSessionFromRequest } from "../legion/session";
+import {
+	getLegionSessionFromRequest,
+	legionAccessProblem,
+	SCRIPTUM_USER_GROUP,
+} from "../legion/session";
 import { getLogger } from "../logging";
 import type { AppStorage, AuthContext } from "../storage";
 import { getDemoSession } from "./demo";
@@ -24,8 +28,6 @@ export type ResolvedSession = {
 		groups: string[];
 	};
 	session: { token: string };
-	/** True on a weak, magic-link-issued Legion session. Always false in demo mode. */
-	viaLink: boolean;
 };
 
 /** Resolve the current session from the incoming request (demo mode, or Legion's
@@ -35,7 +37,7 @@ export async function getSessionFromRequest(
 	request: Request,
 ): Promise<ResolvedSession | null> {
 	if (storage.config.demo) {
-		return { ...getDemoSession(), viaLink: false };
+		return getDemoSession();
 	}
 	try {
 		const session = await getLegionSessionFromRequest(
@@ -81,6 +83,21 @@ export async function requireWorkspaceOwnership(
 	const session = await getSessionFromRequest(storage, request);
 	if (!session) {
 		return new Response("Unauthorized", { status: 401 });
+	}
+
+	// Workspaces are invitation-only (an admin isn't automatically a user).
+	// Checked on every request, so removing someone from the group in Legion
+	// cuts them off at their next one.
+	if (
+		!storage.config.demo &&
+		!session.user.groups.includes(SCRIPTUM_USER_GROUP)
+	) {
+		log.warn("workspace rejected: not in scriptum-user", {
+			userId: session.user.id,
+		});
+		return new Response("You don't have access to a Scriptum workspace.", {
+			status: 403,
+		});
 	}
 
 	const workspace = storage.findWorkspaceBySlug(slug as WorkspaceSlug);
@@ -134,20 +151,18 @@ export async function requireAdmin(
 		return session;
 	}
 
-	if (session?.viaLink && storage.config.legionBaseUrl) {
-		// A magic-link session is deliberately non-privileged (Legion emits
-		// `groups: []` for these) - offer a step-up to a real sign-in instead of
-		// a flat 403, matching every sibling app's convention.
-		log.info("admin route: stepping up a magic-link session", {
-			userId: session.user.id,
-		});
-		const returnTo = new URL(request.url).pathname;
-		return new Response(null, {
-			status: 303,
-			headers: {
-				location: `${storage.config.legionBaseUrl}/sso/stepup?app=scriptum&return_to=${encodeURIComponent(returnTo)}`,
-			},
-		});
+	if (
+		!session &&
+		storage.config.legionBaseUrl &&
+		legionAccessProblem(storage.config, request) === "quick-link"
+	) {
+		// Scriptum never accepts a Slack quick-link session; send them to a
+		// real sign-in instead of a flat 401.
+		log.info("admin route: stepping up a quick-link session");
+		return legionStepUpRedirect(
+			storage.config.legionBaseUrl,
+			new URL(request.url).pathname,
+		);
 	}
 
 	if (!session) {
@@ -218,4 +233,33 @@ export function requireWebSocketOrigin(
 		baseUrl,
 	});
 	return new Response("WebSocket origin is not allowed.", { status: 403 });
+}
+
+/** Legion's full sign-in (Approve/Deny push), for a quick-link session. A
+ * plain /sso/authorize would hand back another quick link and loop. */
+export function legionStepUpRedirect(
+	legionBaseUrl: string,
+	returnTo: string,
+): Response {
+	return new Response(null, {
+		status: 303,
+		headers: {
+			location: `${legionBaseUrl}/sso/stepup?app=scriptum&return_to=${encodeURIComponent(returnTo)}`,
+		},
+	});
+}
+
+/** Shown to someone signed in to Legion but not invited to Scriptum. */
+export function noAccessResponse(): Response {
+	return new Response(
+		`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Scriptum</title>
+<style>body{font:16px/1.5 system-ui,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#0f1115;color:#e6e8eb}main{max-width:32rem;padding:2rem}h1{font-size:1.4rem;margin:0 0 .75rem}p{color:#aab0b8}a{color:#8ab4ff}</style></head>
+<body><main><h1>You don't have access to Scriptum yet</h1>
+<p>Scriptum workspaces are set up by invitation. Ask a mentor to add you to the <strong>scriptum-user</strong> group in Legion, then come back to this page.</p>
+<p><a href="/logout">Sign out</a></p></main></body></html>`,
+		{
+			status: 403,
+			headers: { "content-type": "text/html; charset=utf-8" },
+		},
+	);
 }

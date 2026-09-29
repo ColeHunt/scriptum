@@ -48,18 +48,24 @@ Where these values live depends on the deployment:
 - **MARS/WARS droplet:** in `/opt/apps/scriptum/.env`, like every other app in
   the stack.
 
-## Bootstrapping the first admin
+## Who can use Scriptum
 
-There is nothing to bootstrap on CodeRunner's side — admin access is entirely
-a Legion group membership, recomputed live on every request from the signed
-`mw_sso` cookie. **In Legion's own admin panel** (`/admin/groups`), create a
-group named `scriptum-admin` (if it doesn't already exist) and add whoever
-should reach CodeRunner's `/admin` to it. That's the whole bootstrap — no
-CodeRunner-side commands, no restart required, no local allowlist to seed.
+Access is entirely Legion group membership, recomputed live on every request
+from the signed `mw_sso` cookie, and granted by hand in **Legion's own admin
+panel** (`/admin/groups`). Legion creates both groups at startup, empty:
 
-Anyone who can sign in through Legion at all can use CodeRunner — Legion
-membership alone is the access gate. There is no separate CodeRunner-side
-allowlist of who may sign in.
+- **`scriptum-user`** — gets a workspace. Nobody is in it by default, and no
+  role or other group implies it. Without it, a signed-in member sees an
+  "ask a mentor for access" page, and gets no workspace. Removing someone cuts
+  them off at their next request.
+- **`scriptum-admin`** — reaches Scriptum's `/admin`. It does **not** include a
+  workspace; add admins to `scriptum-user` too if they should have one.
+
+Legion only shows its Scriptum launcher tile to members of these groups.
+
+**Slack quick links are never accepted.** A Legion session started from a
+Slack magic link is sent to Legion's full sign-in (the Approve/Deny push)
+instead: an IDE with a paid workspace behind it wants a real sign-in.
 
 > Admins also get a break-glass option: setting the `ADMIN_TOKEN` env var lets
 > you call the `/admin/*` API with a bearer token even if Legion is

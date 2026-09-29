@@ -23,6 +23,9 @@ const log = getLogger("legion");
 
 export const MW_SSO_COOKIE = "mw_sso";
 export const SCRIPTUM_ADMIN_GROUP = "scriptum-admin";
+/** Required for a workspace. Granted by hand in Legion; scriptum-admin doesn't
+ * imply it. Each workspace runs on a paid worker droplet (decision 048). */
+export const SCRIPTUM_USER_GROUP = "scriptum-user";
 
 export type LegionSession = {
 	user: {
@@ -32,16 +35,23 @@ export type LegionSession = {
 		image: string | null;
 		role: string;
 		slug: string;
-		/** Raw Legion group slugs (always [] on a via:link session) — lesson/track
-		 * assignment (admin-routes.ts) targets these directly, since role only
-		 * distinguishes admin/student. */
+		/** Raw Legion group slugs — lesson/track assignment (admin-routes.ts)
+		 * targets these directly, since role only distinguishes admin/student. */
 		groups: string[];
 	};
 	session: { token: string };
-	/** True on a weak, magic-link-issued session — admin gates should offer a
-	 * step-up to Legion's /sso/stepup rather than a flat 403. */
-	viaLink: boolean;
 };
+
+/**
+ * Why a valid Legion cookie still doesn't get a Scriptum session:
+ * - "quick-link": a Slack magic-link session. Never accepted - an IDE with a
+ *   paid workspace behind it wants a real sign-in - so the caller sends the
+ *   member to Legion's /sso/stepup (a plain /sso/authorize would just mint
+ *   another quick link and loop).
+ * - "no-access": signed in properly, but in neither scriptum-user nor
+ *   scriptum-admin.
+ */
+export type LegionAccessProblem = "quick-link" | "no-access";
 
 function readCookie(request: Request, name: string): string | null {
 	const header = request.headers.get("cookie");
@@ -70,6 +80,44 @@ export function slugFromUsername(username: string): string {
 	);
 }
 
+function readLegionClaims(config: ControlConfig, request: Request) {
+	const token = readCookie(request, MW_SSO_COOKIE);
+	if (!token) return null;
+	if (!config.ssoSecret) {
+		log.error("SSO_SECRET is not configured; cannot verify Legion sessions");
+		return null;
+	}
+	const result = verifyLegionToken(
+		token,
+		config.ssoSecret,
+		config.ssoSessionTtlSeconds,
+	);
+	if (!result.ok) {
+		log.trace("mw_sso rejected", { reason: result.reason });
+		return null;
+	}
+	return { token, claims: result.claims };
+}
+
+/** Why the request's valid Legion cookie gets no session, or null when it
+ * does (or there's no valid cookie at all - that's plain "not signed in"). */
+export function legionAccessProblem(
+	config: ControlConfig,
+	request: Request,
+): LegionAccessProblem | null {
+	const read = readLegionClaims(config, request);
+	if (!read) return null;
+	if (read.claims.via === "link") return "quick-link";
+	const groups = read.claims.groups;
+	if (
+		!groups.includes(SCRIPTUM_USER_GROUP) &&
+		!groups.includes(SCRIPTUM_ADMIN_GROUP)
+	) {
+		return "no-access";
+	}
+	return null;
+}
+
 /**
  * Resolve the `mw_sso` cookie on `request` into a session, lazily upserting the
  * local `user`/workspace rows on first sight of a `member_code`. Returns null
@@ -81,30 +129,13 @@ export async function getLegionSessionFromRequest(
 	config: ControlConfig,
 	request: Request,
 ): Promise<LegionSession | null> {
-	const token = readCookie(request, MW_SSO_COOKIE);
-	if (!token) return null;
-
-	if (!config.ssoSecret) {
-		log.error("SSO_SECRET is not configured; cannot verify Legion sessions");
-		return null;
-	}
-
-	const result = verifyLegionToken(
-		token,
-		config.ssoSecret,
-		config.ssoSessionTtlSeconds,
-	);
-	if (!result.ok) {
-		log.trace("mw_sso rejected", { reason: result.reason });
-		return null;
-	}
-
-	const claims = result.claims;
-	const viaLink = claims.via === "link";
-	const role =
-		!viaLink && claims.groups.includes(SCRIPTUM_ADMIN_GROUP)
-			? "admin"
-			: "student";
+	const read = readLegionClaims(config, request);
+	if (!read || legionAccessProblem(config, request) !== null) return null;
+	const { token, claims } = read;
+	const role = claims.groups.includes(SCRIPTUM_ADMIN_GROUP)
+		? "admin"
+		: "student";
+	const hasWorkspace = claims.groups.includes(SCRIPTUM_USER_GROUP);
 	const slug = slugFromUsername(claims.username);
 
 	// Upsert the `user` row first so ensureWorkspaceForUser's own
@@ -116,7 +147,10 @@ export async function getLegionSessionFromRequest(
 		role,
 	});
 	try {
-		await storage.ensureWorkspaceForUser(claims.member_code, slug);
+		// An admin without scriptum-user gets the admin portal, not a workspace.
+		if (hasWorkspace) {
+			await storage.ensureWorkspaceForUser(claims.member_code, slug);
+		}
 	} catch (err) {
 		log.warn("ensureWorkspaceForUser failed for Legion session", {
 			memberCode: claims.member_code,
@@ -133,9 +167,8 @@ export async function getLegionSessionFromRequest(
 			image: null,
 			role,
 			slug,
-			groups: viaLink ? [] : claims.groups,
+			groups: claims.groups,
 		},
 		session: { token },
-		viaLink,
 	};
 }

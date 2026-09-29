@@ -20,7 +20,12 @@ import type {
 import { createWebSocketHandlers } from "./app/websocket";
 import { handleWorkspaceRoute } from "./app/workspace-routes";
 import { seedDemoUser } from "./auth/demo";
-import { getSessionFromRequest, requireAdmin } from "./auth/middleware";
+import {
+	getSessionFromRequest,
+	legionStepUpRedirect,
+	noAccessResponse,
+	requireAdmin,
+} from "./auth/middleware";
 import { createCatalogSource } from "./catalog";
 import { CheckpointManager } from "./checkpoints";
 import { LocalDockerRuntimeProvider } from "./containers";
@@ -30,6 +35,7 @@ import { GamepadSessions } from "./gamepad";
 import { HalSimBridge } from "./halsim";
 import { IdleManager } from "./idle";
 import { ImportManager } from "./imports";
+import { legionAccessProblem, SCRIPTUM_USER_GROUP } from "./legion/session";
 import { getLogger } from "./logging";
 import {
 	httpRequestDuration,
@@ -288,6 +294,18 @@ export async function createApp(
 		server: BunUpgradeServer | undefined,
 		url: URL,
 	): Promise<Response> {
+		// A valid Legion cookie that still gets no session: a Slack quick link
+		// (sent to Legion's full sign-in) or a member not invited to Scriptum.
+		const accessProblemResponse = (returnTo: string): Response | null => {
+			if (storage.config.demo) return null;
+			const problem = legionAccessProblem(storage.config, request);
+			if (problem === "no-access") return noAccessResponse();
+			if (problem === "quick-link" && storage.config.legionBaseUrl) {
+				return legionStepUpRedirect(storage.config.legionBaseUrl, returnTo);
+			}
+			return null;
+		};
+
 		if (url.pathname === "/healthz") {
 			return Response.json({ ok: true, service: "control", version: "v2-3" });
 		}
@@ -361,27 +379,32 @@ export async function createApp(
 			const session = await getSessionFromRequest(storage, request);
 			if (session) {
 				const workspace = storage.findWorkspaceByUserId(session.user.id);
-				if (workspace) {
+				if (workspace && session.user.groups.includes(SCRIPTUM_USER_GROUP)) {
 					return redirect(`/u/${workspace.slug}/`);
 				}
+				if (session.user.role === "admin") {
+					return redirect("/admin/");
+				}
 			}
-			return webShellResponse(storage);
+			return accessProblemResponse(url.pathname) ?? webShellResponse(storage);
 		}
 
 		if (url.pathname === "/login" && request.method === "GET") {
-			return webShellResponse(storage);
+			return accessProblemResponse("/") ?? webShellResponse(storage);
 		}
 
 		// Plain-link redirects (no client-side fetch needed) to Legion's sign-in
 		// form and single-logout endpoint. Not under /api/ - these return
 		// redirects, not JSON.
 		if (url.pathname === "/login/legion" && request.method === "GET") {
+			const returnTo = url.searchParams.get("return_to") || "/";
+			const problem = accessProblemResponse(returnTo);
+			if (problem) return problem;
 			if (!storage.config.legionBaseUrl) {
 				return new Response("Legion is not configured for this deployment.", {
 					status: 503,
 				});
 			}
-			const returnTo = url.searchParams.get("return_to") || "/";
 			return redirect(
 				`${storage.config.legionBaseUrl}/sso/authorize?app=scriptum&return_to=${encodeURIComponent(returnTo)}`,
 			);
