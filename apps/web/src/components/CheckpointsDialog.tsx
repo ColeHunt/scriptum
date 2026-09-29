@@ -1,5 +1,6 @@
 import {
 	AlertCircle,
+	ArrowRight,
 	CheckCircle2,
 	Circle,
 	Loader2,
@@ -40,9 +41,15 @@ interface CheckpointsDialogProps {
 	 * newly unlocked, e.g. this module had no dependents or they still need
 	 * another prerequisite too. */
 	newlyUnlocked: LessonModuleWithLockState[];
-	/** Called when the student picks "Launch new lesson" off the completion
-	 * celebration. Closes this dialog and opens the lesson picker. */
+	/** Called when the student picks "Return to lesson browser" off the
+	 * completion celebration. Closes this dialog and opens the lesson picker,
+	 * with nothing preselected. */
 	onLaunchNewLesson: () => void;
+	/** Called when the student clicks one of the newly-unlocked lessons
+	 * directly. Closes this dialog and jumps straight to that lesson in the
+	 * picker (skipping browsing for it), still behind its normal "this
+	 * discards your current work" confirmation. */
+	onLaunchModule: (moduleId: string) => void;
 }
 
 const STATUS_ICON: Record<CheckpointStatus, typeof CheckCircle2> = {
@@ -69,6 +76,7 @@ export function CheckpointsDialog({
 	verify,
 	newlyUnlocked,
 	onLaunchNewLesson,
+	onLaunchModule,
 }: CheckpointsDialogProps) {
 	const [runningId, setRunningId] = useState<string | null>(null);
 	const [celebrating, setCelebrating] = useState(false);
@@ -123,6 +131,12 @@ export function CheckpointsDialog({
 		onLaunchNewLesson();
 	};
 
+	const launchModule = (moduleId: string) => {
+		setCelebrating(false);
+		onOpenChange(false);
+		onLaunchModule(moduleId);
+	};
+
 	if (celebrating) {
 		return (
 			<Dialog open={open} onOpenChange={onOpenChange}>
@@ -148,14 +162,18 @@ export function CheckpointsDialog({
 								</p>
 								<ul className="flex flex-col gap-1">
 									{newlyUnlocked.map((module) => (
-										<li
-											key={module.id}
-											className="flex items-center gap-1.5 text-[13px]"
-										>
-											<Unlock className="size-3.5 shrink-0 text-primary" />
-											<span className="truncate font-medium">
-												{module.title}
-											</span>
+										<li key={module.id}>
+											<button
+												type="button"
+												onClick={() => launchModule(module.id)}
+												className="group flex w-full items-center gap-1.5 rounded-md px-1 py-0.5 text-left text-[13px] transition-colors hover:bg-accent"
+											>
+												<Unlock className="size-3.5 shrink-0 text-primary" />
+												<span className="truncate font-medium">
+													{module.title}
+												</span>
+												<ArrowRight className="ml-auto size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+											</button>
 										</li>
 									))}
 								</ul>
@@ -171,7 +189,7 @@ export function CheckpointsDialog({
 							Continue experimenting
 						</Button>
 						<Button type="button" onClick={launchNewLesson}>
-							Launch new lesson
+							Return to lesson browser
 						</Button>
 					</DialogFooter>
 				</DialogContent>

@@ -409,15 +409,6 @@ export class AppStorage {
 			);
 	}
 
-	/** Called on every lesson (re)load: stale results from the previous attempt shouldn't linger. */
-	clearCheckpointResults(workspaceId: WorkspaceId, moduleId: string): void {
-		this.db
-			.query(
-				"DELETE FROM checkpoint_results WHERE workspace_id = ? AND module_id = ?",
-			)
-			.run(workspaceId, moduleId);
-	}
-
 	getContainerLease(workspaceId: WorkspaceId): ContainerLeaseRow | null {
 		return (
 			(this.db
