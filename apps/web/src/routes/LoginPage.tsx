@@ -1,4 +1,4 @@
-import { LogIn } from "lucide-react";
+import { BsSlack } from "react-icons/bs";
 import { useSearchParams } from "react-router";
 
 export function LoginPage() {
@@ -8,8 +8,8 @@ export function LoginPage() {
 
 	return (
 		<div className="flex min-h-screen w-full items-center justify-center bg-background px-6">
-			<div className="w-full max-w-[380px] rounded-lg border border-border bg-card p-8 text-center">
-				<h1 className="text-2xl font-bold text-primary italic">Scriptum</h1>
+			<div className="w-full max-w-[360px] rounded-lg border border-border bg-card p-8 text-center">
+				<h1 className="text-4xl font-bold text-primary italic">Scriptum</h1>
 				<p className="mt-2 text-sm text-muted-foreground">
 					Sign in with your Legion account.
 				</p>
@@ -18,8 +18,8 @@ export function LoginPage() {
 					href={legionSignInUrl}
 					className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
 				>
-					<LogIn className="size-[18px] shrink-0" />
-					Sign in via Legion
+					<BsSlack className="size-4 shrink-0" aria-hidden />
+					Sign in with Legion
 				</a>
 
 				<p className="mt-6 text-xs text-muted-foreground">
